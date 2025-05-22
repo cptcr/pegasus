@@ -42,11 +42,10 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.15.0",
-    "chalk": "^5.4.1",
+    "chalk": "^4.1.2",
     "commandkit": "^0.1.10",
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
-    "canvas": "^2.11.2",
     "node-cron": "^3.0.3",
     "next": "^14.2.0",
     "react": "^18.3.0",
@@ -90,7 +89,6 @@
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/node-cron": "^3.0.11",
-    "@types/canvas": "^2.11.0",
     "@types/lodash": "^4.17.0",
     "@types/ms": "^0.7.34",
     "@types/multer": "^1.4.11",
@@ -171,28 +169,12 @@
   },
   "eslintConfig": {
     "extends": [
-      "next/core-web-vitals",
-      "@typescript-eslint/recommended",
-      "prettier"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "plugins": [
-      "@typescript-eslint",
-      "prettier"
+      "next",
+      "next/core-web-vitals"
     ],
     "rules": {
-      "prettier/prettier": "error",
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "prefer-const": "error",
-      "no-var": "error"
-    },
-    "ignorePatterns": [
-      "dist/",
-      "node_modules/",
-      ".next/",
-      "coverage/"
-    ]
+      "@next/next/no-img-element": "off"
+    }
   },
   "prettier": {
     "semi": true,

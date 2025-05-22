@@ -114,15 +114,20 @@ async function handleShowLevel(interaction: ChatInputCommandInteraction) {
         { name: '🎤 Voice Zeit', value: formatVoiceTime(userLevel.voiceTime), inline: true },
         { name: '🌟 Gesamt XP', value: userLevel.xp.toLocaleString(), inline: true }
       )
-      .setImage('attachment://level-card.png')
       .setTimestamp();
 
-    const attachment = new AttachmentBuilder(levelCard, { name: 'level-card.png' });
-
-    await interaction.editReply({
-      embeds: [embed],
-      files: [attachment],
-    });
+    // Check if levelCard is a string or Buffer
+    if (typeof levelCard === 'string') {
+      embed.setDescription(levelCard);
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      embed.setImage('attachment://level-card.png');
+      const attachment = new AttachmentBuilder(levelCard, { name: 'level-card.png' });
+      await interaction.editReply({
+        embeds: [embed],
+        files: [attachment],
+      });
+    }
 
   } catch (error) {
     console.error('Fehler beim Anzeigen des Levels:', error);
@@ -161,7 +166,6 @@ async function handleLeaderboard(interaction: ChatInputCommandInteraction) {
       .setColor(0xffd700)
       .setTitle(`🏆 ${guild.name} Leaderboard`)
       .setDescription(`Top ${leaderboard.length} Benutzer`)
-      .setImage('attachment://leaderboard.png')
       .setTimestamp();
 
     // Top 3 als Felder hinzufügen
@@ -174,12 +178,18 @@ async function handleLeaderboard(interaction: ChatInputCommandInteraction) {
       });
     });
 
-    const attachment = new AttachmentBuilder(leaderboardCard, { name: 'leaderboard.png' });
-
-    await interaction.editReply({
-      embeds: [embed],
-      files: [attachment],
-    });
+    // Check if leaderboardCard is a string or Buffer
+    if (typeof leaderboardCard === 'string') {
+      embed.setDescription(`${embed.data.description}\n\n${leaderboardCard}`);
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      embed.setImage('attachment://leaderboard.png');
+      const attachment = new AttachmentBuilder(leaderboardCard, { name: 'leaderboard.png' });
+      await interaction.editReply({
+        embeds: [embed],
+        files: [attachment],
+      });
+    }
 
   } catch (error) {
     console.error('Fehler beim Laden des Leaderboards:', error);

@@ -156,7 +156,6 @@ async function handleLevelUp(message: any, userLevel: any, oldLevel: number, lev
         { name: 'Neues Level', value: userLevel.level.toString(), inline: true },
         { name: 'Gesamt XP', value: userLevel.xp.toString(), inline: true }
       )
-      .setImage('attachment://level-card.png')
       .setTimestamp();
 
     // Neue Rolle hinzufügen
@@ -190,13 +189,21 @@ async function handleLevelUp(message: any, userLevel: any, oldLevel: number, lev
     }
 
     if (targetChannel) {
-      await targetChannel.send({
-        embeds: [embed],
-        files: [{
-          attachment: levelCard,
-          name: 'level-card.png'
-        }]
-      });
+      if (typeof levelCard === 'string') {
+        // If levelCard is a string, add it to the embed description
+        embed.setDescription(`${embed.data.description}\n\n${levelCard}`);
+        await targetChannel.send({ embeds: [embed] });
+      } else {
+        // If levelCard is a Buffer, attach it as an image
+        embed.setImage('attachment://level-card.png');
+        await targetChannel.send({
+          embeds: [embed],
+          files: [{
+            attachment: levelCard,
+            name: 'level-card.png'
+          }]
+        });
+      }
     }
 
   } catch (error) {

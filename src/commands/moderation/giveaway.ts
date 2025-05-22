@@ -163,11 +163,12 @@ async function handleCreateGiveaway(interaction: ChatInputCommandInteraction) {
     }
 
     // Giveaway in Datenbank erstellen
+    const channel = await interaction.guild!.channels.fetch(interaction.channelId) as any;
     const giveaway = await DatabaseService.createGiveaway({
       guildId: guild.id,
-      channelId: interaction.channelId,
+      channelId: channel.id,
       title,
-      description,
+      description: description || undefined,
       prize,
       winners,
       creatorId: interaction.user.id,

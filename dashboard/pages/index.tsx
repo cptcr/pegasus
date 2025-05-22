@@ -57,7 +57,7 @@ export default function Dashboard({ user, guilds }: DashboardProps) {
     if (guilds.length > 0 && !selectedGuild) {
       setSelectedGuild(guilds[0].id);
     }
-  }, [guilds]);
+  }, [guilds, selectedGuild]);
 
   useEffect(() => {
     if (selectedGuild) {
@@ -314,4 +314,191 @@ export default function Dashboard({ user, guilds }: DashboardProps) {
               Letzte Aktivitäten (24h) - {currentGuild.name}
             </h3>
             
-            <div className="grid grid-cols-2 md:grid-cols
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <ActivityItem 
+                icon={<ExclamationTriangleIcon className="h-5 w-5" />}
+                count={recentActivity.recentWarns}
+                label="Warnungen"
+                color="yellow"
+              />
+              <ActivityItem 
+                icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
+                count={recentActivity.recentPolls}
+                label="Umfragen"
+                color="purple"
+              />
+              <ActivityItem 
+                icon={<GiftIcon className="h-5 w-5" />}
+                count={recentActivity.recentGiveaways}
+                label="Giveaways"
+                color="pink"
+              />
+              <ActivityItem 
+                icon={<TicketIcon className="h-5 w-5" />}
+                count={recentActivity.recentTickets}
+                label="Tickets"
+                color="orange"
+              />
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+// Component für Statistik-Karten
+type ColorType = 'blue' | 'red' | 'green' | 'yellow' | 'purple' | 'pink' | 'orange' | 'indigo';
+
+interface StatsCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: ColorType;
+  change?: string;
+}
+
+function StatsCard({ title, value, icon, color, change }: StatsCardProps) {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600',
+    red: 'bg-red-50 text-red-600',
+    green: 'bg-green-50 text-green-600',
+    yellow: 'bg-yellow-50 text-yellow-600',
+    purple: 'bg-purple-50 text-purple-600',
+    pink: 'bg-pink-50 text-pink-600',
+    orange: 'bg-orange-50 text-orange-600',
+    indigo: 'bg-indigo-50 text-indigo-600',
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center">
+        <div className={`p-3 rounded-full ${colorClasses[color]}`}>
+          {icon}
+        </div>
+        <div className="ml-4">
+          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+          <p className="text-2xl font-bold">{value}</p>
+          {change && <p className="text-sm text-gray-500">{change}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component für Feature Status
+interface FeatureStatusProps {
+  name: string;
+  enabled: boolean;
+  description: string;
+}
+
+function FeatureStatus({ name, enabled, description }: FeatureStatusProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <h4 className="font-medium">{name}</h4>
+        <p className="text-sm text-gray-500">{description}</p>
+      </div>
+      <div className={`px-3 py-1 rounded-full ${enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+        {enabled ? 'Aktiviert' : 'Deaktiviert'}
+      </div>
+    </div>
+  );
+}
+
+// Component für Aktivitäten
+interface ActivityItemProps {
+  icon: React.ReactNode;
+  count: number;
+  label: string;
+  color: ColorType;
+}
+
+function ActivityItem({ icon, count, label, color }: ActivityItemProps) {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-600',
+    red: 'bg-red-50 text-red-600',
+    green: 'bg-green-50 text-green-600',
+    yellow: 'bg-yellow-50 text-yellow-600',
+    purple: 'bg-purple-50 text-purple-600',
+    pink: 'bg-pink-50 text-pink-600',
+    orange: 'bg-orange-50 text-orange-600',
+    indigo: 'bg-indigo-50 text-indigo-600',
+  };
+
+  return (
+    <div className="bg-white rounded-lg border p-4">
+      <div className="flex items-center space-x-2">
+        <div className={`p-2 rounded-full ${colorClasses[color]}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-xl font-bold">{count}</p>
+          <p className="text-sm text-gray-500">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  // Placeholder für echte API Calls
+  const dummyUser = {
+    id: '123456789',
+    username: 'Admin',
+    avatar: 'https://via.placeholder.com/150',
+  };
+
+  const dummyGuilds = [
+    {
+      id: '111222333',
+      name: 'Test Server 1',
+      memberCount: 156,
+      stats: {
+        totalUsers: 156,
+        totalWarns: 3,
+        activeQuarantine: 1,
+        totalTrackers: 5,
+        activePolls: 2,
+        activeGiveaways: 1,
+        openTickets: 4,
+        customCommands: 8,
+        levelingEnabled: true,
+        moderationEnabled: true,
+        geizhalsEnabled: true,
+        enablePolls: true,
+        enableGiveaways: true,
+        enableTickets: true,
+      }
+    },
+    {
+      id: '444555666',
+      name: 'Test Server 2',
+      memberCount: 87,
+      stats: {
+        totalUsers: 87,
+        totalWarns: 0,
+        activeQuarantine: 0,
+        totalTrackers: 2,
+        activePolls: 1,
+        activeGiveaways: 0,
+        openTickets: 1,
+        customCommands: 3,
+        levelingEnabled: true,
+        moderationEnabled: false,
+        geizhalsEnabled: false,
+        enablePolls: true,
+        enableGiveaways: false,
+        enableTickets: true,
+      }
+    }
+  ];
+
+  return {
+    props: {
+      user: dummyUser,
+      guilds: dummyGuilds
+    }
+  };
+};

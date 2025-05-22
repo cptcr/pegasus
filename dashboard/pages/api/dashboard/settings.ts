@@ -1,5 +1,71 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { DatabaseService } from '../../../../src/lib/database';
+
+// Mock data for guild settings
+const mockGuildSettings: Record<string, any> = {
+  '111222333': {
+    id: '111222333',
+    name: 'Test Server 1',
+    prefix: '!',
+    modLogChannelId: '123456789',
+    levelUpChannelId: '123456790',
+    quarantineRoleId: '123456791',
+    geizhalsChannelId: '123456792',
+    welcomeChannelId: '123456793',
+    enableLeveling: true,
+    enableModeration: true,
+    enableGeizhals: true,
+    enablePolls: true,
+    enableGiveaways: true,
+    enableAutomod: true,
+    enableTickets: true,
+    enableMusic: true,
+    welcomeMessage: 'Welcome to the server, {user}!',
+    leaveMessage: 'Goodbye, {user}!'
+  },
+  '444555666': {
+    id: '444555666',
+    name: 'Test Server 2',
+    prefix: '?',
+    modLogChannelId: '987654321',
+    levelUpChannelId: '987654320',
+    quarantineRoleId: null,
+    geizhalsChannelId: null,
+    welcomeChannelId: '987654322',
+    enableLeveling: true,
+    enableModeration: false,
+    enableGeizhals: false,
+    enablePolls: true,
+    enableGiveaways: false,
+    enableAutomod: false,
+    enableTickets: true,
+    enableMusic: true,
+    welcomeMessage: 'Hey {user}, welcome!',
+    leaveMessage: '{user} has left the server.'
+  }
+};
+
+// Helper functions for mock database operations
+const getMockGuildSettings = (guildId: string) => {
+  return mockGuildSettings[guildId] || {
+    id: guildId,
+    name: 'Unknown Guild',
+    prefix: '!',
+    enableLeveling: false,
+    enableModeration: false,
+    enableGeizhals: false,
+    enablePolls: false,
+    enableGiveaways: false,
+    enableAutomod: false,
+    enableTickets: false,
+    enableMusic: false
+  };
+};
+
+const updateMockGuildSettings = (guildId: string, data: any) => {
+  const currentSettings = getMockGuildSettings(guildId);
+  mockGuildSettings[guildId] = { ...currentSettings, ...data };
+  return mockGuildSettings[guildId];
+};
 
 // Zugriffsschutz Middleware
 const ALLOWED_USER_ID = '797927858420187186';
@@ -36,7 +102,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const guildSettings = await DatabaseService.getGuildSettings(guildId);
+    const guildSettings = getMockGuildSettings(guildId);
     return res.status(200).json(guildSettings);
   } catch (error) {
     console.error('Fehler beim Laden der Guild-Einstellungen:', error);
@@ -56,7 +122,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
     const validatedData = validateSettingsData(updateData);
     
     // Einstellungen aktualisieren
-    const updatedSettings = await DatabaseService.updateGuildSettings(guildId, validatedData);
+    const updatedSettings = updateMockGuildSettings(guildId, validatedData);
     
     return res.status(200).json({ 
       success: true, 

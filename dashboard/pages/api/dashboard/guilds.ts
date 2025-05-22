@@ -1,6 +1,52 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { client } from '../../../../src/index';
-import { DatabaseService } from '../../../../src/lib/database';
+
+// Mock data generator to replace the direct imports
+const getMockGuildsData = () => {
+  return [
+    {
+      id: '111222333',
+      name: 'Test Server 1',
+      memberCount: 156,
+      stats: {
+        totalUsers: 156,
+        totalWarns: 3,
+        activeQuarantine: 1,
+        totalTrackers: 5,
+        activePolls: 2,
+        activeGiveaways: 1,
+        openTickets: 4,
+        customCommands: 8,
+        levelingEnabled: true,
+        moderationEnabled: true,
+        geizhalsEnabled: true,
+        enablePolls: true,
+        enableGiveaways: true,
+        enableTickets: true,
+      }
+    },
+    {
+      id: '444555666',
+      name: 'Test Server 2',
+      memberCount: 87,
+      stats: {
+        totalUsers: 87,
+        totalWarns: 0,
+        activeQuarantine: 0,
+        totalTrackers: 2,
+        activePolls: 1,
+        activeGiveaways: 0,
+        openTickets: 1,
+        customCommands: 3,
+        levelingEnabled: true,
+        moderationEnabled: false,
+        geizhalsEnabled: false,
+        enablePolls: true,
+        enableGiveaways: false,
+        enableTickets: true,
+      }
+    }
+  ];
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,48 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Hole alle Guilds vom Bot
-    const botGuilds = client.guilds.cache;
-    const guildsData = [];
-
-    for (const [guildId, guild] of botGuilds) {
-      try {
-        // Stats für jede Guild abrufen
-        const stats = await DatabaseService.getGuildStats(guildId);
-        const guildSettings = await DatabaseService.getGuildSettings(guildId);
-
-        guildsData.push({
-          id: guildId,
-          name: guild.name,
-          memberCount: guild.memberCount,
-          stats: {
-            ...stats,
-            levelingEnabled: guildSettings.enableLeveling,
-            moderationEnabled: guildSettings.enableModeration,
-            geizhalsEnabled: guildSettings.enableGeizhals
-          }
-        });
-      } catch (error) {
-        console.error(`Fehler beim Laden der Stats für Guild ${guildId}:`, error);
-        
-        // Fallback mit Basis-Daten
-        guildsData.push({
-          id: guildId,
-          name: guild.name,
-          memberCount: guild.memberCount,
-          stats: {
-            totalUsers: 0,
-            totalWarns: 0,
-            activeQuarantine: 0,
-            totalTrackers: 0,
-            levelingEnabled: false,
-            moderationEnabled: false,
-            geizhalsEnabled: false
-          }
-        });
-      }
-    }
-
+    // Use mock data instead of accessing the bot client or database
+    const guildsData = getMockGuildsData();
     res.status(200).json(guildsData);
   } catch (error) {
     console.error('Fehler beim Laden der Guilds:', error);

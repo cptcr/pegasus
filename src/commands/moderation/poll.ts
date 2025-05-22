@@ -143,15 +143,15 @@ async function handleCreatePoll(interaction: ChatInputCommandInteraction) {
 
     // Poll in Datenbank erstellen
     const poll = await DatabaseService.createPoll({
-      guildId: guild.id,
-      channelId: interaction.channelId,
+      guildId: interaction.guild!.id,
+      channelId: interaction.channel!.id,
       title,
-      description,
+      description: description || undefined,
       creatorId: interaction.user.id,
       multiple,
       anonymous,
-      endTime,
-      options
+      endTime: endTime || undefined,
+      options: options.map((option, i) => `${emojis[i]} ${option}`)
     });
 
     // Embed erstellen

@@ -15,6 +15,101 @@ export const data = new SlashCommandBuilder()
   .setDescription('Ticket-System verwalten')
   .addSubcommand(subcommand =>
     subcommand
+      .setName('setup')
+      .setDescription('Ticket-System einrichten')
+      .addChannelOption(option =>
+        option
+          .setName('category')
+          .setDescription('Kategorie für Ticket-Channels')
+          .setRequired(true)
+      )
+      .addChannelOption(option =>
+        option
+          .setName('channel')
+          .setDescription('Channel für Ticket-Panel')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('category')
+      .setDescription('Ticket-Kategorie verwalten')
+      .addStringOption(option =>
+        option
+          .setName('action')
+          .setDescription('Aktion')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Hinzufügen', value: 'add' },
+            { name: 'Entfernen', value: 'remove' },
+            { name: 'Liste', value: 'list' }
+          )
+      )
+      .addStringOption(option =>
+        option
+          .setName('name')
+          .setDescription('Name der Kategorie')
+          .setRequired(false)
+      )
+      .addStringOption(option =>
+        option
+          .setName('description')
+          .setDescription('Beschreibung der Kategorie')
+          .setRequired(false)
+      )
+      .addStringOption(option =>
+        option
+          .setName('emoji')
+          .setDescription('Emoji für die Kategorie')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('panel')
+      .setDescription('Ticket-Panel in einem Channel erstellen')
+      .addChannelOption(option =>
+        option
+          .setName('channel')
+          .setDescription('Channel für das Panel')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('close')
+      .setDescription('Aktuelles Ticket schließen')
+      .addStringOption(option =>
+        option
+          .setName('reason')
+          .setDescription('Grund für das Schließen')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('add')
+      .setDescription('Benutzer zum Ticket hinzufügen')
+      .addUserOption(option =>
+        option
+          .setName('user')
+          .setDescription('Benutzer')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('remove')
+      .setDescription('Benutzer aus Ticket entfernen')
+      .addUserOption(option =>
+        option
+          .setName('user')
+          .setDescription('Benutzer')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
       .setName('list')
       .setDescription('Alle offenen Tickets anzeigen')
   )
@@ -47,6 +142,9 @@ export async function run({ interaction }: { interaction: ChatInputCommandIntera
   switch (subcommand) {
     case 'setup':
       await handleSetup(interaction);
+      break;
+    case 'category':
+      await handleCategory(interaction);
       break;
     case 'panel':
       await handlePanel(interaction);
@@ -101,6 +199,29 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
       name: guild.name
     });
 
+    // Standard-Ticket-Kategorien erstellen
+    const defaultCategories = [
+      { name: 'general', description: 'Allgemeiner Support', emoji: '🎫' },
+      { name: 'bug', description: 'Bug Reports', emoji: '🐛' },
+      { name: 'suggestion', description: 'Vorschläge', emoji: '💡' },
+      { name: 'appeal', description: 'Entbannungsanträge', emoji: '📋' },
+      { name: 'other', description: 'Sonstiges', emoji: '❓' }
+    ];
+
+    for (const cat of defaultCategories) {
+      try {
+        await DatabaseService.createTicketCategory({
+          guildId: guild.id,
+          name: cat.name,
+          description: cat.description,
+          emoji: cat.emoji,
+          categoryId: category.id
+        });
+      } catch (error) {
+        // Kategorie existiert bereits, ignorieren
+      }
+    }
+
     const embed = new EmbedBuilder()
       .setColor(0x00ff00)
       .setTitle('✅ Ticket-System eingerichtet')
@@ -112,7 +233,7 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
       )
       .addFields({
         name: '📖 Nächste Schritte',
-        value: `Verwende \`/ticket panel\` in ${channel} um das Ticket-Panel zu erstellen.`,
+        value: `Verwende \`/ticket panel\` in ${channel} um das Ticket-Panel zu erstellen.\nVerwende \`/ticket category list\` um alle Kategorien zu sehen.`,
         inline: false
       })
       .setTimestamp();
@@ -123,6 +244,112 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
     console.error('Fehler beim Einrichten des Ticket-Systems:', error);
     await interaction.editReply({
       content: '❌ Ein Fehler ist aufgetreten beim Einrichten des Systems.',
+    });
+  }
+}
+
+async function handleCategory(interaction: ChatInputCommandInteraction) {
+  const action = interaction.options.getString('action', true);
+  const name = interaction.options.getString('name');
+  const description = interaction.options.getString('description');
+  const emoji = interaction.options.getString('emoji');
+  const guild = interaction.guild!;
+
+  // Moderator-Berechtigung prüfen
+  const member = interaction.member as any;
+  if (!member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    return interaction.reply({
+      content: '❌ Du benötigst die "Kanäle verwalten" Berechtigung.',
+      ephemeral: true,
+    });
+  }
+
+  await interaction.deferReply();
+
+  try {
+    switch (action) {
+      case 'add':
+        if (!name) {
+          return interaction.editReply({
+            content: '❌ Name ist erforderlich zum Hinzufügen einer Kategorie.',
+          });
+        }
+
+        await DatabaseService.createTicketCategory({
+          guildId: guild.id,
+          name: name.toLowerCase(),
+          description: description || name,
+          emoji: emoji || '🎫'
+        });
+
+        const addEmbed = new EmbedBuilder()
+          .setColor(0x00ff00)
+          .setTitle('✅ Ticket-Kategorie hinzugefügt')
+          .addFields(
+            { name: 'Name', value: name, inline: true },
+            { name: 'Beschreibung', value: description || name, inline: true },
+            { name: 'Emoji', value: emoji || '🎫', inline: true }
+          )
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [addEmbed] });
+        break;
+
+      case 'remove':
+        if (!name) {
+          return interaction.editReply({
+            content: '❌ Name ist erforderlich zum Entfernen einer Kategorie.',
+          });
+        }
+
+        await DatabaseService.prisma.ticketCategory.updateMany({
+          where: {
+            guildId: guild.id,
+            name: name.toLowerCase()
+          },
+          data: { enabled: false }
+        });
+
+        const removeEmbed = new EmbedBuilder()
+          .setColor(0xff6b35)
+          .setTitle('✅ Ticket-Kategorie entfernt')
+          .setDescription(`Die Kategorie "${name}" wurde deaktiviert.`)
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [removeEmbed] });
+        break;
+
+      case 'list':
+        const categories = await DatabaseService.getTicketCategories(guild.id);
+
+        if (categories.length === 0) {
+          return interaction.editReply({
+            content: '📋 Keine Ticket-Kategorien konfiguriert. Verwende `/ticket setup` um Standard-Kategorien zu erstellen.',
+          });
+        }
+
+        const listEmbed = new EmbedBuilder()
+          .setColor(0x3498db)
+          .setTitle('📋 Ticket-Kategorien')
+          .setDescription(`${categories.length} Kategorie(n) konfiguriert`)
+          .setTimestamp();
+
+        categories.forEach((category, index) => {
+          listEmbed.addFields({
+            name: `${index + 1}. ${category.emoji} ${category.name}`,
+            value: category.description || 'Keine Beschreibung',
+            inline: true
+          });
+        });
+
+        await interaction.editReply({ embeds: [listEmbed] });
+        break;
+    }
+
+  } catch (error) {
+    console.error('Fehler beim Verwalten der Ticket-Kategorien:', error);
+    await interaction.editReply({
+      content: '❌ Ein Fehler ist aufgetreten beim Verwalten der Kategorien.',
     });
   }
 }
@@ -150,6 +377,9 @@ async function handlePanel(interaction: ChatInputCommandInteraction) {
       });
     }
 
+    // Ticket-Kategorien abrufen
+    const categories = await DatabaseService.getTicketCategories(guild.id);
+
     // Ticket-Panel Embed erstellen
     const panelEmbed = new EmbedBuilder()
       .setColor(0x3498db)
@@ -163,44 +393,80 @@ async function handlePanel(interaction: ChatInputCommandInteraction) {
       .setFooter({ text: 'Support-Team • Hinko Bot' })
       .setTimestamp();
 
-    // Buttons für verschiedene Ticket-Typen
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('ticket_create_general')
-          .setLabel('🎫 Allgemeiner Support')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('ticket_create_bug')
-          .setLabel('🐛 Bug Report')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('ticket_create_suggestion')
-          .setLabel('💡 Vorschlag')
-          .setStyle(ButtonStyle.Success)
-      );
+    // Buttons für Ticket-Kategorien erstellen
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+    
+    if (categories.length > 0) {
+      // Dynamische Buttons basierend auf Kategorien
+      for (let i = 0; i < categories.length; i += 5) {
+        const row = new ActionRowBuilder<ButtonBuilder>();
+        const categorySlice = categories.slice(i, i + 5);
+        
+        categorySlice.forEach(category => {
+          const style = category.name === 'appeal' ? ButtonStyle.Danger :
+                       category.name === 'bug' ? ButtonStyle.Danger :
+                       category.name === 'suggestion' ? ButtonStyle.Success :
+                       ButtonStyle.Primary;
 
-    const row2 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('ticket_create_appeal')
-          .setLabel('📋 Entbannungsantrag')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId('ticket_create_other')
-          .setLabel('❓ Sonstiges')
-          .setStyle(ButtonStyle.Secondary)
-      );
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`ticket_create_${category.name}`)
+              .setLabel(`${category.emoji} ${category.description}`)
+              .setStyle(style)
+          );
+        });
+        
+        rows.push(row);
+      }
+    } else {
+      // Fallback auf Standard-Buttons
+      const row1 = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('ticket_create_general')
+            .setLabel('🎫 Allgemeiner Support')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('ticket_create_bug')
+            .setLabel('🐛 Bug Report')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId('ticket_create_suggestion')
+            .setLabel('💡 Vorschlag')
+            .setStyle(ButtonStyle.Success)
+        );
+
+      const row2 = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('ticket_create_appeal')
+            .setLabel('📋 Entbannungsantrag')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('ticket_create_other')
+            .setLabel('❓ Sonstiges')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+      rows.push(row1, row2);
+    }
 
     const panelMessage = await (targetChannel as any).send({
       embeds: [panelEmbed],
-      components: [row1, row2]
+      components: rows
     });
 
     const confirmEmbed = new EmbedBuilder()
       .setColor(0x00ff00)
       .setTitle('✅ Ticket-Panel erstellt')
       .setDescription(`Das Ticket-Panel wurde in ${targetChannel} erstellt.`)
+      .addFields({
+        name: '📋 Kategorien',
+        value: categories.length > 0 ? 
+          categories.map(cat => `${cat.emoji} ${cat.description}`).join('\n') :
+          'Standard-Kategorien verwendet',
+        inline: false
+      })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [confirmEmbed] });
@@ -222,8 +488,7 @@ async function handleClose(interaction: ChatInputCommandInteraction) {
 
   try {
     // Prüfen ob aktueller Channel ein Ticket ist
-    const tickets = await DatabaseService.getOpenTickets(guild.id);
-    const currentTicket = tickets.find(ticket => ticket.channelId === channel.id);
+    const currentTicket = await DatabaseService.getTicketByChannel(channel.id);
 
     if (!currentTicket) {
       return interaction.editReply({
@@ -311,8 +576,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction) {
 
   try {
     // Prüfen ob aktueller Channel ein Ticket ist
-    const tickets = await DatabaseService.getOpenTickets(guild.id);
-    const currentTicket = tickets.find(ticket => ticket.channelId === channel.id);
+    const currentTicket = await DatabaseService.getTicketByChannel(channel.id);
 
     if (!currentTicket) {
       return interaction.editReply({
@@ -361,8 +625,7 @@ async function handleRemove(interaction: ChatInputCommandInteraction) {
 
   try {
     // Prüfen ob aktueller Channel ein Ticket ist
-    const tickets = await DatabaseService.getOpenTickets(guild.id);
-    const currentTicket = tickets.find(ticket => ticket.channelId === channel.id);
+    const currentTicket = await DatabaseService.getTicketByChannel(channel.id);
 
     if (!currentTicket) {
       return interaction.editReply({
@@ -435,8 +698,9 @@ async function handleList(interaction: ChatInputCommandInteraction) {
 
       const statusEmoji = {
         OPEN: '🆕',
-        IN_PROGRESS: '⚠️',
-        WAITING: '⏳'
+        IN_PROGRESS: '🔄',
+        WAITING: '⏳',
+        CLOSED: '✅'
       }[ticket.status];
 
       embed.addFields({
@@ -477,8 +741,7 @@ async function handleClaim(interaction: ChatInputCommandInteraction) {
 
   try {
     // Prüfen ob aktueller Channel ein Ticket ist
-    const tickets = await DatabaseService.getOpenTickets(guild.id);
-    const currentTicket = tickets.find(ticket => ticket.channelId === channel.id);
+    const currentTicket = await DatabaseService.getTicketByChannel(channel.id);
 
     if (!currentTicket) {
       return interaction.editReply({
@@ -537,8 +800,7 @@ async function handlePriority(interaction: ChatInputCommandInteraction) {
 
   try {
     // Prüfen ob aktueller Channel ein Ticket ist
-    const tickets = await DatabaseService.getOpenTickets(guild.id);
-    const currentTicket = tickets.find(ticket => ticket.channelId === channel.id);
+    const currentTicket = await DatabaseService.getTicketByChannel(channel.id);
 
     if (!currentTicket) {
       return interaction.editReply({
@@ -586,65 +848,4 @@ async function handlePriority(interaction: ChatInputCommandInteraction) {
 
 export const options = {
   botPermissions: ['SendMessages', 'ManageChannels', 'ManageRoles'],
-};d =>
-    subcommand
-      .setName('setup')
-      .setDescription('Ticket-System einrichten')
-      .addChannelOption(option =>
-        option
-          .setName('category')
-          .setDescription('Kategorie für Ticket-Channels')
-          .setRequired(true)
-      )
-      .addChannelOption(option =>
-        option
-          .setName('channel')
-          .setDescription('Channel für Ticket-Panel')
-          .setRequired(true)
-      )
-  )
-  .addSubcommand(subcommand =>
-    subcommand
-      .setName('panel')
-      .setDescription('Ticket-Panel in einem Channel erstellen')
-      .addChannelOption(option =>
-        option
-          .setName('channel')
-          .setDescription('Channel für das Panel')
-          .setRequired(false)
-      )
-  )
-  .addSubcommand(subcommand =>
-    subcommand
-      .setName('close')
-      .setDescription('Aktuelles Ticket schließen')
-      .addStringOption(option =>
-        option
-          .setName('reason')
-          .setDescription('Grund für das Schließen')
-          .setRequired(false)
-      )
-  )
-  .addSubcommand(subcommand =>
-    subcommand
-      .setName('add')
-      .setDescription('Benutzer zum Ticket hinzufügen')
-      .addUserOption(option =>
-        option
-          .setName('user')
-          .setDescription('Benutzer')
-          .setRequired(true)
-      )
-  )
-  .addSubcommand(subcommand =>
-    subcommand
-      .setName('remove')
-      .setDescription('Benutzer aus Ticket entfernen')
-      .addUserOption(option =>
-        option
-          .setName('user')
-          .setDescription('Benutzer')
-          .setRequired(true)
-      )
-  )
-  .addSubcommand(subcomman
+};

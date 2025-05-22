@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, ActivityType, PresenceUpdateStatus } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, ActivityType, PresenceUpdateStatus, Partials } from 'discord.js';
 import { config } from 'dotenv';
 import { CommandKit } from 'commandkit';
 import chalk from 'chalk';
@@ -10,7 +10,7 @@ import { devGuilds } from '../config';
 config();
 
 // Client erstellen mit optimierten Intents
-export const client = new Client({
+export const client: Client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -20,6 +20,13 @@ export const client = new Client({
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildPresences,
         GatewayIntentBits.GuildScheduledEvents,
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction,
+        Partials.User,
+        Partials.GuildMember
     ],
     presence: {
         status: PresenceUpdateStatus.Online,

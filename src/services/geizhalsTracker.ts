@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { EmbedBuilder, TextChannel } from 'discord.js';
 import { client } from '../index';
 import { DatabaseService } from '../lib/database';
-import Geizhals from '../geizhals';
+import Geizhals from '../../geizhals/index';
 
 const geizhals = new Geizhals();
 
@@ -74,7 +74,11 @@ export class GeizhalsTracker {
         if (guild.geizhalsTrackers.length === 0) continue;
 
         for (const tracker of guild.geizhalsTrackers) {
-          await this.checkTracker(tracker, guild.geizhalsChannelId);
+          if (guild.geizhalsChannelId) {
+            await this.checkTracker(tracker, guild.geizhalsChannelId);
+          } else {
+            console.log(`Skipping price check notification for tracker ${tracker.id} - no channel configured`);
+          }
           
           // Kleine Verzögerung zwischen API-Calls
           await new Promise(resolve => setTimeout(resolve, 1000));
