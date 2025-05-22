@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id                String   @id
+  name              String
+  prefix            String   @default("!")
+  modLogChannelId   String?
+  levelUpChannelId  String?
+  quarantineRoleId  String?
+  geizhalsChannelId String?
+  welcomeChannelId  String?
+  enableLeveling    Boolean  @default(true)
+  enableModeration  Boolean  @default(true)
+  enableGeizhals    Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationen
+  warns             Warn[]
+  userLevels        UserLevel[]
+  levelRewards      LevelReward[]
+  quarantineEntries QuarantineEntry[]
+  geizhalsTrackers  GeizhalsTracker[]
+
+  @@map("guilds")
+}
+
+model User {
+  id        String   @id
+  username  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationen
+  warns             Warn[]
+  userLevels        UserLevel[]
+  quarantineEntries QuarantineEntry[]
+  geizhalsTrackers  GeizhalsTracker[]
+  moderatedWarns    Warn[]            @relation("ModeratorWarns")
+  moderatedQuarantine QuarantineEntry[] @relation("ModeratorQuarantine")
+
+  @@map("users")
+}
+
+model Warn {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  guildId      String
+  moderatorId  String
+  reason       String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationen
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  moderator User  @relation("ModeratorWarns", fields: [moderatorId], references: [id])
+
+  @@map("warns")
+}
+
+model UserLevel {
+  id              Int      @id @default(autoincrement())
+  userId          String
+  guildId         String
+  xp              Int      @default(0)
+  level           Int      @default(0)
+  messages        Int      @default(0)
+  voiceTime       Int      @default(0) // in Sekunden
+  lastMessageTime DateTime?
+  lastVoiceJoin   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationen
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guildId])
+  @@map("user_levels")
+}
+
+model LevelReward {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  level       Int
+  roleId      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationen
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, level])
+  @@map("level_rewards")
+}
+
+model QuarantineEntry {
+  id          Int                @id @default(autoincrement())
+  guildId     String
+  targetId    String
+  targetType  QuarantineType
+  moderatorId String
+  reason      String
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relationen
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  moderator User  @relation("ModeratorQuarantine", fields: [moderatorId], references: [id])
+
+  @@map("quarantine_entries")
+}
+
+model GeizhalsTracker {
+  id           Int      @id @default(autoincrement())
+  guildId      String
+  productId    String
+  productName  String
+  targetPrice  Float
+  currentPrice Float
+  category     String
+  userId       String
+  notified     Boolean  @default(false)
+  lastCheck    DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationen
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, productId, userId])
+  @@map("geizhals_trackers")
+}
+
+model MonthlyLeaderboard {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  userId    String
+  month     Int      // 1-12
+  year      Int
+  xpGained  Int      @default(0)
+  messages  Int      @default(0)
+  voiceTime Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, userId, month, year])
+  @@map("monthly_leaderboards")
+}
+
+enum QuarantineType {
+  USER
+  CHANNEL
+  ROLE
+}

@@ -1,19 +1,50 @@
 {
   "name": "hinko",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Discord Bot mit Admin Dashboard",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "dashboard": "next dev -p 3001",
+    "build:dashboard": "next build",
+    "start:dashboard": "next start -p 3001"
   },
-  "keywords": [],
+  "keywords": ["discord", "bot", "moderation", "leveling", "geizhals"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/client": "^5.15.0",
     "chalk": "^5.4.1",
     "commandkit": "^0.1.10",
     "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "canvas": "^2.11.2",
+    "node-cron": "^3.0.3",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "@headlessui/react": "^2.0.0",
+    "@heroicons/react": "^2.1.0",
+    "recharts": "^2.12.0",
+    "date-fns": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^5.15.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0"
   }
 }
