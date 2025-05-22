@@ -1,9 +1,12 @@
 // dashboard/pages/api/dashboard/guild/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { DatabaseService } from '../../../lib/database';
-import { discordService } from '../../../lib/discordService';
+import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
+import { DatabaseService } from '../../../../lib/database';
+import { discordService } from '../../../../lib/discordService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+const ALLOWED_GUILD_ID = '554266392262737930';
+
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -12,6 +15,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!id || typeof id !== 'string') {
     return res.status(400).json({ message: 'Guild ID is required' });
+  }
+
+  // Only allow access to the specific guild
+  if (id !== ALLOWED_GUILD_ID) {
+    return res.status(403).json({ message: 'Access denied to this guild' });
   }
 
   try {
@@ -107,4 +115,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: process.env.NODE_ENV === 'development' ? error : undefined
     });
   }
+}
+
+export default function protectedHandler(req: NextApiRequest, res: NextApiResponse) {
+  return requireAuth(req as AuthenticatedRequest, res, handler);
 }

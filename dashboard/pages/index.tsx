@@ -1,6 +1,7 @@
 // dashboard/pages/index.tsx
 import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
+import { getSession, signOut } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { 
@@ -13,9 +14,9 @@ import {
   ChatBubbleLeftRightIcon,
   GiftIcon,
   TicketIcon,
-  CommandLineIcon
+  CommandLineIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
-
 interface GuildStats {
   totalUsers: number;
   totalWarns: number;
