@@ -129,7 +129,10 @@ export default function Dashboard() {
           <div className="flex justify-between h-16 items-center">
             <h1 className="text-2xl font-bold text-indigo-600">Hinko Dashboard</h1>
             <div className="flex items-center space-x-4">
-              <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+              >
                 Refresh
               </button>
             </div>
@@ -196,31 +199,33 @@ export default function Dashboard() {
           {guilds.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {guilds.map((guild) => (
-                <Link key={guild.id} href={`/dashboard/${guild.id}`}>
-                  <a className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow">
-                    <h3 className="text-lg font-semibold mb-2">{guild.name}</h3>
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-gray-500">{guild.memberCount} members</span>
+                <Link 
+                  key={guild.id} 
+                  href={`/dashboard/${guild.id}`}
+                  className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow block"
+                >
+                  <h3 className="text-lg font-semibold mb-2">{guild.name}</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-gray-500">{guild.memberCount} members</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center">
+                      <ShieldCheckIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span>Moderation: {guild.stats.moderationEnabled ? 'On' : 'Off'}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center">
-                        <ShieldCheckIcon className="h-4 w-4 mr-1 text-gray-400" />
-                        <span>Moderation: {guild.stats.moderationEnabled ? 'On' : 'Off'}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <ChartBarIcon className="h-4 w-4 mr-1 text-gray-400" />
-                        <span>Leveling: {guild.stats.levelingEnabled ? 'On' : 'Off'}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <GiftIcon className="h-4 w-4 mr-1 text-gray-400" />
-                        <span>Giveaways: {guild.stats.enableGiveaways ? 'On' : 'Off'}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <TicketIcon className="h-4 w-4 mr-1 text-gray-400" />
-                        <span>Tickets: {guild.stats.enableTickets ? 'On' : 'Off'}</span>
-                      </div>
+                    <div className="flex items-center">
+                      <ChartBarIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span>Leveling: {guild.stats.levelingEnabled ? 'On' : 'Off'}</span>
                     </div>
-                  </a>
+                    <div className="flex items-center">
+                      <GiftIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span>Giveaways: {guild.stats.enableGiveaways ? 'On' : 'Off'}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <TicketIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      <span>Tickets: {guild.stats.enableTickets ? 'On' : 'Off'}</span>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>

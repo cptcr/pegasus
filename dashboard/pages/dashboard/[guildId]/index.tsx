@@ -258,36 +258,40 @@ export default function GuildDashboard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             
             <div className="grid grid-cols-2 gap-4">
-              <Link href={`/dashboard/${guildId}/moderation`}>
-                <div className="p-4 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer transition-colors">
-                  <ShieldCheckIcon className="h-8 w-8 text-red-600 mb-2" />
-                  <h4 className="font-medium text-red-900">Moderation</h4>
-                  <p className="text-sm text-red-600">Warnings & Quarantine</p>
-                </div>
+              <Link 
+                href={`/dashboard/${guildId}/moderation`}
+                className="p-4 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer transition-colors block"
+              >
+                <ShieldCheckIcon className="h-8 w-8 text-red-600 mb-2" />
+                <h4 className="font-medium text-red-900">Moderation</h4>
+                <p className="text-sm text-red-600">Warnings & Quarantine</p>
               </Link>
 
-              <Link href={`/dashboard/${guildId}/levels`}>
-                <div className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors">
-                  <ChartBarIcon className="h-8 w-8 text-blue-600 mb-2" />
-                  <h4 className="font-medium text-blue-900">Level System</h4>
-                  <p className="text-sm text-blue-600">Leaderboards & Rewards</p>
-                </div>
+              <Link 
+                href={`/dashboard/${guildId}/levels`}
+                className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors block"
+              >
+                <ChartBarIcon className="h-8 w-8 text-blue-600 mb-2" />
+                <h4 className="font-medium text-blue-900">Level System</h4>
+                <p className="text-sm text-blue-600">Leaderboards & Rewards</p>
               </Link>
 
-              <Link href={`/dashboard/${guildId}/community`}>
-                <div className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg cursor-pointer transition-colors">
-                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-purple-600 mb-2" />
-                  <h4 className="font-medium text-purple-900">Community</h4>
-                  <p className="text-sm text-purple-600">Polls & Giveaways</p>
-                </div>
+              <Link 
+                href={`/dashboard/${guildId}/community`}
+                className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg cursor-pointer transition-colors block"
+              >
+                <ChatBubbleLeftRightIcon className="h-8 w-8 text-purple-600 mb-2" />
+                <h4 className="font-medium text-purple-900">Community</h4>
+                <p className="text-sm text-purple-600">Polls & Giveaways</p>
               </Link>
 
-              <Link href={`/dashboard/${guildId}/settings`}>
-                <div className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                  <CogIcon className="h-8 w-8 text-gray-600 mb-2" />
-                  <h4 className="font-medium text-gray-900">Settings</h4>
-                  <p className="text-sm text-gray-600">Configure Bot</p>
-                </div>
+              <Link 
+                href={`/dashboard/${guildId}/settings`}
+                className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors block"
+              >
+                <CogIcon className="h-8 w-8 text-gray-600 mb-2" />
+                <h4 className="font-medium text-gray-900">Settings</h4>
+                <p className="text-sm text-gray-600">Configure Bot</p>
               </Link>
             </div>
           </div>
