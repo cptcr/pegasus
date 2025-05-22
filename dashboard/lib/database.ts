@@ -22,6 +22,16 @@ export class DatabaseService {
       create: {
         id: guildId,
         name: 'Unknown Guild',
+        prefix: '!',
+        enableLeveling: true,
+        enableModeration: true,
+        enableGeizhals: false,
+        enablePolls: true,
+        enableGiveaways: true,
+        enableAutomod: false,
+        enableTickets: false,
+        enableMusic: false,
+        enableJoinToCreate: false
       },
     });
   }
@@ -116,49 +126,6 @@ export class DatabaseService {
     };
   }
 
-  // Get all guilds with stats
-  static async getAllGuildsWithStats() {
-    const guilds = await prisma.guild.findMany({
-      include: {
-        _count: {
-          select: {
-            warns: { where: { active: true } },
-            userLevels: true,
-            quarantineEntries: { where: { active: true } },
-            geizhalsTrackers: true,
-            polls: { where: { active: true } },
-            giveaways: { where: { active: true, ended: false } },
-            tickets: { where: { status: { not: 'CLOSED' } } },
-            customCommands: { where: { enabled: true } }
-          }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
-
-    return guilds.map(guild => ({
-      id: guild.id,
-      name: guild.name,
-      memberCount: guild._count.userLevels, // Approximation
-      stats: {
-        totalUsers: guild._count.userLevels,
-        totalWarns: guild._count.warns,
-        activeQuarantine: guild._count.quarantineEntries,
-        totalTrackers: guild._count.geizhalsTrackers,
-        activePolls: guild._count.polls,
-        activeGiveaways: guild._count.giveaways,
-        openTickets: guild._count.tickets,
-        customCommands: guild._count.customCommands,
-        levelingEnabled: guild.enableLeveling,
-        moderationEnabled: guild.enableModeration,
-        geizhalsEnabled: guild.enableGeizhals,
-        enablePolls: guild.enablePolls,
-        enableGiveaways: guild.enableGiveaways,
-        enableTickets: guild.enableTickets
-      }
-    }));
-  }
-
   // Get guild with full data
   static async getGuildWithFullData(guildId: string) {
     const guild = await prisma.guild.findUnique({
@@ -184,7 +151,7 @@ export class DatabaseService {
     return {
       id: guild.id,
       name: guild.name,
-      memberCount: guild._count.userLevels, // Will be updated with Discord API data
+      memberCount: guild._count.userLevels,
       stats: {
         totalUsers: guild._count.userLevels,
         totalWarns: guild._count.warns,
@@ -219,86 +186,6 @@ export class DatabaseService {
         leaveMessage: guild.leaveMessage
       }
     };
-  }
-
-  // Moderation data
-  static async getModerationData(guildId: string) {
-    const [warnings, quarantineEntries, automodRules] = await Promise.all([
-      prisma.warn.findMany({
-        where: { guildId, active: true },
-        include: {
-          user: true,
-          moderator: true
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 20
-      }),
-      prisma.quarantineEntry.findMany({
-        where: { guildId, active: true },
-        include: {
-          moderator: true
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 20
-      }),
-      prisma.automodRule.findMany({
-        where: { guildId },
-        orderBy: { createdAt: 'asc' }
-      })
-    ]);
-
-    return {
-      warnings,
-      quarantineEntries,
-      automodRules
-    };
-  }
-
-  // Level data with pagination
-  static async getLevelData(guildId: string, page: number = 1, limit: number = 20) {
-    const skip = (page - 1) * limit;
-
-    const [leaderboard, total, levelRewards] = await Promise.all([
-      prisma.userLevel.findMany({
-        where: { guildId },
-        include: {
-          user: true
-        },
-        orderBy: [
-          { level: 'desc' },
-          { xp: 'desc' }
-        ],
-        skip,
-        take: limit
-      }),
-      prisma.userLevel.count({
-        where: { guildId }
-      }),
-      prisma.levelReward.findMany({
-        where: { guildId },
-        orderBy: { level: 'asc' }
-      })
-    ]);
-
-    return {
-      leaderboard: leaderboard.map((entry, index) => ({
-        ...entry,
-        rank: skip + index + 1
-      })),
-      total,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      levelRewards
-    };
-  }
-
-  // Utility methods
-  static calculateLevel(xp: number): number {
-    return Math.floor(Math.sqrt(xp / 100));
-  }
-
-  static calculateXPForLevel(level: number): number {
-    return level * level * 100;
   }
 
   // Health check

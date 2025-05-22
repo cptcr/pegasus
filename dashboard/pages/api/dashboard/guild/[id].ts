@@ -24,36 +24,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const guildData = await DatabaseService.getGuildWithFullData(id);
     
     if (!guildData) {
-      return res.status(404).json({ message: 'Guild not found' });
+      // Create guild if it doesn't exist
+      const newGuild = await DatabaseService.getGuildSettings(id);
+      
+      const response = {
+        id: newGuild.id,
+        name: newGuild.name,
+        memberCount: 0,
+        iconURL: null,
+        stats: {
+          totalUsers: 0,
+          totalWarns: 0,
+          activeQuarantine: 0,
+          totalTrackers: 0,
+          activePolls: 0,
+          activeGiveaways: 0,
+          openTickets: 0,
+          customCommands: 0
+        },
+        settings: {
+          enableLeveling: newGuild.enableLeveling,
+          enableModeration: newGuild.enableModeration,
+          enableGeizhals: newGuild.enableGeizhals,
+          enablePolls: newGuild.enablePolls,
+          enableGiveaways: newGuild.enableGiveaways,
+          enableTickets: newGuild.enableTickets,
+          enableAutomod: newGuild.enableAutomod,
+          enableMusic: newGuild.enableMusic,
+          enableJoinToCreate: newGuild.enableJoinToCreate
+        }
+      };
+
+      return res.status(200).json(response);
     }
 
-    // Get additional data from Discord API
-    const [discordGuild, memberCount] = await Promise.all([
-      discordService.getGuildInfo(id),
-      discordService.getGuildMemberCount(id)
-    ]);
+    // Get additional data from Discord API if available
+    try {
+      const [discordGuild, memberCount] = await Promise.all([
+        discordService.getGuildInfo(id),
+        discordService.getGuildMemberCount(id)
+      ]);
 
-    // Update guild name if it changed on Discord
-    if (discordGuild && discordGuild.name !== guildData.name) {
-      await DatabaseService.updateGuildSettings(id, { name: discordGuild.name });
-      guildData.name = discordGuild.name;
+      // Update guild name if it changed on Discord
+      if (discordGuild && discordGuild.name !== guildData.name) {
+        await DatabaseService.updateGuildSettings(id, { name: discordGuild.name });
+        guildData.name = discordGuild.name;
+      }
+
+      // Use Discord member count if available, otherwise fall back to database count
+      const actualMemberCount = memberCount || guildData.memberCount;
+
+      const response = {
+        id: guildData.id,
+        name: guildData.name,
+        memberCount: actualMemberCount,
+        iconURL: discordGuild?.iconURL || null,
+        stats: guildData.stats,
+        settings: guildData.settings
+      };
+
+      res.status(200).json(response);
+    } catch (discordError) {
+      // Discord API error - return database data only
+      console.warn('Discord API unavailable, using database data only');
+      
+      const response = {
+        id: guildData.id,
+        name: guildData.name,
+        memberCount: guildData.memberCount,
+        iconURL: null,
+        stats: guildData.stats,
+        settings: guildData.settings
+      };
+
+      res.status(200).json(response);
     }
 
-    // Use Discord member count if available, otherwise fall back to database count
-    const actualMemberCount = memberCount || guildData.memberCount;
-
-    const response = {
-      id: guildData.id,
-      name: guildData.name,
-      memberCount: actualMemberCount,
-      iconURL: discordGuild?.iconURL || null,
-      stats: guildData.stats,
-      settings: guildData.settings
-    };
-
-    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching guild data:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error : undefined
+    });
   }
 }

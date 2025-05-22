@@ -1,59 +1,119 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
+    container_name: hinko-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: hinko
+      POSTGRES_DB: hinko_bot
       POSTGRES_USER: hinko
-      POSTGRES_PASSWORD: hinko_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_change_me}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
+    networks:
+      - hinko-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hinko"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "pg_isready -U hinko -d hinko_bot"]
+      interval: 30s
+      timeout: 10s
       retries: 5
 
+  # Redis for caching (optional but recommended)
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    container_name: hinko-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
     volumes:
       - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - hinko-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
       retries: 5
 
+  # Hinko Bot Application
   hinko-bot:
-    build: .
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://hinko:hinko_password@postgres:5432/hinko?sslmode=disable
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - DISCORD_ID=${DISCORD_ID}
-      - GEIZHALS_USERNAME=${GEIZHALS_USERNAME}
-      - GEIZHALS_API_KEY=${GEIZHALS_API_KEY}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - ADMIN_USER_ID=${ADMIN_USER_ID}
-    ports:
-      - "3000:3000"
-      - "3001:3001"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hinko-bot
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://hinko:${POSTGRES_PASSWORD:-secure_password_change_me}@postgres:5432/hinko_bot?schema=public
+      
+      # Discord Bot
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      
+      # NextJS/Dashboard
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3001}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      
+      # Geizhals API
+      GEIZHALS_USERNAME: ${GEIZHALS_USERNAME}
+      GEIZHALS_API_KEY: ${GEIZHALS_API_KEY}
+      
+      # Environment
+      NODE_ENV: production
+      PORT: 3000
+      DASHBOARD_PORT: 3001
+      
+      # Redis (optional)
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
+    ports:
+      - "3000:3000"  # Bot API
+      - "3001:3001"  # Dashboard
     volumes:
       - ./logs:/app/logs
+      - bot_data:/app/data
+    networks:
+      - hinko-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Nginx Reverse Proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: hinko-nginx
     restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - hinko-bot
+    networks:
+      - hinko-network
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+  bot_data:
+    driver: local
+
+networks:
+  hinko-network:
+    driver: bridge

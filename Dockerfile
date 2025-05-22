@@ -1,59 +1,60 @@
-# Dockerfile
+# Multi-stage build for Discord bot with dashboard
 FROM node:18-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Install dependencies for building native modules
+RUN apk add --no-cache python3 make g++ git
 
 # Copy package files
 COPY package*.json ./
-COPY dashboard/package*.json ./dashboard/
+COPY dashboard/package.json ./dashboard/
+COPY prisma/ ./prisma/
 
 # Install dependencies
 RUN npm ci --only=production
 RUN cd dashboard && npm ci --only=production
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/dashboard/node_modules ./dashboard/node_modules
-COPY . .
-
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build the bot
+# Build stage for dashboard
+FROM base AS dashboard-build
+WORKDIR /app/dashboard
+COPY dashboard/ .
 RUN npm run build
 
-# Build the dashboard
-RUN npm run build:dashboard
-
-# Production image, copy all the files and run
-FROM base AS runner
+# Production stage
+FROM node:18-alpine AS production
 WORKDIR /app
 
-ENV NODE_ENV production
+# Install runtime dependencies
+RUN apk add --no-cache dumb-init
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 botuser
+# Copy built application
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/prisma ./prisma
+COPY --from=dashboard-build /app/dashboard/.next ./dashboard/.next
+COPY --from=dashboard-build /app/dashboard/public ./dashboard/public
+COPY --from=dashboard-build /app/dashboard/package.json ./dashboard/
+COPY --from=dashboard-build /app/dashboard/node_modules ./dashboard/node_modules
 
-# Copy the built application
-COPY --from=builder --chown=botuser:nodejs /app/dist ./dist
-COPY --from=builder --chown=botuser:nodejs /app/dashboard/.next ./dashboard/.next
-COPY --from=builder --chown=botuser:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=botuser:nodejs /app/dashboard/node_modules ./dashboard/node_modules
-COPY --from=builder --chown=botuser:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=botuser:nodejs /app/package*.json ./
-COPY --from=builder --chown=botuser:nodejs /app/dashboard/package*.json ./dashboard/
+# Copy source code
+COPY src/ ./src/
+COPY geizhals/ ./geizhals/
+COPY *.json ./
+COPY *.js ./
 
-USER botuser
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S hinko -u 1001
+USER hinko
 
-EXPOSE 3000 3001
+# Expose ports
+EXPOSE 3001 3000
 
-ENV PORT 3000
-ENV DASHBOARD_PORT 3001
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start both bot and dashboard
-CMD ["npm", "run", "start:all"]
+CMD ["dumb-init", "npm", "start"]
