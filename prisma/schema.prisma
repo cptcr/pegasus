@@ -22,6 +22,14 @@ model Guild {
   enableLeveling    Boolean  @default(true)
   enableModeration  Boolean  @default(true)
   enableGeizhals    Boolean  @default(false)
+  enablePolls       Boolean  @default(true)
+  enableGiveaways   Boolean  @default(true)
+  enableAutomod     Boolean  @default(false)
+  enableTickets     Boolean  @default(false)
+  enableMusic       Boolean  @default(false)
+  automodSettings   Json?    // Automod konfiguration
+  welcomeMessage    String?
+  leaveMessage      String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -31,6 +39,12 @@ model Guild {
   levelRewards      LevelReward[]
   quarantineEntries QuarantineEntry[]
   geizhalsTrackers  GeizhalsTracker[]
+  polls             Poll[]
+  giveaways         Giveaway[]
+  automodRules      AutomodRule[]
+  tickets           Ticket[]
+  customCommands    CustomCommand[]
+  reactionRoles     ReactionRole[]
 
   @@map("guilds")
 }
@@ -48,6 +62,10 @@ model User {
   geizhalsTrackers  GeizhalsTracker[]
   moderatedWarns    Warn[]            @relation("ModeratorWarns")
   moderatedQuarantine QuarantineEntry[] @relation("ModeratorQuarantine")
+  pollVotes         PollVote[]
+  giveawayEntries   GiveawayEntry[]
+  tickets           Ticket[]          @relation("TicketUser")
+  moderatedTickets  Ticket[]          @relation("TicketModerator")
 
   @@map("users")
 }
@@ -163,8 +181,208 @@ model MonthlyLeaderboard {
   @@map("monthly_leaderboards")
 }
 
+// Poll System
+model Poll {
+  id            Int      @id @default(autoincrement())
+  guildId       String
+  channelId     String
+  messageId     String?
+  title         String
+  description   String?
+  creatorId     String
+  multiple      Boolean  @default(false)
+  anonymous     Boolean  @default(false)
+  endTime       DateTime?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationen
+  guild   Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id          Int      @id @default(autoincrement())
+  pollId      Int
+  text        String
+  emoji       String?
+  orderIndex  Int
+  createdAt   DateTime @default(now())
+
+  // Relationen
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id         Int      @id @default(autoincrement())
+  pollId     Int
+  optionId   Int
+  userId     String
+  createdAt  DateTime @default(now())
+
+  // Relationen
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, optionId, userId])
+  @@map("poll_votes")
+}
+
+// Giveaway System
+model Giveaway {
+  id            Int      @id @default(autoincrement())
+  guildId       String
+  channelId     String
+  messageId     String?
+  title         String
+  description   String?
+  prize         String
+  winners       Int      @default(1)
+  creatorId     String
+  endTime       DateTime
+  requirements  Json?    // Requirements for entry
+  active        Boolean  @default(true)
+  ended         Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationen
+  guild   Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  entries GiveawayEntry[]
+
+  @@map("giveaways")
+}
+
+model GiveawayEntry {
+  id         Int      @id @default(autoincrement())
+  giveawayId Int
+  userId     String
+  createdAt  DateTime @default(now())
+
+  // Relationen
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, userId])
+  @@map("giveaway_entries")
+}
+
+// Automod System
+model AutomodRule {
+  id          Int              @id @default(autoincrement())
+  guildId     String
+  name        String
+  type        AutomodRuleType
+  enabled     Boolean          @default(true)
+  trigger     Json             // Trigger configuration
+  action      Json             // Action configuration
+  exemptRoles String[]         // Role IDs exempt from this rule
+  exemptChannels String[]      // Channel IDs exempt from this rule
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relationen
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("automod_rules")
+}
+
+// Ticket System
+model Ticket {
+  id            Int           @id @default(autoincrement())
+  guildId       String
+  channelId     String
+  userId        String
+  moderatorId   String?
+  category      String        @default("general")
+  subject       String
+  status        TicketStatus  @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  closedAt      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relationen
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User  @relation("TicketUser", fields: [userId], references: [id])
+  moderator User? @relation("TicketModerator", fields: [moderatorId], references: [id])
+
+  @@map("tickets")
+}
+
+// Custom Commands
+model CustomCommand {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  name        String
+  response    String
+  description String?
+  enabled     Boolean  @default(true)
+  creatorId   String
+  uses        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationen
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("custom_commands")
+}
+
+// Reaction Roles
+model ReactionRole {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  channelId String
+  messageId String
+  emoji     String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  // Relationen
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, emoji])
+  @@map("reaction_roles")
+}
+
 enum QuarantineType {
   USER
   CHANNEL
   ROLE
+}
+
+enum AutomodRuleType {
+  SPAM
+  CAPS
+  MENTIONS
+  LINKS
+  INVITES
+  PROFANITY
+  REPEATED_TEXT
+  ZALGO
+  EMOJI_SPAM
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }

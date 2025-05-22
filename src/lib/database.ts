@@ -4,14 +4,26 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: ['error'],
+});
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// Helper-Funktionen für häufige Datenbankoperationen
-
 export class DatabaseService {
-  
+  static prisma = prisma;
+
+  // Initialisierung
+  static async initialize() {
+    await prisma.$connect();
+    console.log('✅ Datenbank verbunden');
+  }
+
+  static async disconnect() {
+    await prisma.$disconnect();
+    console.log('🔌 Datenbank getrennt');
+  }
+
   // Guild Settings
   static async getGuildSettings(guildId: string) {
     return await prisma.guild.upsert({
@@ -171,7 +183,6 @@ export class DatabaseService {
   }
 
   static calculateLevel(xp: number): number {
-    // Level-Formel: level = sqrt(xp / 100)
     return Math.floor(Math.sqrt(xp / 100));
   }
 
@@ -268,61 +279,5 @@ export class DatabaseService {
       },
       orderBy: { createdAt: 'desc' },
     });
-  }
-
-  // Geizhals Tracker
-  static async addGeizhalsTracker(data: {
-    guildId: string;
-    productId: string;
-    productName: string;
-    targetPrice: number;
-    currentPrice: number;
-    category: string;
-    userId: string;
-  }) {
-    return await prisma.geizhalsTracker.create({
-      data,
-      include: {
-        user: true,
-      },
-    });
-  }
-
-  static async getGeizhalsTrackers(guildId: string) {
-    return await prisma.geizhalsTracker.findMany({
-      where: { guildId },
-      include: { user: true },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  static async updateGeizhalsTracker(id: number, data: any) {
-    return await prisma.geizhalsTracker.update({
-      where: { id },
-      data,
-    });
-  }
-
-  static async removeGeizhalsTracker(id: number) {
-    return await prisma.geizhalsTracker.delete({
-      where: { id },
-    });
-  }
-
-  // Analytics für Dashboard
-  static async getGuildStats(guildId: string) {
-    const [totalUsers, totalWarns, activeQuarantine, totalTrackers] = await Promise.all([
-      prisma.userLevel.count({ where: { guildId } }),
-      prisma.warn.count({ where: { guildId, active: true } }),
-      prisma.quarantineEntry.count({ where: { guildId, active: true } }),
-      prisma.geizhalsTracker.count({ where: { guildId } }),
-    ]);
-
-    return {
-      totalUsers,
-      totalWarns,
-      activeQuarantine,
-      totalTrackers,
-    };
-  }
+  }                             
 }

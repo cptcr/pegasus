@@ -1,0 +1,110 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { DatabaseService } from '../../../../src/lib/database';
+
+// Zugriffsschutz Middleware
+const ALLOWED_USER_ID = '797927858420187186';
+const TARGET_GUILD_ID = '554266392262737930';
+
+async function checkAccess(req: NextApiRequest): Promise<boolean> {
+  // Hier würde normalerweise die Session/Token-Validierung stattfinden
+  // Für Demo-Zwecke nehmen wir an, dass der User autorisiert ist
+  return true;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Zugriffsschutz
+  const hasAccess = await checkAccess(req);
+  if (!hasAccess) {
+    return res.status(403).json({ error: 'Zugriff verweigert' });
+  }
+
+  if (req.method === 'GET') {
+    return handleGet(req, res);
+  } else if (req.method === 'POST') {
+    return handlePost(req, res);
+  } else {
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).json({ error: 'Methode nicht erlaubt' });
+  }
+}
+
+async function handleGet(req: NextApiRequest, res: NextApiResponse) {
+  const { guildId } = req.query;
+
+  if (!guildId || typeof guildId !== 'string') {
+    return res.status(400).json({ error: 'Guild-ID erforderlich' });
+  }
+
+  try {
+    const guildSettings = await DatabaseService.getGuildSettings(guildId);
+    return res.status(200).json(guildSettings);
+  } catch (error) {
+    console.error('Fehler beim Laden der Guild-Einstellungen:', error);
+    return res.status(500).json({ error: 'Serverfehler beim Laden der Einstellungen' });
+  }
+}
+
+async function handlePost(req: NextApiRequest, res: NextApiResponse) {
+  const { guildId, ...updateData } = req.body;
+
+  if (!guildId) {
+    return res.status(400).json({ error: 'Guild-ID erforderlich' });
+  }
+
+  try {
+    // Validierung der Eingabedaten
+    const validatedData = validateSettingsData(updateData);
+    
+    // Einstellungen aktualisieren
+    const updatedSettings = await DatabaseService.updateGuildSettings(guildId, validatedData);
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Einstellungen erfolgreich aktualisiert',
+      data: updatedSettings 
+    });
+  } catch (error) {
+    console.error('Fehler beim Aktualisieren der Einstellungen:', error);
+    return res.status(500).json({ error: 'Serverfehler beim Speichern der Einstellungen' });
+  }
+}
+
+function validateSettingsData(data: any): any {
+  const allowedFields = [
+    'prefix',
+    'modLogChannelId',
+    'levelUpChannelId',
+    'quarantineRoleId',
+    'geizhalsChannelId',
+    'welcomeChannelId',
+    'enableLeveling',
+    'enableModeration',
+    'enableGeizhals',
+    'enablePolls',
+    'enableGiveaways',
+    'enableAutomod',
+    'enableTickets',
+    'enableMusic',
+    'welcomeMessage',
+    'leaveMessage'
+  ];
+
+  const validatedData: any = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (allowedFields.includes(key)) {
+      // Typ-spezifische Validierung
+      if (key === 'prefix' && typeof value === 'string') {
+        validatedData[key] = value.slice(0, 5); // Max 5 Zeichen
+      } else if (key.startsWith('enable') && typeof value === 'boolean') {
+        validatedData[key] = value;
+      } else if (key.endsWith('ChannelId') || key.endsWith('RoleId')) {
+        validatedData[key] = value === '' ? null : value;
+      } else if ((key === 'welcomeMessage' || key === 'leaveMessage') && typeof value === 'string') {
+        validatedData[key] = value.slice(0, 2000); // Max 2000 Zeichen
+      }
+    }
+  }
+
+  return validatedData;
+}

@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
+import Link from 'next/link';
 import { 
   ChartBarIcon, 
   UsersIcon, 
   ExclamationTriangleIcon, 
   ShieldCheckIcon,
   CogIcon,
-  BellIcon
+  BellIcon,
+  ChatBubbleLeftRightIcon,
+  GiftIcon,
+  TicketIcon,
+  CommandLineIcon
 } from '@heroicons/react/24/outline';
 
 interface GuildStats {
@@ -14,122 +20,217 @@ interface GuildStats {
   totalWarns: number;
   activeQuarantine: number;
   totalTrackers: number;
+  activePolls: number;
+  activeGiveaways: number;
+  openTickets: number;
+  customCommands: number;
   levelingEnabled: boolean;
   moderationEnabled: boolean;
   geizhalsEnabled: boolean;
+  enablePolls: boolean;
+  enableGiveaways: boolean;
+  enableTickets: boolean;
 }
 
 interface Guild {
   id: string;
   name: string;
+  memberCount: number;
   stats: GuildStats;
 }
 
-export default function Dashboard() {
-  const [guilds, setGuilds] = useState<Guild[]>([]);
+interface DashboardProps {
+  user: {
+    id: string;
+    username: string;
+    avatar: string;
+  };
+  guilds: Guild[];
+}
+
+export default function Dashboard({ user, guilds }: DashboardProps) {
   const [selectedGuild, setSelectedGuild] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<any>(null);
 
   useEffect(() => {
-    fetchGuilds();
-  }, []);
+    if (guilds.length > 0 && !selectedGuild) {
+      setSelectedGuild(guilds[0].id);
+    }
+  }, [guilds]);
 
-  const fetchGuilds = async () => {
+  useEffect(() => {
+    if (selectedGuild) {
+      fetchRecentActivity(selectedGuild);
+    }
+  }, [selectedGuild]);
+
+  const fetchRecentActivity = async (guildId: string) => {
     try {
-      const response = await fetch('/api/dashboard/guilds');
+      const response = await fetch(`/api/dashboard/activity?guildId=${guildId}`);
       const data = await response.json();
-      setGuilds(data);
-      if (data.length > 0) {
-        setSelectedGuild(data[0].id);
-      }
+      setRecentActivity(data);
     } catch (error) {
-      console.error('Fehler beim Laden der Guilds:', error);
-    } finally {
-      setLoading(false);
+      console.error('Fehler beim Laden der Aktivitäten:', error);
     }
   };
 
   const currentGuild = guilds.find(g => g.id === selectedGuild);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const totalStats = guilds.reduce((acc, guild) => ({
+    totalUsers: acc.totalUsers + guild.stats.totalUsers,
+    totalWarns: acc.totalWarns + guild.stats.totalWarns,
+    activeQuarantine: acc.activeQuarantine + guild.stats.activeQuarantine,
+    totalTrackers: acc.totalTrackers + guild.stats.totalTrackers,
+    activePolls: acc.activePolls + guild.stats.activePolls,
+    activeGiveaways: acc.activeGiveaways + guild.stats.activeGiveaways,
+    openTickets: acc.openTickets + guild.stats.openTickets,
+    customCommands: acc.customCommands + guild.stats.customCommands,
+  }), {
+    totalUsers: 0,
+    totalWarns: 0,
+    activeQuarantine: 0,
+    totalTrackers: 0,
+    activePolls: 0,
+    activeGiveaways: 0,
+    openTickets: 0,
+    customCommands: 0,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>Discord Bot Dashboard</title>
-        <meta name="description" content="Admin Dashboard für Discord Bot" />
+        <title>Hinko Bot Dashboard</title>
+        <meta name="description" content="Admin Dashboard für Hinko Discord Bot" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <ShieldCheckIcon className="h-8 w-8 text-blue-500 mr-3" />
-              <h1 className="text-3xl font-bold text-gray-900">Discord Bot Dashboard</h1>
+              <div className="flex-shrink-0">
+                <ShieldCheckIcon className="h-8 w-8 text-indigo-600" />
+              </div>
+              <div className="ml-4">
+                <h1 className="text-xl font-semibold text-gray-900">Hinko Bot Dashboard</h1>
+              </div>
             </div>
             
-            {/* Guild Selector */}
             <div className="flex items-center space-x-4">
+              {/* Guild Selector */}
               <select
                 value={selectedGuild}
                 onChange={(e) => setSelectedGuild(e.target.value)}
-                className="block w-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="block w-64 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               >
+                <option value="">Alle Server</option>
                 {guilds.map(guild => (
                   <option key={guild.id} value={guild.id}>
-                    {guild.name}
+                    {guild.name} ({guild.memberCount} Member)
                   </option>
                 ))}
               </select>
+
+              {/* User Info */}
+              <div className="flex items-center space-x-3">
+                <img
+                  className="h-8 w-8 rounded-full"
+                  src={user.avatar}
+                  alt={user.username}
+                />
+                <span className="text-sm font-medium text-gray-700">{user.username}</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {currentGuild && (
-          <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatsCard
-                title="Gesamte Benutzer"
-                value={currentGuild.stats.totalUsers}
-                icon={<UsersIcon className="h-6 w-6" />}
-                color="blue"
-              />
-              <StatsCard
-                title="Aktive Warnungen"
-                value={currentGuild.stats.totalWarns}
-                icon={<ExclamationTriangleIcon className="h-6 w-6" />}
-                color="yellow"
-              />
-              <StatsCard
-                title="Quarantäne"
-                value={currentGuild.stats.activeQuarantine}
-                icon={<ShieldCheckIcon className="h-6 w-6" />}
-                color="red"
-              />
-              <StatsCard
-                title="Preis-Tracker"
-                value={currentGuild.stats.totalTrackers}
-                icon={<BellIcon className="h-6 w-6" />}
-                color="green"
-              />
-            </div>
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Overview Stats */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            {currentGuild ? `${currentGuild.name} Übersicht` : 'Gesamtübersicht'}
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatsCard
+              title="Benutzer"
+              value={currentGuild ? currentGuild.stats.totalUsers : totalStats.totalUsers}
+              icon={<UsersIcon className="h-6 w-6" />}
+              color="blue"
+              change="+12% seit letztem Monat"
+            />
+            <StatsCard
+              title="Aktive Warnungen"
+              value={currentGuild ? currentGuild.stats.totalWarns : totalStats.totalWarns}
+              icon={<ExclamationTriangleIcon className="h-6 w-6" />}
+              color="yellow"
+              change={recentActivity ? `${recentActivity.recentWarns} diese Woche` : undefined}
+            />
+            <StatsCard
+              title="Quarantäne"
+              value={currentGuild ? currentGuild.stats.activeQuarantine : totalStats.activeQuarantine}
+              icon={<ShieldCheckIcon className="h-6 w-6" />}
+              color="red"
+              change="Aktive Einträge"
+            />
+            <StatsCard
+              title="Preis-Tracker"
+              value={currentGuild ? currentGuild.stats.totalTrackers : totalStats.totalTrackers}
+              icon={<BellIcon className="h-6 w-6" />}
+              color="green"
+              change="Überwachte Produkte"
+            />
+          </div>
+        </div>
 
-            {/* Feature Status */}
-            <div className="bg-white shadow rounded-lg p-6 mb-8">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Feature Status
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Feature Stats */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Community Features</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatsCard
+              title="Aktive Umfragen"
+              value={currentGuild ? currentGuild.stats.activePolls : totalStats.activePolls}
+              icon={<ChatBubbleLeftRightIcon className="h-6 w-6" />}
+              color="purple"
+              change={recentActivity ? `${recentActivity.recentPolls} diese Woche` : undefined}
+            />
+            <StatsCard
+              title="Laufende Giveaways"
+              value={currentGuild ? currentGuild.stats.activeGiveaways : totalStats.activeGiveaways}
+              icon={<GiftIcon className="h-6 w-6" />}
+              color="pink"
+              change={recentActivity ? `${recentActivity.recentGiveaways} diese Woche` : undefined}
+            />
+            <StatsCard
+              title="Offene Tickets"
+              value={currentGuild ? currentGuild.stats.openTickets : totalStats.openTickets}
+              icon={<TicketIcon className="h-6 w-6" />}
+              color="orange"
+              change={recentActivity ? `${recentActivity.recentTickets} diese Woche` : undefined}
+            />
+            <StatsCard
+              title="Custom Commands"
+              value={currentGuild ? currentGuild.stats.customCommands : totalStats.customCommands}
+              icon={<CommandLineIcon className="h-6 w-6" />}
+              color="indigo"
+              change="Verfügbare Commands"
+            />
+          </div>
+        </div>
+
+        {/* Feature Status und Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Feature Status */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Feature Status {currentGuild && `- ${currentGuild.name}`}
+            </h3>
+            
+            {currentGuild ? (
+              <div className="space-y-4">
                 <FeatureStatus
                   name="Level System"
                   enabled={currentGuild.stats.levelingEnabled}
@@ -138,238 +239,79 @@ export default function Dashboard() {
                 <FeatureStatus
                   name="Moderation"
                   enabled={currentGuild.stats.moderationEnabled}
-                  description="Warn-System und Moderation"
+                  description="Warn-System und Quarantäne"
                 />
                 <FeatureStatus
                   name="Geizhals Tracker"
                   enabled={currentGuild.stats.geizhalsEnabled}
                   description="Preisverfolgun für Hardware"
                 />
+                <FeatureStatus
+                  name="Umfragen"
+                  enabled={currentGuild.stats.enablePolls}
+                  description="Community Abstimmungen"
+                />
+                <FeatureStatus
+                  name="Giveaways"
+                  enabled={currentGuild.stats.enableGiveaways}
+                  description="Gewinnspiele und Verlosungen"
+                />
+                <FeatureStatus
+                  name="Ticket System"
+                  enabled={currentGuild.stats.enableTickets}
+                  description="Support-Tickets"
+                />
               </div>
-            </div>
+            ) : (
+              <p className="text-gray-500">Wähle einen Server aus, um Feature-Status zu sehen.</p>
+            )}
+          </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Warnings */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                    Neueste Warnungen
-                  </h3>
-                  <RecentWarnings guildId={selectedGuild} />
+          {/* Quick Actions */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Schnellzugriff</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Link href={`/dashboard/moderation${currentGuild ? `?guild=${currentGuild.id}` : ''}`}>
+                <div className="p-4 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer transition-colors">
+                  <ShieldCheckIcon className="h-8 w-8 text-red-600 mb-2" />
+                  <h4 className="font-medium text-red-900">Moderation</h4>
+                  <p className="text-sm text-red-600">Warnungen & Quarantäne</p>
                 </div>
-              </div>
+              </Link>
 
-              {/* System Settings */}
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                    Schnelleinstellungen
-                  </h3>
-                  <QuickSettings guildId={selectedGuild} />
+              <Link href={`/dashboard/levels${currentGuild ? `?guild=${currentGuild.id}` : ''}`}>
+                <div className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer transition-colors">
+                  <ChartBarIcon className="h-8 w-8 text-blue-600 mb-2" />
+                  <h4 className="font-medium text-blue-900">Level System</h4>
+                  <p className="text-sm text-blue-600">Leaderboards & Rewards</p>
                 </div>
-              </div>
-            </div>
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
+              </Link>
 
-// Stats Card Component
-interface StatsCardProps {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  color: 'blue' | 'yellow' | 'red' | 'green';
-}
+              <Link href={`/dashboard/community${currentGuild ? `?guild=${currentGuild.id}` : ''}`}>
+                <div className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg cursor-pointer transition-colors">
+                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-purple-600 mb-2" />
+                  <h4 className="font-medium text-purple-900">Community</h4>
+                  <p className="text-sm text-purple-600">Polls & Giveaways</p>
+                </div>
+              </Link>
 
-function StatsCard({ title, value, icon, color }: StatsCardProps) {
-  const colorClasses = {
-    blue: 'bg-blue-500 text-white',
-    yellow: 'bg-yellow-500 text-white',
-    red: 'bg-red-500 text-white',
-    green: 'bg-green-500 text-white'
-  };
-
-  return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
-      <div className="p-5">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <div className={`p-3 rounded-md ${colorClasses[color]}`}>
-              {icon}
+              <Link href={`/dashboard/settings${currentGuild ? `?guild=${currentGuild.id}` : ''}`}>
+                <div className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+                  <CogIcon className="h-8 w-8 text-gray-600 mb-2" />
+                  <h4 className="font-medium text-gray-900">Einstellungen</h4>
+                  <p className="text-sm text-gray-600">Bot konfigurieren</p>
+                </div>
+              </Link>
             </div>
           </div>
-          <div className="ml-5 w-0 flex-1">
-            <dl>
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                {title}
-              </dt>
-              <dd className="text-lg font-medium text-gray-900">
-                {value.toLocaleString()}
-              </dd>
-            </dl>
-          </div>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// Feature Status Component
-interface FeatureStatusProps {
-  name: string;
-  enabled: boolean;
-  description: string;
-}
-
-function FeatureStatus({ name, enabled, description }: FeatureStatusProps) {
-  return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-medium text-gray-900">{name}</h4>
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          enabled 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {enabled ? 'Aktiv' : 'Inaktiv'}
-        </span>
-      </div>
-      <p className="text-sm text-gray-600">{description}</p>
-    </div>
-  );
-}
-
-// Recent Warnings Component
-function RecentWarnings({ guildId }: { guildId: string }) {
-  const [warnings, setWarnings] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchWarnings();
-  }, [guildId]);
-
-  const fetchWarnings = async () => {
-    try {
-      const response = await fetch(`/api/dashboard/warnings?guildId=${guildId}`);
-      const data = await response.json();
-      setWarnings(data);
-    } catch (error) {
-      console.error('Fehler beim Laden der Warnungen:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="animate-pulse h-20 bg-gray-200 rounded"></div>;
-  }
-
-  if (warnings.length === 0) {
-    return <p className="text-gray-500">Keine Warnungen in den letzten 24 Stunden.</p>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {warnings.slice(0, 5).map((warning: any) => (
-        <div key={warning.id} className="flex items-center justify-between py-2 border-b">
-          <div>
-            <p className="text-sm font-medium text-gray-900">{warning.user.username}</p>
-            <p className="text-sm text-gray-600 truncate">{warning.reason}</p>
-          </div>
-          <span className="text-xs text-gray-500">
-            {new Date(warning.createdAt).toLocaleDateString('de-DE')}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Quick Settings Component
-function QuickSettings({ guildId }: { guildId: string }) {
-  const [settings, setSettings] = useState({
-    enableLeveling: true,
-    enableModeration: true,
-    enableGeizhals: false
-  });
-
-  const updateSetting = async (key: string, value: boolean) => {
-    try {
-      const response = await fetch(`/api/dashboard/settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          guildId,
-          [key]: value
-        })
-      });
-
-      if (response.ok) {
-        setSettings(prev => ({ ...prev, [key]: value }));
-      }
-    } catch (error) {
-      console.error('Fehler beim Aktualisieren der Einstellungen:', error);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-medium text-gray-900">Level System</h4>
-          <p className="text-sm text-gray-600">XP und Leaderboards aktivieren</p>
-        </div>
-        <button
-          onClick={() => updateSetting('enableLeveling', !settings.enableLeveling)}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            settings.enableLeveling ? 'bg-blue-600' : 'bg-gray-200'
-          }`}
-        >
-          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-            settings.enableLeveling ? 'translate-x-5' : 'translate-x-0'
-          }`} />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-medium text-gray-900">Moderation</h4>
-          <p className="text-sm text-gray-600">Warn-System aktivieren</p>
-        </div>
-        <button
-          onClick={() => updateSetting('enableModeration', !settings.enableModeration)}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            settings.enableModeration ? 'bg-blue-600' : 'bg-gray-200'
-          }`}
-        >
-          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-            settings.enableModeration ? 'translate-x-5' : 'translate-x-0'
-          }`} />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-medium text-gray-900">Geizhals Tracker</h4>
-          <p className="text-sm text-gray-600">Preisverfolgun aktivieren</p>
-        </div>
-        <button
-          onClick={() => updateSetting('enableGeizhals', !settings.enableGeizhals)}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            settings.enableGeizhals ? 'bg-blue-600' : 'bg-gray-200'
-          }`}
-        >
-          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-            settings.enableGeizhals ? 'translate-x-5' : 'translate-x-0'
-          }`} />
-        </button>
-      </div>
-    </div>
-  );
-}
+        {/* Recent Activity */}
+        {recentActivity && currentGuild && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Letzte Aktivitäten (24h) - {currentGuild.name}
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols
