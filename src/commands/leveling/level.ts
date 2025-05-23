@@ -92,7 +92,7 @@ async function handleShowLevel(interaction: ChatInputCommandInteraction) {
     
     // Rang im Server berechnen
     const leaderboard = await DatabaseService.getLeaderboard(guild.id, 1000);
-    const userRank = leaderboard.findIndex(u => u.userId === targetUser.id) + 1;
+    const userRank = leaderboard.findIndex((u: { userId: string; }) => u.userId === targetUser.id) + 1;
 
     // Level Card erstellen
     const levelCard = await createLevelCard(userLevel, targetUser);
@@ -169,7 +169,7 @@ async function handleLeaderboard(interaction: ChatInputCommandInteraction) {
       .setTimestamp();
 
     // Top 3 als Felder hinzufügen
-    leaderboard.slice(0, 3).forEach((user, index) => {
+    leaderboard.slice(0, 3).forEach((user: { user: { username: any; }; level: any; xp: { toLocaleString: () => any; }; }, index: string | number) => {
       const medals = ['🥇', '🥈', '🥉'];
       embed.addFields({
         name: `${medals[index]} ${user.user.username}`,

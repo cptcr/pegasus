@@ -3,21 +3,25 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../pages/api/auth/[...nextauth]';
 
-// Use environment variables instead of hardcoded values
-const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID!;
-const ADMIN_USER_ID = process.env.ADMIN_USER_ID!;
+// Define your target guild ID again or import from a shared config
+const TARGET_GUILD_ID = '554266392262737930';
 
+// Update AuthenticatedRequest to match the session.user structure
 export interface AuthenticatedRequest extends NextApiRequest {
   user?: {
-    id: string;
-    username: string;
-    discriminator: string;
+    id?: string;
+    username?: string;
+    discriminator?: string;
     avatar?: string;
-    guilds?: Array<{
+    guilds?: Array<{ // This structure should match the UserGuild interface from [...nextauth].ts
       id: string;
       name: string;
+      icon: string | null;
+      owner: boolean;
       permissions: string;
+      features: string[];
     }>;
+    hasRequiredPermission?: boolean; // Key flag
   };
 }
 
@@ -35,23 +39,22 @@ export async function requireAuth(
         message: 'You must be logged in to access this resource.' 
       });
     }
-
-    // Check if user is the specific admin user
-    if (session.user.id !== ADMIN_USER_ID) {
+    
+    // Check 1: User must be in the target guild (session.user.guilds should ideally only contain the target guild if signIn was successful and session callback filters it)
+    // Or, more robustly, ensure the guilds array contains the target guild.
+    const inTargetGuild = session.user.guilds?.some(g => g.id === TARGET_GUILD_ID);
+    if (!inTargetGuild) {
       return res.status(403).json({ 
         error: 'Forbidden', 
-        message: 'You do not have permission to access this resource.' 
+        message: `You do not have access to the required Discord server (${TARGET_GUILD_ID}).`
       });
     }
-
-    // Check if user has access to the target guild
-    const userGuilds = session.user.guilds || [];
-    const hasGuildAccess = userGuilds.some(guild => guild.id === ALLOWED_GUILD_ID);
-
-    if (!hasGuildAccess) {
+    
+    // Check 2: User must have the required permission (flag set by [...nextauth].ts)
+    if (session.user.hasRequiredPermission !== true) {
       return res.status(403).json({ 
         error: 'Forbidden', 
-        message: 'You do not have access to the required Discord server.' 
+        message: 'You do not have the required permissions to access this resource.' 
       });
     }
 
@@ -69,23 +72,17 @@ export async function requireAuth(
   }
 }
 
-export function checkGuildAccess(guildId: string, userGuilds: any[] = []): boolean {
-  if (guildId !== ALLOWED_GUILD_ID) {
-    return false;
-  }
-  return userGuilds.some(guild => guild.id === ALLOWED_GUILD_ID);
-}
 
-export async function validateSession(req: NextApiRequest, res: NextApiResponse) {
+export async function validateSession(req: NextApiRequest, res: NextApiResponse): Promise<AuthenticatedRequest['user'] | null> {
   const session = await getServerSession(req, res, authOptions);
   
   if (!session?.user) {
     return null;
   }
 
-  // Only allow access to specific user
-  if (session.user.id !== ADMIN_USER_ID) {
-    return null;
+  const inTargetGuild = session.user.guilds?.some(g => g.id === TARGET_GUILD_ID);
+  if (!inTargetGuild || session.user.hasRequiredPermission !== true) {
+    return null; // Not authorized
   }
 
   return session.user;

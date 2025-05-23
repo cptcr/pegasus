@@ -1,38 +1,30 @@
 // src/commands/utility/ping.ts
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, CommandInteraction, EmbedBuilder } from 'discord.js';
+import { client } from '../../index';
 
 export const data = new SlashCommandBuilder()
   .setName('ping')
-  .setDescription('Check bot latency and status');
+  .setDescription('Shows bot latency and API response time');
 
-export async function run({ interaction, client }: { interaction: any; client: any }) {
-  const sent = await interaction.reply({ content: 'Pinging...', fetchReply: true });
+export async function run({ interaction }: { interaction: CommandInteraction }) {
+  const start = Date.now();
+  
+  await interaction.deferReply();
+  
+  const latency = Date.now() - start;
+  const apiLatency = Math.round(client.ws.ping);
   
   const embed = new EmbedBuilder()
     .setColor(0x00ff00)
     .setTitle('🏓 Pong!')
+    .setDescription('Bot latency information')
     .addFields(
-      {
-        name: '📡 Bot Latency',
-        value: `${sent.createdTimestamp - interaction.createdTimestamp}ms`,
-        inline: true
-      },
-      {
-        name: '💓 API Latency',
-        value: `${Math.round(client.ws.ping)}ms`,
-        inline: true
-      },
-      {
-        name: '⏱️ Uptime',
-        value: `<t:${Math.floor((Date.now() - (client.uptime || 0)) / 1000)}:R>`,
-        inline: true
-      }
+      { name: '⏱️ Bot Latency', value: `${latency}ms`, inline: true },
+      { name: '📡 API Latency', value: `${apiLatency}ms`, inline: true },
+      { name: '🟢 Status', value: 'Online', inline: true }
     )
     .setTimestamp()
-    .setFooter({
-      text: `Requested by ${interaction.user.tag}`,
-      iconURL: interaction.user.displayAvatarURL()
-    });
+    .setFooter({ text: 'Hinko Bot v2.0' });
 
-  await interaction.editReply({ content: '', embeds: [embed] });
+  await interaction.editReply({ embeds: [embed] });
 }
