@@ -2,7 +2,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { ShieldCheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ interface ProtectedLayoutProps {
 }
 
 const ALLOWED_GUILD_ID = '554266392262737930';
-const ADMIN_USER_ID = '797927858420187186';
+const REQUIRED_ROLE_ID = '797927858420187186';
 
 export default function ProtectedLayout({ 
   children, 
@@ -29,17 +29,9 @@ export default function ProtectedLayout({
       return;
     }
 
-    // Check if user is the specific admin user
-    if (session.user?.id !== ADMIN_USER_ID) {
-      router.push('/auth/error?error=AccessDenied');
-      return;
-    }
-
-    // Check guild access
-    const userGuilds = session.user?.guilds || [];
-    const hasGuildAccess = userGuilds.some((guild: any) => guild.id === requiredGuildId);
-
-    if (!hasGuildAccess) {
+    // Check if user has required access (guild membership + role)
+    if (session.user?.hasRequiredAccess !== true) {
+      console.log('Access denied - redirecting to error page');
       router.push('/auth/error?error=AccessDenied');
       return;
     }
@@ -58,6 +50,7 @@ export default function ProtectedLayout({
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Verifying access...</p>
+          <p className="text-sm text-gray-500">Checking guild membership and permissions...</p>
         </div>
       </div>
     );
@@ -67,7 +60,7 @@ export default function ProtectedLayout({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <ShieldCheckIcon className="h-16 w-16 text-red-500 mx-auto" />
+          <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto" />
           <h1 className="mt-4 text-2xl font-bold text-red-600">Access Denied</h1>
           <p className="mt-2 text-gray-600">Redirecting...</p>
         </div>
@@ -102,6 +95,10 @@ export default function ProtectedLayout({
                 </span>
               </div>
               
+              <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                Authorized
+              </div>
+              
               <button
                 onClick={handleSignOut}
                 className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors"
@@ -125,7 +122,7 @@ export default function ProtectedLayout({
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">
-              Hinko Bot Dashboard v2.0.0 - Guild: {requiredGuildId}
+              Hinko Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}
             </div>
             <div className="text-sm text-gray-500">
               Authorized access only

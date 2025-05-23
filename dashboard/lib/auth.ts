@@ -3,17 +3,16 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../pages/api/auth/[...nextauth]';
 
-// Define your target guild ID again or import from a shared config
 const TARGET_GUILD_ID = '554266392262737930';
+const REQUIRED_ROLE_ID = '797927858420187186';
 
-// Update AuthenticatedRequest to match the session.user structure
 export interface AuthenticatedRequest extends NextApiRequest {
   user?: {
     id?: string;
     username?: string;
     discriminator?: string;
     avatar?: string;
-    guilds?: Array<{ // This structure should match the UserGuild interface from [...nextauth].ts
+    guilds?: Array<{
       id: string;
       name: string;
       icon: string | null;
@@ -21,7 +20,7 @@ export interface AuthenticatedRequest extends NextApiRequest {
       permissions: string;
       features: string[];
     }>;
-    hasRequiredPermission?: boolean; // Key flag
+    hasRequiredAccess?: boolean;
   };
 }
 
@@ -40,21 +39,11 @@ export async function requireAuth(
       });
     }
     
-    // Check 1: User must be in the target guild (session.user.guilds should ideally only contain the target guild if signIn was successful and session callback filters it)
-    // Or, more robustly, ensure the guilds array contains the target guild.
-    const inTargetGuild = session.user.guilds?.some(g => g.id === TARGET_GUILD_ID);
-    if (!inTargetGuild) {
+    // Check if user has required access (guild membership + role)
+    if (session.user.hasRequiredAccess !== true) {
       return res.status(403).json({ 
         error: 'Forbidden', 
-        message: `You do not have access to the required Discord server (${TARGET_GUILD_ID}).`
-      });
-    }
-    
-    // Check 2: User must have the required permission (flag set by [...nextauth].ts)
-    if (session.user.hasRequiredPermission !== true) {
-      return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: 'You do not have the required permissions to access this resource.' 
+        message: `Access denied. You must be a member of guild ${TARGET_GUILD_ID} with role ${REQUIRED_ROLE_ID}.`
       });
     }
 
@@ -72,17 +61,11 @@ export async function requireAuth(
   }
 }
 
-
 export async function validateSession(req: NextApiRequest, res: NextApiResponse): Promise<AuthenticatedRequest['user'] | null> {
   const session = await getServerSession(req, res, authOptions);
   
-  if (!session?.user) {
+  if (!session?.user || session.user.hasRequiredAccess !== true) {
     return null;
-  }
-
-  const inTargetGuild = session.user.guilds?.some(g => g.id === TARGET_GUILD_ID);
-  if (!inTargetGuild || session.user.hasRequiredPermission !== true) {
-    return null; // Not authorized
   }
 
   return session.user;

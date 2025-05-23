@@ -48,7 +48,13 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           activePolls: 0,
           activeGiveaways: 0,
           openTickets: 0,
-          customCommands: 0
+          customCommands: 0,
+          levelingEnabled: newGuild.enableLeveling,
+          moderationEnabled: newGuild.enableModeration,
+          geizhalsEnabled: newGuild.enableGeizhals,
+          enablePolls: newGuild.enablePolls,
+          enableGiveaways: newGuild.enableGiveaways,
+          enableTickets: newGuild.enableTickets
         },
         settings: {
           enableLeveling: newGuild.enableLeveling,
@@ -87,7 +93,15 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         name: guildData.name,
         memberCount: actualMemberCount,
         iconURL: discordGuild?.iconURL || null,
-        stats: guildData.stats,
+        stats: {
+          ...guildData.stats,
+          levelingEnabled: guildData.settings.enableLeveling,
+          moderationEnabled: guildData.settings.enableModeration,
+          geizhalsEnabled: guildData.settings.enableGeizhals,
+          enablePolls: guildData.settings.enablePolls,
+          enableGiveaways: guildData.settings.enableGiveaways,
+          enableTickets: guildData.settings.enableTickets
+        },
         settings: guildData.settings
       };
 
@@ -101,7 +115,15 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         name: guildData.name,
         memberCount: guildData.memberCount,
         iconURL: null,
-        stats: guildData.stats,
+        stats: {
+          ...guildData.stats,
+          levelingEnabled: guildData.settings.enableLeveling,
+          moderationEnabled: guildData.settings.enableModeration,
+          geizhalsEnabled: guildData.settings.enableGeizhals,
+          enablePolls: guildData.settings.enablePolls,
+          enableGiveaways: guildData.settings.enableGiveaways,
+          enableTickets: guildData.settings.enableTickets
+        },
         settings: guildData.settings
       };
 

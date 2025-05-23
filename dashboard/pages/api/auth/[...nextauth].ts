@@ -3,63 +3,9 @@ import NextAuth, { NextAuthOptions, Session } from 'next-auth';
 import { JWT } from "next-auth/jwt";
 import DiscordProvider from 'next-auth/providers/discord';
 
-// Define your target guild and required permission
-const TARGET_GUILD_ID = '554266392262737930'; // As per your requirement
-
-// Explicitly define permission bits for clarity
-const PERMISSIONS = {
-  CREATE_INSTANT_INVITE: 1 << 0,
-  KICK_MEMBERS: 1 << 1,
-  BAN_MEMBERS: 1 << 2,
-  ADMINISTRATOR: 1 << 3,
-  MANAGE_CHANNELS: 1 << 4,
-  MANAGE_GUILD: 1 << 5,
-  ADD_REACTIONS: 1 << 6,
-  VIEW_AUDIT_LOG: 1 << 7,
-  PRIORITY_SPEAKER: 1 << 8,
-  STREAM: 1 << 9,
-  VIEW_CHANNEL: 1 << 10,
-  SEND_MESSAGES: 1 << 11,
-  SEND_TTS_MESSAGES: 1 << 12,
-  MANAGE_MESSAGES: 1 << 13,
-  EMBED_LINKS: 1 << 14,
-  ATTACH_FILES: 1 << 15,
-  READ_MESSAGE_HISTORY: 1 << 16,
-  MENTION_EVERYONE: 1 << 17,
-  USE_EXTERNAL_EMOJIS: 1 << 18,
-  VIEW_GUILD_INSIGHTS: 1 << 19,
-  CONNECT: 1 << 20,
-  SPEAK: 1 << 21,
-  MUTE_MEMBERS: 1 << 22,
-  DEAFEN_MEMBERS: 1 << 23,
-  MOVE_MEMBERS: 1 << 24,
-  USE_VAD: 1 << 25,
-  CHANGE_NICKNAME: 1 << 26,
-  MANAGE_NICKNAMES: 1 << 27,
-  MANAGE_ROLES: 1 << 28,
-  MANAGE_WEBHOOKS: 1 << 29,
-  MANAGE_GUILD_EXPRESSIONS: 1 << 30, // MANAGE_EMOJIS_AND_STICKERS previously
-  USE_APPLICATION_COMMANDS: 1 << 31,
-  REQUEST_TO_SPEAK: 1 << 32,
-  MANAGE_EVENTS: 1 << 33,
-  MANAGE_THREADS: 1 << 34,
-  CREATE_PUBLIC_THREADS: 1 << 35,
-  CREATE_PRIVATE_THREADS: 1 << 36,
-  USE_EXTERNAL_STICKERS: 1 << 37,
-  SEND_MESSAGES_IN_THREADS: 1 << 38,
-  USE_EMBEDDED_ACTIVITIES: 1 << 39, // START_EMBEDDED_ACTIVITIES previously
-  MODERATE_MEMBERS: 1 << 40, // Timeout members
-  VIEW_CREATOR_MONETIZATION_ANALYTICS: 1 << 41,
-  USE_SOUNDBOARD: 1 << 42,
-  CREATE_GUILD_EXPRESSIONS: 1 << 43,
-  CREATE_EVENTS: 1 << 44,
-  USE_EXTERNAL_SOUNDS: 1 << 45,
-  SEND_VOICE_MESSAGES: 1 << 46,
-};
-
-// Set REQUIRED_PERMISSION_BIT to KICK_MEMBERS for "Manage Members"
-const REQUIRED_PERMISSION_NAME = "KICK_MEMBERS";
-const REQUIRED_PERMISSION_BIT = PERMISSIONS.KICK_MEMBERS; // This is (1 << 1) = 2
+// Your specific requirements
+const TARGET_GUILD_ID = '554266392262737930';
+const REQUIRED_ROLE_ID = '797927858420187186';
 
 interface DiscordProfile {
   id: string;
@@ -75,8 +21,20 @@ interface UserGuild {
   name: string;
   icon: string | null;
   owner: boolean;
-  permissions: string; // Permissions bitmask as a string
+  permissions: string;
   features: string[];
+}
+
+interface GuildMember {
+  user: {
+    id: string;
+    username: string;
+    discriminator: string;
+    avatar: string;
+  };
+  roles: string[];
+  nick?: string;
+  joined_at: string;
 }
 
 interface ExtendedToken extends JWT {
@@ -98,7 +56,7 @@ declare module "next-auth" {
       discriminator?: string;
       avatar?: string;
       guilds?: UserGuild[];
-      hasRequiredPermission?: boolean;
+      hasRequiredAccess?: boolean;
     };
     accessToken?: string;
   }
@@ -121,7 +79,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: 'identify guilds', // Sufficient for this check.ts]
+          scope: 'identify guilds guilds.members.read',
         },
       },
     }),
@@ -146,10 +104,11 @@ export const authOptions: NextAuthOptions = {
       if (token.avatar) session.user.avatar = token.avatar;
       if (token.accessToken) session.accessToken = token.accessToken;
 
-      session.user.hasRequiredPermission = false; 
+      session.user.hasRequiredAccess = false; 
 
       if (token.accessToken && session.user.id) {
         try {
+          // First, check if user is in the guild
           const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
             headers: { Authorization: `Bearer ${token.accessToken}` },
           });
@@ -160,11 +119,35 @@ export const authOptions: NextAuthOptions = {
 
             if (targetGuild) {
               session.user.guilds = [targetGuild];
-              const permissionsValue = BigInt(targetGuild.permissions);
-              if ((permissionsValue & BigInt(REQUIRED_PERMISSION_BIT)) !== 0n) {
-                session.user.hasRequiredPermission = true;
+
+              // Now check if user has the required role in that guild
+              try {
+                const memberResponse = await fetch(
+                  `https://discord.com/api/users/@me/guilds/${TARGET_GUILD_ID}/member`,
+                  {
+                    headers: { Authorization: `Bearer ${token.accessToken}` },
+                  }
+                );
+
+                if (memberResponse.ok) {
+                  const memberData: GuildMember = await memberResponse.json();
+                  
+                  // Check if user has the required role
+                  if (memberData.roles.includes(REQUIRED_ROLE_ID)) {
+                    session.user.hasRequiredAccess = true;
+                    console.log(`✅ Access granted for user ${session.user.username} - has required role`);
+                  } else {
+                    console.log(`❌ Access denied for user ${session.user.username} - missing required role ${REQUIRED_ROLE_ID}`);
+                    console.log(`User roles:`, memberData.roles);
+                  }
+                } else {
+                  console.log(`❌ Failed to fetch member data for user ${session.user.username} in guild ${TARGET_GUILD_ID}`);
+                }
+              } catch (memberError) {
+                console.error('Error fetching guild member data:', memberError);
               }
             } else {
+              console.log(`❌ User ${session.user.username} not in target guild ${TARGET_GUILD_ID}`);
               session.user.guilds = [];
             }
           } else {
@@ -172,9 +155,9 @@ export const authOptions: NextAuthOptions = {
             session.user.guilds = [];
           }
         } catch (error) {
-          console.error('Session callback - Error fetching user guilds:', error);
+          console.error('Session callback - Error fetching user data:', error);
           session.user.guilds = [];
-          session.user.hasRequiredPermission = false;
+          session.user.hasRequiredAccess = false;
         }
       }
       return session;
@@ -189,21 +172,17 @@ export const authOptions: NextAuthOptions = {
       const discordProfile = profile as DiscordProfile;
       const accessToken = account.access_token;
 
-      console.log(`SignIn: Attempting login for user ${discordProfile.username} (${discordProfile.id}). Checking for guild ${TARGET_GUILD_ID} and permission bit ${REQUIRED_PERMISSION_BIT} (${REQUIRED_PERMISSION_NAME}).`);
+      console.log(`SignIn: Attempting login for user ${discordProfile.username} (${discordProfile.id})`);
+      console.log(`Required: Guild ${TARGET_GUILD_ID} and Role ${REQUIRED_ROLE_ID}`);
 
       try {
+        // Check if user is in the target guild
         const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
         if (!guildsResponse.ok) {
-          console.log(`SignIn: Failed to fetch guilds for user ${discordProfile.username}. Status: ${guildsResponse.status}`);
-          try {
-            const errorText = await guildsResponse.text();
-            console.log(`SignIn: Guild fetch error details: ${errorText}`);
-          } catch {
-            console.log(`SignIn: Guild fetch error details: Could not parse error response.`);
-          }
+          console.log(`SignIn: Failed to fetch guilds. Status: ${guildsResponse.status}`);
           return false;
         }
         
@@ -211,19 +190,39 @@ export const authOptions: NextAuthOptions = {
         const targetUserGuild = guilds.find(guild => guild.id === TARGET_GUILD_ID);
 
         if (!targetUserGuild) {
-          console.log(`SignIn: User ${discordProfile.username} (${discordProfile.id}) NOT in target guild ${TARGET_GUILD_ID}. Access DENIED.`);
+          console.log(`SignIn: User ${discordProfile.username} NOT in target guild ${TARGET_GUILD_ID}`);
           return false;
         }
 
-        console.log(`SignIn: User ${discordProfile.username} IS in target guild ${TARGET_GUILD_ID}. User's permissions string in this guild: "${targetUserGuild.permissions}".`);
+        console.log(`SignIn: User ${discordProfile.username} IS in target guild ${TARGET_GUILD_ID}`);
         
-        const userPermissionsInGuild = BigInt(targetUserGuild.permissions);
-        
-        if ((userPermissionsInGuild & BigInt(REQUIRED_PERMISSION_BIT)) !== 0n) {
-          console.log(`SignIn: Access GRANTED for user ${discordProfile.username}. Has required permission ${REQUIRED_PERMISSION_NAME} (bit ${REQUIRED_PERMISSION_BIT}). User permissions value: ${userPermissionsInGuild}.`);
-          return true;
-        } else {
-          console.log(`SignIn: Access DENIED for user ${discordProfile.username}. LACKS required permission ${REQUIRED_PERMISSION_NAME} (bit ${REQUIRED_PERMISSION_BIT}). User permissions value: ${userPermissionsInGuild}.`);
+        // Check if user has required role in the guild
+        try {
+          const memberResponse = await fetch(
+            `https://discord.com/api/users/@me/guilds/${TARGET_GUILD_ID}/member`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          if (!memberResponse.ok) {
+            console.log(`SignIn: Failed to fetch member data. Status: ${memberResponse.status}`);
+            return false;
+          }
+
+          const memberData: GuildMember = await memberResponse.json();
+          
+          if (memberData.roles.includes(REQUIRED_ROLE_ID)) {
+            console.log(`✅ SignIn: Access GRANTED for user ${discordProfile.username} - has required role ${REQUIRED_ROLE_ID}`);
+            return true;
+          } else {
+            console.log(`❌ SignIn: Access DENIED for user ${discordProfile.username} - missing required role ${REQUIRED_ROLE_ID}`);
+            console.log(`User roles in guild:`, memberData.roles);
+            return false;
+          }
+
+        } catch (memberError) {
+          console.error('SignIn: Error fetching member data:', memberError);
           return false;
         }
 
@@ -236,7 +235,7 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/error', //.ts]
+    error: '/auth/error',
   },
 
   session: {
