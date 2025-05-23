@@ -1,4 +1,4 @@
-// dashboard/pages/api/dashboard/guild/[id].ts
+// dashboard/pages/api/dashboard/guild/[id].ts (Enhanced Real-time)
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
 import { DatabaseService } from '../../../../lib/database';
@@ -28,113 +28,73 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       await discordService.initialize();
     }
 
-    // Get guild data from database
+    // Get real-time guild data from database
     const guildData = await DatabaseService.getGuildWithFullData(id);
     
     if (!guildData) {
-      // Create guild if it doesn't exist
-      const newGuild = await DatabaseService.getGuildSettings(id);
-      
-      const response = {
-        id: newGuild.id,
-        name: newGuild.name,
-        memberCount: 0,
-        iconURL: null,
-        stats: {
-          totalUsers: 0,
-          totalWarns: 0,
-          activeQuarantine: 0,
-          totalTrackers: 0,
-          activePolls: 0,
-          activeGiveaways: 0,
-          openTickets: 0,
-          customCommands: 0,
-          levelingEnabled: newGuild.enableLeveling,
-          moderationEnabled: newGuild.enableModeration,
-          geizhalsEnabled: newGuild.enableGeizhals,
-          enablePolls: newGuild.enablePolls,
-          enableGiveaways: newGuild.enableGiveaways,
-          enableTickets: newGuild.enableTickets
-        },
-        settings: {
-          enableLeveling: newGuild.enableLeveling,
-          enableModeration: newGuild.enableModeration,
-          enableGeizhals: newGuild.enableGeizhals,
-          enablePolls: newGuild.enablePolls,
-          enableGiveaways: newGuild.enableGiveaways,
-          enableTickets: newGuild.enableTickets,
-          enableAutomod: newGuild.enableAutomod,
-          enableMusic: newGuild.enableMusic,
-          enableJoinToCreate: newGuild.enableJoinToCreate
-        }
-      };
-
-      return res.status(200).json(response);
+      return res.status(404).json({ message: 'Guild not found' });
     }
 
-    // Get additional data from Discord API if available
+    // Get live Discord guild info
+    let discordGuild = null;
+    let memberCount = guildData.memberCount;
+    
     try {
-      const [discordGuild, memberCount] = await Promise.all([
+      const [discordGuildInfo, discordMemberCount] = await Promise.all([
         discordService.getGuildInfo(id),
         discordService.getGuildMemberCount(id)
       ]);
+      
+      discordGuild = discordGuildInfo;
+      memberCount = discordMemberCount || guildData.memberCount;
 
       // Update guild name if it changed on Discord
       if (discordGuild && discordGuild.name !== guildData.name) {
         await DatabaseService.updateGuildSettings(id, { name: discordGuild.name });
         guildData.name = discordGuild.name;
       }
-
-      // Use Discord member count if available, otherwise fall back to database count
-      const actualMemberCount = memberCount || guildData.memberCount;
-
-      const response = {
-        id: guildData.id,
-        name: guildData.name,
-        memberCount: actualMemberCount,
-        iconURL: discordGuild?.iconURL || null,
-        stats: {
-          ...guildData.stats,
-          levelingEnabled: guildData.settings.enableLeveling,
-          moderationEnabled: guildData.settings.enableModeration,
-          geizhalsEnabled: guildData.settings.enableGeizhals,
-          enablePolls: guildData.settings.enablePolls,
-          enableGiveaways: guildData.settings.enableGiveaways,
-          enableTickets: guildData.settings.enableTickets
-        },
-        settings: guildData.settings
-      };
-
-      res.status(200).json(response);
     } catch (discordError) {
-      // Discord API error - return database data only
       console.warn('Discord API unavailable, using database data only');
-      
-      const response = {
-        id: guildData.id,
-        name: guildData.name,
-        memberCount: guildData.memberCount,
-        iconURL: null,
-        stats: {
-          ...guildData.stats,
-          levelingEnabled: guildData.settings.enableLeveling,
-          moderationEnabled: guildData.settings.enableModeration,
-          geizhalsEnabled: guildData.settings.enableGeizhals,
-          enablePolls: guildData.settings.enablePolls,
-          enableGiveaways: guildData.settings.enableGiveaways,
-          enableTickets: guildData.settings.enableTickets
-        },
-        settings: guildData.settings
-      };
-
-      res.status(200).json(response);
     }
+
+    // Prepare response with live data
+    const response = {
+      id: guildData.id,
+      name: guildData.name,
+      memberCount: memberCount,
+      iconURL: discordGuild?.iconURL || null,
+      stats: {
+        ...guildData.stats,
+        // Add computed fields
+        engagementRate: guildData.stats.totalUsers > 0 ? 
+          Math.round((guildData.stats.totalUsers / memberCount) * 100) : 0,
+        moderationRate: guildData.stats.totalWarns > 0 ? 
+          Math.round((guildData.stats.totalWarns / guildData.stats.totalUsers) * 100) : 0,
+        lastUpdated: new Date().toISOString()
+      },
+      settings: guildData.settings,
+      config: guildData.config,
+      // Add real-time status
+      status: {
+        botOnline: discordGuild !== null,
+        databaseConnected: true,
+        lastSync: new Date().toISOString()
+      }
+    };
+
+    // Set cache headers for real-time updates
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('Error fetching guild data:', error);
     res.status(500).json({ 
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error : undefined
+      error: process.env.NODE_ENV === 'development' ? error : undefined,
+      timestamp: new Date().toISOString()
     });
   }
 }
