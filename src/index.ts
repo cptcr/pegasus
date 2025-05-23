@@ -5,6 +5,7 @@ config();
 import { Client, GatewayIntentBits, Partials, ActivityType, REST, Routes } from 'discord.js';
 import { DatabaseService } from './lib/database';
 import { startCronJobs, startPerformanceMonitoring } from './services/cronJobs';
+import { handleMessageCreate, handleVoiceStateUpdate, handleGuildMemberAdd, handleGuildMemberRemove } from './events/messageCreate';
 import { readdirSync } from 'fs';
 import { join } from 'path';
 
@@ -26,47 +27,64 @@ export const client = new Client({
 const commands: any[] = [];
 
 // Command handling
-const commandFiles = readdirSync(join(__dirname, 'commands'), { recursive: true, withFileTypes: true })
-  .filter(dirent => dirent.isFile() && dirent.name.endsWith('.ts'))
-  .map(dirent => join(dirent.path, dirent.name));
+try {
+  const commandsPath = join(__dirname, 'commands');
+  if (readdirSync(commandsPath)) {
+    const commandFiles = readdirSync(commandsPath, { recursive: true, withFileTypes: true })
+      .filter(dirent => dirent.isFile() && dirent.name.endsWith('.ts'))
+      .map(dirent => join(dirent.path, dirent.name));
 
-for (const file of commandFiles) {
-  try {
-    const command = require(file);
-    if (command.data && command.run) {
-      commands.push(command.data.toJSON());
-      console.log(`✅ Loaded command: ${command.data.name}`);
+    for (const file of commandFiles) {
+      try {
+        const command = require(file);
+        if (command.data && command.run) {
+          commands.push(command.data.toJSON());
+          console.log(`✅ Loaded command: ${command.data.name}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error loading command ${file}:`, error);
+      }
     }
-  } catch (error) {
-    console.error(`❌ Error loading command ${file}:`, error);
   }
+} catch (error) {
+  console.warn('⚠️ Commands directory not found, skipping command loading');
 }
 
-// Event handling
-const eventFiles = readdirSync(join(__dirname, 'events'))
-  .filter(file => file.endsWith('.ts'));
+// Event handling - Register core events
+client.on('messageCreate', handleMessageCreate);
+client.on('voiceStateUpdate', handleVoiceStateUpdate);
+client.on('guildMemberAdd', handleGuildMemberAdd);
+client.on('guildMemberRemove', handleGuildMemberRemove);
 
-for (const file of eventFiles) {
-  try {
-    const event = require(join(__dirname, 'events', file));
-    
-    // Handle multiple events in one file
-    const eventHandlers = Object.values(event).filter((handler: any) => 
-      handler && typeof handler === 'object' && handler.name && handler.execute
-    );
+// Load additional event files
+try {
+  const eventsPath = join(__dirname, 'events');
+  const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.ts') && file !== 'messageCreate.ts');
 
-    for (const eventHandler of eventHandlers) {
-      const handler = eventHandler as any;
-      if (handler.once) {
-        client.once(handler.name, (...args) => handler.execute(...args));
-      } else {
-        client.on(handler.name, (...args) => handler.execute(...args));
+  for (const file of eventFiles) {
+    try {
+      const event = require(join(eventsPath, file));
+      
+      // Handle multiple events in one file
+      const eventHandlers = Object.values(event).filter((handler: any) => 
+        handler && typeof handler === 'object' && handler.name && handler.execute
+      );
+
+      for (const eventHandler of eventHandlers) {
+        const handler = eventHandler as any;
+        if (handler.once) {
+          client.once(handler.name, (...args) => handler.execute(...args));
+        } else {
+          client.on(handler.name, (...args) => handler.execute(...args));
+        }
+        console.log(`✅ Loaded event: ${handler.name}`);
       }
-      console.log(`✅ Loaded event: ${handler.name}`);
+    } catch (error) {
+      console.error(`❌ Error loading event ${file}:`, error);
     }
-  } catch (error) {
-    console.error(`❌ Error loading event ${file}:`, error);
   }
+} catch (error) {
+  console.warn('⚠️ Events directory not found, core events only');
 }
 
 // Bot ready event
@@ -76,7 +94,7 @@ client.once('ready', async () => {
   // Set bot activity
   client.user?.setActivity('Managing your server', { type: ActivityType.Playing });
   
-  // Deploy commands
+  // Deploy commands in development or when explicitly requested
   if (process.env.NODE_ENV === 'development' || process.env.DEPLOY_COMMANDS === 'true') {
     await deployCommands();
   }
@@ -94,11 +112,6 @@ client.once('ready', async () => {
   startCronJobs();
   startPerformanceMonitoring();
   
-  // Start dashboard if enabled
-  if (process.env.ENABLE_WEB_DASHBOARD !== 'false') {
-    startDashboard();
-  }
-  
   console.log('🚀 Bot fully initialized and ready!');
 });
 
@@ -110,6 +123,11 @@ client.on('interactionCreate', async (interaction) => {
   
   try {
     // Find and execute command
+    const commandsPath = join(__dirname, 'commands');
+    const commandFiles = readdirSync(commandsPath, { recursive: true, withFileTypes: true })
+      .filter(dirent => dirent.isFile() && dirent.name.endsWith('.ts'))
+      .map(dirent => join(dirent.path, dirent.name));
+
     for (const file of commandFiles) {
       const command = require(file);
       if (command.data?.name === commandName) {
@@ -193,36 +211,30 @@ async function deployCommands() {
   try {
     console.log('🔄 Deploying slash commands...');
     
-    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN!);
+    if (!process.env.DISCORD_BOT_TOKEN || !process.env.DISCORD_CLIENT_ID) {
+      console.error('❌ Missing required environment variables for command deployment');
+      return;
+    }
+    
+    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
     
     if (process.env.TARGET_GUILD_ID) {
       // Deploy to specific guild (development)
       await rest.put(
-        Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID!, process.env.TARGET_GUILD_ID),
+        Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.TARGET_GUILD_ID),
         { body: commands }
       );
       console.log(`✅ Successfully deployed ${commands.length} commands to guild ${process.env.TARGET_GUILD_ID}`);
     } else {
       // Deploy globally (production)
       await rest.put(
-        Routes.applicationCommands(process.env.DISCORD_CLIENT_ID!),
+        Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
         { body: commands }
       );
       console.log(`✅ Successfully deployed ${commands.length} commands globally`);
     }
   } catch (error) {
     console.error('❌ Error deploying commands:', error);
-  }
-}
-
-// Start dashboard
-function startDashboard() {
-  if (process.env.NODE_ENV === 'production') {
-    // In production, dashboard is started by concurrently
-    console.log('🌐 Dashboard will be started by process manager');
-  } else {
-    // In development, start dashboard separately
-    console.log('🌐 Dashboard should be started separately with: npm run dev:dashboard');
   }
 }
 

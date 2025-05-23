@@ -698,7 +698,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   return { props: {} };
-};// dashboard/components/ProtectedLayout.tsx
+};
+// dashboard/components/ProtectedLayout.tsx
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';

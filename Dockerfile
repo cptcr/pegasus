@@ -1,60 +1,63 @@
-# Multi-stage build for Discord bot with dashboard
+# Multi-stage build for production optimization
 FROM node:18-alpine AS base
-WORKDIR /app
 
-# Install dependencies for building native modules
-RUN apk add --no-cache python3 make g++ git
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY dashboard/package.json ./dashboard/
-COPY prisma/ ./prisma/
+COPY dashboard/package*.json ./dashboard/
 
 # Install dependencies
-RUN npm ci --only=production
-RUN cd dashboard && npm ci --only=production
+RUN npm ci --only=production && npm cache clean --force
+RUN cd dashboard && npm ci --only=production && npm cache clean --force
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build stage for dashboard
-FROM base AS dashboard-build
-WORKDIR /app/dashboard
-COPY dashboard/ .
+# Build TypeScript
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine AS production
+# Build dashboard
+WORKDIR /app/dashboard
+COPY --from=deps /app/dashboard/node_modules ./node_modules
+RUN npm run build
+
+# Production image, copy all the files and run the bot
+FROM base AS runner
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache dumb-init
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 hinko
 
 # Copy built application
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/prisma ./prisma
-COPY --from=dashboard-build /app/dashboard/.next ./dashboard/.next
-COPY --from=dashboard-build /app/dashboard/public ./dashboard/public
-COPY --from=dashboard-build /app/dashboard/package.json ./dashboard/
-COPY --from=dashboard-build /app/dashboard/node_modules ./dashboard/node_modules
+COPY --from=builder --chown=hinko:nodejs /app/dist ./dist
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/.next ./dashboard/.next
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/public ./dashboard/public
+COPY --from=builder --chown=hinko:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/node_modules ./dashboard/node_modules
+COPY --from=builder --chown=hinko:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=hinko:nodejs /app/package*.json ./
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/package*.json ./dashboard/
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/server.js ./dashboard/
+COPY --from=builder --chown=hinko:nodejs /app/dashboard/next.config.js ./dashboard/
 
-# Copy source code
-COPY src/ ./src/
-COPY geizhals/ ./geizhals/
-COPY *.json ./
-COPY *.js ./
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S hinko -u 1001
 USER hinko
 
 # Expose ports
-EXPOSE 3001 3000
+EXPOSE 3000 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
 
-# Start both bot and dashboard
-CMD ["dumb-init", "npm", "start"]
+# Start the application
+CMD ["npm", "start"]
