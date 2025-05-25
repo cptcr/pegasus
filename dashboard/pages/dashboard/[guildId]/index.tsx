@@ -18,11 +18,7 @@ import {
   CommandLineIcon,
   ArrowPathIcon,
   EyeIcon,
-  ClockIcon,
   ChevronRightIcon,
-  SparklesIcon,
-  TrophyIcon,
-  SignalIcon,
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
@@ -30,6 +26,15 @@ import { ConnectionStatus } from '../../../components/StatusIndicator';
 import { RealtimeNotifications } from '../../../components/EventNotifications';
 
 const TARGET_GUILD_ID = '554266392262737930';
+
+interface MetricCardProps {
+  title: string;
+  value: number;
+  color: 'blue' | 'green' | 'purple' | 'red' | 'yellow' | 'indigo';
+  max?: number;
+  subtext?: string;
+  description: string;
+}
 
 interface GuildStats {
   totalUsers: number;
@@ -717,53 +722,54 @@ function QuickActionCard({ title, icon, href, color, description, disabled }: Qu
     indigo: 'from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700',
   };
 
-  const Component = disabled ? 'div' : Link;
-  const props = disabled ? {} : { href };
-
-  return (
-    <Component {...props}>
-      <div className={`group relative overflow-hidden rounded-xl p-4 text-white transition-all duration-300 ${
-        disabled 
-          ? 'bg-gray-400 cursor-not-allowed opacity-60' 
-          : `bg-gradient-to-br ${colorClasses[color]} cursor-pointer transform hover:scale-105 hover:shadow-xl`
-      }`}>
+  return disabled ? (
+    <div className={`group relative overflow-hidden rounded-xl p-4 text-white transition-all duration-300 bg-gray-400 cursor-not-allowed opacity-60`}>
+      <div className="flex flex-col items-center space-y-2 text-center">
+        <div className="p-2 transition-colors duration-200 rounded-lg bg-white/20">
+          {icon}
+        </div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description && (
+          <p className="text-xs opacity-90">{description}</p>
+        )}
+        <span className="text-xs opacity-75">(Disabled)</span>
+      </div>
+    </div>
+  ) : (
+    <Link href={href}>
+      <div className={`group relative overflow-hidden rounded-xl p-4 text-white transition-all duration-300 bg-gradient-to-br ${colorClasses[color]} cursor-pointer transform hover:scale-105 hover:shadow-xl`}>
         <div className="flex flex-col items-center space-y-2 text-center">
-          <div className={`p-2 rounded-lg ${disabled ? 'bg-white/20' : 'bg-white/20 group-hover:bg-white/30'} transition-colors duration-200`}>
+          <div className="p-2 transition-colors duration-200 rounded-lg bg-white/20 group-hover:bg-white/30">
             {icon}
           </div>
           <h3 className="text-sm font-semibold">{title}</h3>
           {description && (
             <p className="text-xs opacity-90">{description}</p>
           )}
-          {disabled && (
-            <span className="text-xs opacity-75">(Disabled)</span>
-          )}
         </div>
-        {!disabled && (
-          <div className="absolute inset-0 transition-colors duration-300 bg-white/0 group-hover:bg-white/10 rounded-xl"></div>
-        )}
+        <div className="absolute inset-0 transition-colors duration-300 bg-white/0 group-hover:bg-white/10 rounded-xl"></div>
       </div>
-    </Component>
+    </Link>
   );
 }
-
-interface MetricCardProps {
-  title: string;
-  value: number;
-  description: string;
-  color: 'blue' | 'green' | 'purple';
-  max?: number;
-  subtext?: string;
-}
-
-function MetricCard({ title, value, description, color, max, subtext }: MetricCardProps) {
-  const percentage = max ? Math.min((value / max) * 100, 100) : undefined;
-  
+function MetricCard({
+  title,
+  value,
+  color,
+  max,
+  subtext,
+  description,
+}: MetricCardProps) {
   const colorClasses = {
     blue: 'bg-blue-500',
     green: 'bg-green-500',
     purple: 'bg-purple-500',
+    red: 'bg-red-500',
+    yellow: 'bg-yellow-500',
+    indigo: 'bg-indigo-500',
   };
+
+  const percentage = max !== undefined ? (value / max) * 100 : undefined;
 
   return (
     <div className="p-6 card">
@@ -771,29 +777,26 @@ function MetricCard({ title, value, description, color, max, subtext }: MetricCa
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {title}
         </h3>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {percentage !== undefined ? `${Math.round(percentage)}%` : value.toLocaleString()}
-          </div>
-          {subtext && (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {subtext}
-            </div>
-          )}
+        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {percentage !== undefined ? `${Math.round(percentage)}%` : value.toLocaleString()}
         </div>
       </div>
-      
-      {percentage !== undefined && (
-        <div className="mb-3">
-          <div className="w-full h-2 bg-gray-200 rounded-full dark:bg-gray-700">
-            <div 
-              className={`h-2 rounded-full ${colorClasses[color]} transition-all duration-500 ease-out`}
-              style={{ width: `${percentage}%` }}
-            ></div>
-          </div>
+
+      {subtext && (
+        <div className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          {subtext}
         </div>
       )}
-      
+
+      {max !== undefined && (
+        <div className="w-full h-2 mb-3 bg-gray-200 rounded-full dark:bg-gray-700">
+          <div
+            className={`h-2 rounded-full ${colorClasses[color]} transition-all duration-500 ease-out`}
+            style={{ width: `${percentage}%` }}
+          ></div>
+        </div>
+      )}
+
       <p className="text-sm text-gray-600 dark:text-gray-400">
         {description}
       </p>
@@ -808,6 +811,7 @@ interface FeatureStatusCardProps {
   description: string;
   stats?: string;
 }
+
 
 function FeatureStatusCard({ name, enabled, icon, description, stats }: FeatureStatusCardProps) {
   return (
@@ -923,6 +927,7 @@ function ManagementCard({ title, description, href, icon, features }: Management
     </Link>
   );
 }
+
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);

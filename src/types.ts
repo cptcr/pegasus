@@ -1,14 +1,17 @@
-// src/types.ts - TypeScript-Typdefinitionen
+// src/types.ts
 import {
   Collection,
-  CommandInteraction,
   Message,
   SlashCommandBuilder,
+  SlashCommandSubcommandBuilder, // Added
   ChatInputCommandInteraction,
-  Client as DiscordClient, // Original Discord.js Client
+  Client as DiscordClient,
   ClientEvents,
   PresenceUpdateStatus,
-  ActivityType
+  ActivityType,
+  Guild,
+  TextChannel,
+  Role
 } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 
@@ -20,6 +23,7 @@ export interface BotConfig {
   enabledFeatures: {
     leveling: boolean;
     moderation: boolean;
+    automod: boolean; // Ensure automod is here
     geizhals: boolean;
     polls: boolean;
     giveaways: boolean;
@@ -30,40 +34,42 @@ export interface BotConfig {
   debug: boolean;
 }
 
-// Erweitert den Discord.js Client um unsere spezifischen Eigenschaften
 export interface ClientWithCommands extends DiscordClient {
   commands: Collection<string, PrefixCommand>;
   slashCommands: Collection<string, SlashCommand>;
   cooldowns: Collection<string, Collection<string, number>>;
   config: BotConfig;
   prisma: PrismaClient;
-  io?: any; // Für Socket.IO-Integration mit dem Dashboard (optional)
+  io?: any;
 }
 
+// For commands that might have subcommands
 export interface SlashCommand {
-  data: Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">; // Vereinfacht für den Anfang
+  data: SlashCommandBuilder; // Now expects a full builder, can have subcommands
   execute: (interaction: ChatInputCommandInteraction, client: ClientWithCommands) => Promise<void>;
-  cooldown?: number; // Cooldown in Sekunden
+  // Optional: A way to map subcommand names to their specific execute functions
+  subcommands?: Collection<string, (interaction: ChatInputCommandInteraction, client: ClientWithCommands) => Promise<void>>;
+  cooldown?: number;
   category?: string;
   devOnly?: boolean;
-  testOnly?: boolean; // Für Tests in devGuilds
-  enabled?: boolean; // Um Befehle einfach zu de-/aktivieren
-  permissions?: string[]; // Benötigte Berechtigungen für den Benutzer
-  botPermissions?: string[]; // Benötigte Berechtigungen für den Bot
+  testOnly?: boolean;
+  enabled?: boolean;
+  permissions?: string[];
+  botPermissions?: string[];
 }
 
 export interface PrefixCommand {
   name: string;
   aliases?: string[];
   description: string;
-  usage: string; // Beispiel: !befehl <argument1> [optionalArgument]
+  usage: string;
   execute: (message: Message, args: string[], client: ClientWithCommands) => Promise<void>;
-  cooldown?: number; // Cooldown in Sekunden
+  cooldown?: number;
   category?: string;
   devOnly?: boolean;
-  enabled?: boolean; // Um Befehle einfach zu de-/aktivieren
-  permissions?: string[]; // Benötigte Berechtigungen für den Benutzer
-  botPermissions?: string[]; // Benötigte Berechtigungen für den Bot
+  enabled?: boolean;
+  permissions?: string[];
+  botPermissions?: string[];
 }
 
 export interface Feature {
@@ -71,7 +77,7 @@ export interface Feature {
   description?: string;
   initialize: (client: ClientWithCommands) => Promise<void>;
   shutdown?: (client: ClientWithCommands) => Promise<void>;
-  enabled?: boolean; // Feature-spezifische Aktivierung
+  enabled?: boolean;
 }
 
 export interface Event<K extends keyof ClientEvents> {
@@ -87,17 +93,18 @@ export interface CooldownConfig {
   cooldownAmount: number;
 }
 
-// Für Gildenspezifische Einstellungen in der Datenbank
 export interface GuildSettings {
-  id: string; // Discord Guild ID
+  id: string;
+  name: string; // Added name to GuildSettings for consistency
   prefix: string;
   modLogChannelId?: string | null;
   levelUpChannelId?: string | null;
   welcomeChannelId?: string | null;
   geizhalsChannelId?: string | null;
-  joinToCreateChannelId?: string | null; // Voice channel to join to create a new one
-  joinToCreateCategoryId?: string | null; // Category where new voice channels are created
-
+  joinToCreateChannelId?: string | null;
+  joinToCreateCategoryId?: string | null;
+  ticketCategoryId?: string | null; // Added for ticket system
+  ticketSupportRoleId?: string | null; // Added for ticket system
   enableLeveling: boolean;
   enableModeration: boolean;
   enableGeizhals: boolean;
@@ -107,20 +114,24 @@ export interface GuildSettings {
   enableTickets: boolean;
   enableMusic: boolean;
   enableJoinToCreate: boolean;
-
-  welcomeMessage?: string | null; // Nachricht, wenn ein Benutzer beitritt
-  leaveMessage?: string | null;   // Nachricht, wenn ein Benutzer verlässt
-
-  quarantineRoleId?: string | null; // Rolle für Benutzer in Quarantäne
-
+  welcomeMessage?: string | null;
+  leaveMessage?: string | null;
+  quarantineRoleId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Bot-Status für Aktivitätsanzeige
 export interface BotActivity {
   name: string;
-  type: Exclude<ActivityType, ActivityType.Custom>; // Custom wird nicht direkt unterstützt
-  status?: PresenceUpdateStatus; // online, idle, dnd, invisible
-  url?: string; // Für Streaming-Status
+  type: Exclude<ActivityType, ActivityType.Custom>;
+  status?: PresenceUpdateStatus;
+  url?: string;
+}
+
+// Specific type for subcommand modules
+export interface SubcommandModule {
+    name: string; // subcommand name
+    description: string; // subcommand description
+    configure: (subcommand: SlashCommandSubcommandBuilder) => SlashCommandSubcommandBuilder;
+    execute: (interaction: ChatInputCommandInteraction, client: ClientWithCommands) => Promise<void>;
 }

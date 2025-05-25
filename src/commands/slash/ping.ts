@@ -1,4 +1,3 @@
-// src/commands/slash/ping.ts
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { SlashCommand, ClientWithCommands } from '../../types';
 
@@ -7,6 +6,7 @@ const command: SlashCommand = {
     .setName('ping')
     .setDescription('Überprüft die Latenz des Bots und antwortet mit Pong!'),
   enabled: true,
+  category: 'utility',
   async execute(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
     const sent = await interaction.reply({ content: 'Pinge...', fetchReply: true, ephemeral: true });
     const roundtripLatency = sent.createdTimestamp - interaction.createdTimestamp;
@@ -15,7 +15,7 @@ const command: SlashCommand = {
     await interaction.editReply(
       `🏓 Pong!\n` +
       `Latenz: ${roundtripLatency}ms.\n` +
-      `WebSocket Ping: ${websocketPing}ms.`
+      `API Latenz: ${websocketPing}ms.`
     );
   }
 };

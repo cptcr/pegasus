@@ -1,104 +1,46 @@
-// src/index.ts - Haupteinstiegspunkt für den Bot
-import { config } from 'dotenv';
-import { Client, GatewayIntentBits, Partials, Collection, Events } from 'discord.js';
-import { PrismaClient } from '@prisma/client';
-import { registerCommands } from './commands';
-import { registerEvents } from './events';
-import { loadFeatures } from './features';
-import { BotConfig, ClientWithCommands } from './types'; // Angepasster Client-Typ
-import { defaultConfig as botDefaultSettings } from '../../config'; // Import aus dem Hauptverzeichnis
+import fs from 'fs';
+import path from 'path';
+import { ClientWithCommands, Feature } from '../types';
 
-// Umgebungsvariablen laden
-config();
+export async function loadFeatures(client: ClientWithCommands): Promise<void> {
+  const featuresPath = path.join(__dirname);
+  const featureFolders = fs.readdirSync(featuresPath).filter(
+    folder => fs.statSync(path.join(featuresPath, folder)).isDirectory()
+  );
 
-// Discord-Client mit erforderlichen Intents erstellen
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent, // Erforderlich für Prefix-Befehle
-    GatewayIntentBits.DirectMessages,
-  ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction,
-    Partials.User,
-    Partials.GuildMember,
-  ],
-}) as ClientWithCommands; // Cast zum erweiterten Client-Typ
+  for (const folder of featureFolders) {
+    const indexPath = path.join(featuresPath, folder, 'index.ts');
+    const indexPathJs = path.join(featuresPath, folder, 'index.js');
+    let featureFilePath: string | null = null;
 
-// Prisma initialisieren
-const prisma = new PrismaClient();
+    if (fs.existsSync(indexPath)) {
+      featureFilePath = indexPath;
+    } else if (fs.existsSync(indexPathJs)) {
+      featureFilePath = indexPathJs;
+    }
 
-// Bot-Konfigurationsobjekt
-// Die devGuilds, devUsers, devRoles werden jetzt aus der Haupt-config.ts geladen
-const botConfig: BotConfig = {
-  devGuilds: botDefaultSettings.devGuilds,
-  devUsers: botDefaultSettings.devUsers,
-  devRoles: botDefaultSettings.devRoles,
-  defaultPrefix: process.env.DEFAULT_PREFIX || '!', // Standard-Prefix aus .env oder '!'
-  enabledFeatures: {
-    leveling: process.env.ENABLE_LEVELING !== 'false',
-    moderation: process.env.ENABLE_MODERATION !== 'false',
-    geizhals: process.env.ENABLE_GEIZHALS === 'true',
-    polls: process.env.ENABLE_POLLS !== 'false',
-    giveaways: process.env.ENABLE_GIVEAWAYS !== 'false',
-    tickets: process.env.ENABLE_TICKETS === 'true',
-    music: process.env.ENABLE_MUSIC === 'true', // Standardmäßig deaktiviert, falls nicht gesetzt
-    joinToCreate: process.env.ENABLE_JOIN_TO_CREATE === 'true', // Standardmäßig deaktiviert
-  },
-  debug: process.env.DEBUG === 'true',
-};
+    if (!featureFilePath) {
+      continue;
+    }
 
-// Collections auf dem Client initialisieren
-client.commands = new Collection();
-client.slashCommands = new Collection();
-client.cooldowns = new Collection();
-client.config = botConfig;
-client.prisma = prisma;
+    try {
+      const featureModule = await import(featureFilePath);
+      const feature = (featureModule.default || featureModule) as Feature;
 
-// Event-Handler registrieren
-registerEvents(client);
+      if (!feature.name || typeof feature.initialize !== 'function') {
+        continue;
+      }
 
-// Befehle registrieren (Slash und Prefix)
-// Die Registrierung von Slash-Befehlen erfolgt jetzt im 'ready'-Event,
-// nachdem der Client initialisiert wurde und client.user!.id verfügbar ist.
-// registerCommands(client) wird später aufgerufen.
+      const featureConfigKey = feature.name.toLowerCase() as keyof BotConfig['enabledFeatures'];
+      const isGloballyEnabled = client.config.enabledFeatures[featureConfigKey] !== false;
+      const isFeatureSelfEnabled = feature.enabled !== false;
 
-// Alle Features laden
-loadFeatures(client);
-
-// Bei Discord mit dem Bot-Token anmelden
-client.login(process.env.DISCORD_BOT_TOKEN)
-  .then(() => {
-    console.log(`🤖 Bot angemeldet als ${client.user?.tag}`);
-  })
-  .catch(error => {
-    console.error('Fehler beim Anmelden des Bots:', error);
-    process.exit(1);
-  });
-
-// Prozessbeendigung handhaben
-const handleExit = async () => {
-  console.log('Bot wird heruntergefahren...');
-  client.destroy();
-  await prisma.$disconnect();
-  console.log('Bot erfolgreich heruntergefahren.');
-  process.exit(0);
-};
-
-process.on('SIGINT', handleExit);
-process.on('SIGTERM', handleExit);
-process.on('unhandledRejection', (error) => {
-  console.error('Unerwarteter Promise-Fehler:', error);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Ungefangene Ausnahme:', error);
-  // Optional: Graceful shutdown hier, aber Vorsicht vor Endlosschleifen
-  // handleExit();
-});
+      if (!isGloballyEnabled || !isFeatureSelfEnabled) {
+        continue;
+      }
+      await feature.initialize(client);
+    } catch (error) {
+      console.error(`Fehler beim Laden des Features ${folder}:`, error);
+    }
+  }
+}
