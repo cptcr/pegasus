@@ -44,6 +44,21 @@ class DiscordService {
     }
   }
 
+  async getAllGuilds(): Promise<Array<{ id: string; name: string }>> {
+    try {
+      if (!this.isInitialized) return [];
+      
+      const guilds = await this.client.guilds.fetch();
+      return guilds.map(guild => ({
+        id: guild.id,
+        name: guild.name
+      }));
+    } catch (error) {
+      console.error('Error fetching all guilds:', error);
+      return [];
+    }
+  }
+
   async getGuildChannels(guildId: string) {
     try {
       const guild = await this.getGuild(guildId);

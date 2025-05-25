@@ -209,6 +209,7 @@ app.prepare().then(() => {
     if (err) throw err;
     console.log(`🌐 Dashboard server ready on http://${hostname}:${port}`);
     console.log(`📡 WebSocket server ready for real-time updates`);
+    console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
   // Graceful shutdown
@@ -234,4 +235,7 @@ app.prepare().then(() => {
     });
   });
 
+}).catch((ex) => {
+  console.error('Failed to start dashboard server:', ex);
+  process.exit(1);
 });

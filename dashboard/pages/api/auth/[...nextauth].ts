@@ -48,6 +48,7 @@ interface ExtendedToken extends JWT {
 declare module "next-auth" {
   interface Session {
     user: {
+      [x: string]: null;
       name?: string | null;
       email?: string | null;
       image?: string | null;

@@ -1,6 +1,6 @@
 // dashboard/pages/api/dashboard/channels/[guildId].ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { discordService } from '../../../lib/discordService';
+import { discordService } from '../../../../lib/discordService';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

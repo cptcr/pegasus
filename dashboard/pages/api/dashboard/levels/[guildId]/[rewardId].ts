@@ -1,7 +1,7 @@
-// dashboard/pages/api/dashboard/levels/[guildId]/rewards/[rewardId].ts
+// dashboard/pages/api/dashboard/levels/[guildId]/[rewardId].ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth, AuthenticatedRequest } from '../../../../../../lib/auth';
-import { DatabaseService } from '../../../../../../lib/database';
+import { requireAuth, AuthenticatedRequest } from '../../../../../lib/auth';
+import { DatabaseService } from '../../../../../lib/database';
 
 const ALLOWED_GUILD_ID = '554266392262737930';
 
@@ -39,9 +39,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     }
 
     // Delete the reward
-    await DatabaseService.prisma.levelReward.delete({
-      where: { id: parseInt(rewardId) }
-    });
+    await DatabaseService.deleteLevelReward(parseInt(rewardId));
 
     res.status(200).json({ message: 'Level reward deleted successfully' });
   } catch (error) {
