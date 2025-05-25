@@ -1,4 +1,4 @@
-import { Events, ActivityType } from 'discord.js';
+import { Events, ActivityType, PresenceStatusData } from 'discord.js';
 import { ClientWithCommands, Event, BotActivity } from '../types';
 import { registerCommands } from '../commands';
 
@@ -16,6 +16,7 @@ const event: Event<typeof Events.ClientReady> = {
     if (!client.user) {
       return;
     }
+    console.log(`🤖 ${client.user.tag} ist online und bereit!`);
 
     const setActivity = () => {
       if (!client.user) return;
@@ -26,7 +27,7 @@ const event: Event<typeof Events.ClientReady> = {
           type: currentActivity.type,
           url: currentActivity.url,
         }],
-        status: currentActivity.status || 'online',
+        status: (currentActivity.status || 'online') as PresenceStatusData,
       });
       activityIndex = (activityIndex + 1) % activities.length;
     };
@@ -36,12 +37,14 @@ const event: Event<typeof Events.ClientReady> = {
 
     try {
       await registerCommands(client);
+      console.log('✅ Befehle erfolgreich registriert/aktualisiert.');
     } catch (error) {
       console.error('Fehler beim Registrieren der Slash-Befehle:', error);
     }
 
     try {
       await client.prisma.$connect();
+      console.log('💾 Datenbankverbindung erfolgreich hergestellt.');
     } catch (error) {
       console.error('Fehler bei der Datenbankverbindung:', error);
     }

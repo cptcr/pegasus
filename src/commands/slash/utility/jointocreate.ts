@@ -46,16 +46,16 @@ const command: SlashCommand = {
         invalidateGuildSettingsCache(interaction.guildId);
 
         const embed = new EmbedBuilder()
-            .setColor(0x57F287) // Grün
+            .setColor(0x57F287)
             .setTitle('🔊 Join-to-Create Konfiguriert')
             .setDescription('Das Join-to-Create Feature wurde erfolgreich eingerichtet.')
             .addFields(
-                { name: 'Trigger-Kanal', value: `${triggerChannel.name} (${triggerChannel.id})`},
-                { name: 'Zielkategorie', value: `${category.name} (${category.id})`}
+                { name: 'Trigger-Kanal', value: `<span class="math-inline">\{triggerChannel\.name\} \(</span>{triggerChannel.id})`},
+                { name: 'Zielkategorie', value: `<span class="math-inline">\{category\.name\} \(</span>{category.id})`}
             )
             .setTimestamp()
             .setFooter({ text: `Konfiguriert von ${interaction.user.tag}`});
-        
+
         await interaction.reply({ embeds: [embed] });
 
     } catch (error) {

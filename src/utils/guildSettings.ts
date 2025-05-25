@@ -44,36 +44,37 @@ export async function getGuildSettings(guildId: string, client: ClientWithComman
       });
     }
 
-    const guildSettings = settings as GuildSettings;
+    const guildSettings = settings as unknown as GuildSettings;
     settingsCache.set(guildId, { settings: guildSettings, timestamp: Date.now() });
     return guildSettings;
 
   } catch (error) {
     console.error(`Fehler beim Abrufen/Erstellen der Einstellungen für Gilde ${guildId}:`, error);
     const fallbackSettings: GuildSettings = {
-      id: guildId,
-      name: client.guilds.cache.get(guildId)?.name || 'Unbekannte Gilde (Fallback)',
-      prefix: client.config.defaultPrefix,
-      enableLeveling: client.config.enabledFeatures.leveling,
-      enableModeration: client.config.enabledFeatures.moderation,
-      enableGeizhals: client.config.enabledFeatures.geizhals,
-      enablePolls: client.config.enabledFeatures.polls,
-      enableGiveaways: client.config.enabledFeatures.giveaways,
-      enableAutomod: client.config.enabledFeatures.automod ?? client.config.enabledFeatures.moderation,
-      enableTickets: client.config.enabledFeatures.tickets,
-      enableMusic: client.config.enabledFeatures.music,
-      enableJoinToCreate: client.config.enabledFeatures.joinToCreate,
-      modLogChannelId: null,
-      levelUpChannelId: null,
-      welcomeChannelId: null,
-      geizhalsChannelId: null,
-      joinToCreateChannelId: null,
-      joinToCreateCategoryId: null,
-      welcomeMessage: `Willkommen {user}!`,
-      leaveMessage: `{user} hat uns verlassen.`,
-      quarantineRoleId: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+        id: guildId,
+        name: client.guilds.cache.get(guildId)?.name || 'Unbekannte Gilde (Fallback)',
+        prefix: client.config.defaultPrefix,
+        enableLeveling: client.config.enabledFeatures.leveling,
+        enableModeration: client.config.enabledFeatures.moderation,
+        enableGeizhals: client.config.enabledFeatures.geizhals,
+        enablePolls: client.config.enabledFeatures.polls,
+        enableGiveaways: client.config.enabledFeatures.giveaways,
+        enableAutomod: client.config.enabledFeatures.automod ?? client.config.enabledFeatures.moderation,
+        enableTickets: client.config.enabledFeatures.tickets,
+        enableMusic: client.config.enabledFeatures.music,
+        enableJoinToCreate: client.config.enabledFeatures.joinToCreate,
+        modLogChannelId: null,
+        levelUpChannelId: null,
+        welcomeChannelId: null,
+        geizhalsChannelId: null,
+        joinToCreateChannelId: null,
+        joinToCreateCategoryId: null,
+        welcomeMessage: `Willkommen {user}!`,
+        leaveMessage: `{user} hat uns verlassen.`,
+        quarantineRoleId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        geizhalsLocation: ''
     };
     return fallbackSettings;
   }
@@ -82,15 +83,18 @@ export async function getGuildSettings(guildId: string, client: ClientWithComman
 export async function updateGuildSettings(
   guildId: string,
   client: ClientWithCommands,
-  data: Partial<Omit<GuildSettings, 'id' | 'createdAt' | 'updatedAt'>>
+  data: Partial<Omit<GuildSettings, 'id' | 'createdAt' | 'updatedAt' | 'name'>>
 ): Promise<GuildSettings> {
   try {
+    const currentSettings = await getGuildSettings(guildId, client);
+    const updatePayload = { ...data, name: currentSettings.name, updatedAt: new Date() };
+
     const updatedSettings = await client.prisma.guild.update({
       where: { id: guildId },
-      data: { ...data, updatedAt: new Date() },
+      data: updatePayload,
     });
 
-    const guildSettings = updatedSettings as GuildSettings;
+    const guildSettings = updatedSettings as unknown as GuildSettings;
     settingsCache.set(guildId, { settings: guildSettings, timestamp: Date.now() });
     return guildSettings;
   } catch (error) {

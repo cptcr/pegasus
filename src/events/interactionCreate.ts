@@ -1,4 +1,4 @@
-import { Events, Interaction, ChatInputCommandInteraction } from 'discord.js';
+import { Events, Interaction } from 'discord.js';
 import { ClientWithCommands, Event, SlashCommand } from '../types';
 import { handleCooldown } from '../utils/cooldown';
 
@@ -28,7 +28,7 @@ const event: Event<typeof Events.InteractionCreate> = {
       });
       return;
     }
-    
+
     if (command.testOnly && (!interaction.guildId || !client.config.devGuilds.includes(interaction.guildId))) {
       await interaction.reply({
         content: '⚠️ Dieser Befehl ist nur auf Test-Servern verfügbar.',
@@ -39,7 +39,7 @@ const event: Event<typeof Events.InteractionCreate> = {
 
     const cooldownResult = handleCooldown({
       userId: interaction.user.id,
-      commandName: interaction.commandName + (interaction.options.getSubcommand(false) ? `_${interaction.options.getSubcommand(false)}` : ''), // Cooldown per subcommand
+      commandName: interaction.commandName + (interaction.options.getSubcommand(false) ? `_${interaction.options.getSubcommand(false)}` : ''),
       cooldownAmount: command.cooldown || 0,
     }, client);
 
@@ -52,7 +52,6 @@ const event: Event<typeof Events.InteractionCreate> = {
     }
 
     try {
-      // The command's execute function is now responsible for handling subcommands
       await command.execute(interaction, client);
     } catch (error) {
       console.error(`Fehler beim Ausführen des Befehls ${interaction.commandName}:`, error);

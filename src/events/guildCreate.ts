@@ -5,7 +5,7 @@ const event: Event<typeof Events.GuildCreate> = {
   name: Events.GuildCreate,
   async execute(client: ClientWithCommands, guild: Guild) {
     try {
-      const defaultSettings: Omit<GuildSettings, 'id' | 'createdAt' | 'updatedAt'> = {
+      const defaultSettingsData: Omit<GuildSettings, 'id' | 'createdAt' | 'updatedAt' | 'name'> = {
         prefix: client.config.defaultPrefix,
         enableLeveling: client.config.enabledFeatures.leveling,
         enableModeration: client.config.enabledFeatures.moderation,
@@ -25,6 +25,7 @@ const event: Event<typeof Events.GuildCreate> = {
         welcomeMessage: `Willkommen {user} auf **${guild.name}**!`,
         leaveMessage: `Auf Wiedersehen {user}!`,
         quarantineRoleId: null,
+        geizhalsLocation: ''
       };
 
       await client.prisma.guild.upsert({
@@ -33,16 +34,17 @@ const event: Event<typeof Events.GuildCreate> = {
         create: {
           id: guild.id,
           name: guild.name,
-          ...defaultSettings,
+          ...defaultSettingsData,
         },
       });
 
       const systemChannel = guild.systemChannel;
       if (systemChannel && systemChannel.permissionsFor(client.user!)?.has("SendMessages")) {
         await systemChannel.send(
-          `Hallo! Ich bin Pegasus, dein neuer multifunktionaler Bot. Verwende \`${defaultSettings.prefix}hilfe\` oder \`/hilfe\` für eine Befehlsübersicht.`
+          `Hallo! Ich bin Pegasus, dein neuer multifunktionaler Bot. Verwende \`${defaultSettingsData.prefix}hilfe\` oder \`/hilfe\` für eine Befehlsübersicht.`
         ).catch(console.error);
       }
+      console.log(`➕ Bot wurde zum Server hinzugefügt: <span class="math-inline">\{guild\.name\} \(</span>{guild.id}). Standardeinstellungen erstellt.`);
 
     } catch (error) {
       console.error(`Fehler beim Erstellen/Aktualisieren des Datenbankeintrags für Gilde ${guild.name}:`, error);

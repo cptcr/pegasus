@@ -14,11 +14,11 @@ const command: SlashCommand = {
         option.setName('verwarnungs_id')
         .setDescription('Die ID einer spezifischen Verwarnung, die gelöscht werden soll (optional).')
         .setRequired(false))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages), // Benötigt höhere Rechte
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
   enabled: true,
   category: 'moderation',
   async execute(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
-    if (!interaction.guildId) {
+    if (!interaction.guildId || !interaction.guild) {
         await interaction.reply({ content: 'Dieser Befehl kann nur auf einem Server verwendet werden.', ephemeral: true });
         return;
     }
@@ -42,7 +42,7 @@ const command: SlashCommand = {
             guildId: interaction.guildId,
             active: true,
           },
-          data: { active: false },
+          data: { active: false, updatedAt: new Date() },
         });
         count = result.count;
       } else {
@@ -52,7 +52,7 @@ const command: SlashCommand = {
             guildId: interaction.guildId,
             active: true,
           },
-          data: { active: false },
+          data: { active: false, updatedAt: new Date() },
         });
         count = result.count;
       }
@@ -63,20 +63,20 @@ const command: SlashCommand = {
       }
 
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00) // Grün für erfolgreiche Aktion
+        .setColor(0x00FF00)
         .setTitle('Verwarnungen Gelöscht')
         .setDescription(warningId ? `Verwarnung #${warningId} für ${targetUser.tag} wurde als inaktiv markiert.` : `Alle ${count} aktiven Verwarnungen für ${targetUser.tag} wurden als inaktiv markiert.`)
         .addFields(
-          { name: 'Benutzer', value: `${targetUser.tag} (${targetUser.id})`, inline: true },
-          { name: 'Moderator', value: `${moderator.tag} (${moderator.id})`, inline: true }
+          { name: 'Benutzer', value: `<span class="math-inline">\{targetUser\.tag\} \(</span>{targetUser.id})`, inline: true },
+          { name: 'Moderator', value: `<span class="math-inline">\{moderator\.tag\} \(</span>{moderator.id})`, inline: true }
         )
         .setTimestamp()
-        .setFooter({ text: `Aktion ausgeführt in ${interaction.guild?.name}` });
-      
+        .setFooter({ text: `Aktion ausgeführt in ${interaction.guild.name}` });
+
       await interaction.reply({ embeds: [embed] });
 
        if (guildSettings.modLogChannelId) {
-        const logChannel = interaction.guild!.channels.cache.get(guildSettings.modLogChannelId);
+        const logChannel = interaction.guild.channels.cache.get(guildSettings.modLogChannelId);
         if (logChannel && logChannel.isTextBased()) {
           await logChannel.send({ embeds: [embed.setTitle(warningId ? 'Verwarnung Deaktiviert' : 'Alle Verwarnungen Deaktiviert')] });
         }

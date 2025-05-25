@@ -16,7 +16,7 @@ interface ActiveGiveaway {
   timer?: NodeJS.Timeout;
 }
 
-const activeGiveaways = new Map<string, ActiveGiveaway>(); // Key: messageId
+const activeGiveaways = new Map<string, ActiveGiveaway>();
 
 async function endGiveaway(client: ClientWithCommands, giveaway: ActiveGiveaway) {
   if (giveaway.ended) return;
@@ -47,8 +47,8 @@ async function endGiveaway(client: ClientWithCommands, giveaway: ActiveGiveaway)
         ? `Herzlichen Glückwunsch an ${winners.map(w => `<@${w}>`).join(', ')}! Ihr habt gewonnen: **${giveaway.prize}**`
         : 'Leider gab es keine Teilnehmer oder nicht genügend, um alle Gewinner zu ziehen.'
     )
-    .setColor(0xAAAAAA) // Grau für beendet
-    .setFields([]) // Entferne alte Felder
+    .setColor(0xAAAAAA)
+    .setFields([])
     .addFields({ name: 'Gewinner', value: winners.length > 0 ? winners.map(w => `<@${w}>`).join('\n') : 'Keine Gewinner' })
     .setTimestamp();
 
@@ -72,7 +72,7 @@ async function endGiveaway(client: ClientWithCommands, giveaway: ActiveGiveaway)
   activeGiveaways.delete(giveaway.messageId);
   await client.prisma.giveaway.updateMany({
     where: { messageId: giveaway.messageId, guildId: giveaway.guildId },
-    data: { ended: true, active: false, winners: winners }
+    data: { ended: true, active: false, winners: winners.length }
   });
 }
 
@@ -85,7 +85,6 @@ const giveawaysFeature: Feature = {
       return;
     }
 
-    // Bestehende aktive Giveaways aus der DB laden und Timer neu starten
     const existingGiveaways = await client.prisma.giveaway.findMany({
         where: { ended: false, active: true }
     });
@@ -97,26 +96,25 @@ const giveawaysFeature: Feature = {
                 channelId: dbGiveaway.channelId,
                 guildId: dbGiveaway.guildId,
                 prize: dbGiveaway.prize,
-                winnerCount: dbGiveaway.winnersCount,
+                winnerCount: dbGiveaway.winners,
                 endTime: dbGiveaway.endTime.getTime(),
-                participants: new Set(dbGiveaway.entries),
+                participants: new Set((dbGiveaway as any).entries || []),
                 creatorId: dbGiveaway.creatorId,
                 ended: false,
             };
             giveawayData.timer = setTimeout(() => endGiveaway(client, giveawayData), dbGiveaway.endTime.getTime() - Date.now());
             activeGiveaways.set(dbGiveaway.messageId!, giveawayData);
         } else {
-            // Giveaway ist abgelaufen, während der Bot offline war
             endGiveaway(client, {
                 messageId: dbGiveaway.messageId!,
                 channelId: dbGiveaway.channelId,
                 guildId: dbGiveaway.guildId,
                 prize: dbGiveaway.prize,
-                winnerCount: dbGiveaway.winnersCount,
+                winnerCount: dbGiveaway.winners,
                 endTime: dbGiveaway.endTime.getTime(),
-                participants: new Set(dbGiveaway.entries),
+                participants: new Set((dbGiveaway as any).entries || []),
                 creatorId: dbGiveaway.creatorId,
-                ended: true, // Markiere als beendet, damit es verarbeitet wird
+                ended: true,
             });
         }
     }
@@ -144,11 +142,10 @@ const giveawaysFeature: Feature = {
         giveaway.participants.add(interaction.user.id);
         await interaction.reply({ content: 'Du nimmst jetzt am Giveaway teil! Viel Glück!', ephemeral: true });
       }
-      
-      // Update participant count on the button
+
       const message = await interaction.channel?.messages.fetch(messageId).catch(() => null);
       if (message) {
-          const row = message.components[0] as ActionRowBuilder<ButtonBuilder>;
+          const row = message.components[0] as unknown as ActionRowBuilder<ButtonBuilder>;
           if (row && row.components[0]) {
             const newButton = ButtonBuilder.from(row.components[0])
                                 .setLabel(`Teilnehmen (${giveaway.participants.size})`);
@@ -156,8 +153,17 @@ const giveawaysFeature: Feature = {
             await message.edit({ components: [newRow] }).catch(console.error);
 
              await client.prisma.giveaway.update({
-                where: { messageId_guildId: { messageId, guildId: interaction.guildId } },
-                data: { entries: Array.from(giveaway.participants) }
+                where: { id: parseInt(messageId) },
+                data: { 
+                    entries: {
+                        set: Array.from(giveaway.participants).map(participant => ({
+                            giveawayId_userId: {
+                                giveawayId: parseInt(messageId),
+                                userId: participant
+                            }
+                        }))
+                    }
+                }
             }).catch(console.error);
           }
       }
@@ -176,3 +182,5 @@ export { activeGiveaways, endGiveaway, setActiveGiveawaysMapEntry };
 function setActiveGiveawaysMapEntry(messageId: string, data: ActiveGiveaway) {
     activeGiveaways.set(messageId, data);
 }
+
+export default giveawaysFeature;

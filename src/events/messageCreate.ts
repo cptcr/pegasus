@@ -13,9 +13,9 @@ const event: Event<typeof Events.MessageCreate> = {
         guildSettings = await getGuildSettings(message.guild.id, client);
     } catch (error) {
         console.error(`Fehler beim Abrufen der Gildeneinstellungen für ${message.guild.id}:`, error);
-        guildSettings = { prefix: client.config.defaultPrefix };
+        guildSettings = { prefix: client.config.defaultPrefix, enableModeration: false, enableLeveling: false, enableGeizhals: false, enablePolls: false, enableGiveaways: false, enableAutomod: false, enableTickets: false, enableMusic: false, enableJoinToCreate: false, name: message.guild.name, id: message.guild.id, createdAt: new Date(), updatedAt: new Date() };
     }
-    
+
     const prefix = guildSettings?.prefix || client.config.defaultPrefix;
 
     if (!message.content.startsWith(prefix)) return;

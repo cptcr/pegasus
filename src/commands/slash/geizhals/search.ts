@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { ClientWithCommands } from '../../../types';
 import { getGuildSettings } from '../../../utils/guildSettings';
-import GeizhalsAPI from '../../../../geizhals'; // Adjust path as necessary
+import Geizhals, { LocationCode } from '../../../../geizhals/index';
 
 export async function executeSuche(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
     if (!interaction.guildId) {
@@ -13,7 +13,7 @@ export async function executeSuche(interaction: ChatInputCommandInteraction, cli
         await interaction.reply({ content: 'Die Geizhals-Integration ist auf diesem Server deaktiviert.', ephemeral: true });
         return;
     }
-    
+
     const produkt = interaction.options.getString('produkt', true);
     await interaction.deferReply();
 
@@ -21,10 +21,14 @@ export async function executeSuche(interaction: ChatInputCommandInteraction, cli
         await interaction.editReply('Der Geizhals API Key ist nicht konfiguriert.');
         return;
     }
-    const geizhals = new GeizhalsAPI({ apiKey: process.env.GEIZHALS_API_KEY, username: process.env.GEIZHALS_USERNAME });
+    const geizhals = new Geizhals({ apiKey: process.env.GEIZHALS_API_KEY, username: process.env.GEIZHALS_USERNAME });
 
     try {
-      const results = await geizhals.searchProducts(produkt, { limit: 5, location: guildSettings.geizhalsLocation || 'de' });
+      const validLocations = ['de', 'at', 'uk', 'us'] as const;
+      const location = validLocations.includes(guildSettings.geizhalsLocation as (typeof validLocations)[number])
+        ? guildSettings.geizhalsLocation as (typeof validLocations)[number]
+        : undefined;
+      const results = await geizhals.searchProducts(produkt, { limit: 5, location: location as LocationCode | undefined });
 
       if (results.error || !results.response || results.response.length === 0) {
         await interaction.editReply(`Keine Produkte für "${produkt}" gefunden oder ein Fehler ist aufgetreten: ${results.error?.error || 'Unbekannter Fehler'}.`);
@@ -32,16 +36,16 @@ export async function executeSuche(interaction: ChatInputCommandInteraction, cli
       }
 
       const embed = new EmbedBuilder()
-        .setColor(0xFFA500) // Orange
+        .setColor(0xFFA500)
         .setTitle(`Geizhals Suchergebnisse für "${produkt}"`)
         .setTimestamp();
-        
+
       results.response.slice(0, 5).forEach(p => {
         const bestOffer = p.offers && p.offers.length > 0 ? p.offers[0].shop : null;
-        embed.addFields({ 
-            name: p.name.substring(0, 250), 
-            value: `Bester Preis: **${bestOffer?.price?.amount || 'N/A'} ${bestOffer?.price?.currency || ''}** bei ${bestOffer?.name || 'Unbekannt'}\n[Link](${p.urls?.overview || '#'})`,
-            inline: false 
+        embed.addFields({
+            name: p.name.substring(0, 250),
+            value: `Bester Preis: **${bestOffer?.price?.amount || 'N/V'} ${bestOffer?.price?.currency || ''}** bei ${bestOffer?.name || 'Unbekannt'}\n[Link](${p.urls?.overview || '#'})`,
+            inline: false
         });
       });
       if (results.response.length > 5) {

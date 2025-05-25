@@ -1,18 +1,11 @@
-// src/utils/cooldown.ts
 import { Collection } from 'discord.js';
-import { ClientWithCommands, CooldownConfig } from '../types';
+import { ClientWithCommands } from '../types';
 
-/**
- * Handhabt Cooldowns für Befehle.
- * @param cooldownConfig Konfiguration für den Cooldown-Check.
- * @param client Der erweiterte Discord-Client.
- * @returns Ein Objekt, das angibt, ob der Benutzer im Cooldown ist und die verbleibende Zeit.
- */
 export function handleCooldown(
   cooldownConfig: {
     userId: string;
     commandName: string;
-    cooldownAmount: number; // in Sekunden
+    cooldownAmount: number;
   },
   client: ClientWithCommands
 ): { onCooldown: boolean; remainingTime: number } {
@@ -23,7 +16,7 @@ export function handleCooldown(
   }
 
   const now = Date.now();
-  const timestamps = client.cooldowns.get(commandName)!; // Non-null assertion, da wir es oben setzen
+  const timestamps = client.cooldowns.get(commandName)!;
   const cooldownDurationMs = cooldownAmount * 1000;
 
   const userTimestamp = timestamps.get(userId);
@@ -36,7 +29,6 @@ export function handleCooldown(
     }
   }
 
-  // Setzt den neuen Timestamp und entfernt ihn nach Ablauf des Cooldowns
   timestamps.set(userId, now);
   setTimeout(() => timestamps.delete(userId), cooldownDurationMs);
 

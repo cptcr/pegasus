@@ -12,7 +12,11 @@ const command: SlashCommand = {
   enabled: true,
   category: 'level',
   async execute(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
-    const guildSettings = await client.prisma.guild.findUnique({ where: { id: interaction.guildId! } });
+    if (!interaction.guildId) {
+      await interaction.reply({ content: 'Dieser Befehl kann nur auf einem Server verwendet werden.', ephemeral: true });
+      return;
+    }
+    const guildSettings = await client.prisma.guild.findUnique({ where: { id: interaction.guildId } });
     if (!guildSettings?.enableLeveling) {
         await interaction.reply({ content: 'Das Levelsystem ist auf diesem Server deaktiviert.', ephemeral: true });
         return;
@@ -24,7 +28,7 @@ const command: SlashCommand = {
       where: {
         userId_guildId: {
           userId: targetUser.id,
-          guildId: interaction.guildId!,
+          guildId: interaction.guildId,
         },
       },
     });

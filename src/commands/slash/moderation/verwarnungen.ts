@@ -35,7 +35,7 @@ const command: SlashCommand = {
       const warnings = await client.prisma.warn.findMany({
         where: whereClause,
         orderBy: { createdAt: 'desc' },
-        take: targetUser ? 25 : 10, // Mehr anzeigen, wenn ein Benutzer angegeben ist
+        take: targetUser ? 25 : 10,
         include: {
           user: { select: { username: true } },
           moderator: { select: { username: true } }
@@ -55,7 +55,7 @@ const command: SlashCommand = {
       warnings.forEach(warn => {
         embed.addFields({
           name: `Verwarnung #${warn.id} (Benutzer: ${warn.user.username})`,
-          value: `**Grund:** ${warn.reason}\n**Moderator:** ${warn.moderator.username}\n**Datum:** <t:${Math.floor(new Date(warn.createdAt).getTime() / 1000)}:R>`,
+          value: `**Grund:** ${warn.reason}\n**Moderator:** <span class="math-inline">\{warn\.moderator\.username\}\\n\*\*Datum\:\*\* <t\:</span>{Math.floor(new Date(warn.createdAt).getTime() / 1000)}:R>`,
           inline: false
         });
       });
@@ -64,7 +64,7 @@ const command: SlashCommand = {
         embed.setFooter({ text: `Zeige die letzten ${targetUser ? 25 : 10} Verwarnungen.` });
       }
 
-      await interaction.reply({ embeds: [embed], ephemeral: !targetUser }); // Öffentlich, wenn alle Warnungen angezeigt werden
+      await interaction.reply({ embeds: [embed], ephemeral: !targetUser });
 
     } catch (error) {
       console.error('Fehler beim Abrufen der Verwarnungen:', error);

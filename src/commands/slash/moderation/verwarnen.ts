@@ -14,11 +14,11 @@ const command: SlashCommand = {
       option.setName('grund')
         .setDescription('Der Grund für die Verwarnung.')
         .setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers), // Nur Mitglieder mit Kick-Rechten
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
   enabled: true,
   category: 'moderation',
   async execute(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
-    if (!interaction.guildId) {
+    if (!interaction.guildId || !interaction.guild) {
         await interaction.reply({ content: 'Dieser Befehl kann nur auf einem Server verwendet werden.', ephemeral: true });
         return;
     }
@@ -42,12 +42,11 @@ const command: SlashCommand = {
         return;
     }
 
-    const targetMember = interaction.guild!.members.cache.get(targetUser.id) as GuildMember | undefined;
+    const targetMember = interaction.guild.members.cache.get(targetUser.id) as GuildMember | undefined;
     if (targetMember && targetMember.permissions.has(PermissionFlagsBits.Administrator)) {
         await interaction.reply({ content: 'Administratoren können nicht verwarnt werden.', ephemeral: true });
         return;
     }
-
 
     try {
       const warning = await client.prisma.warn.create({
@@ -61,7 +60,7 @@ const command: SlashCommand = {
       });
 
       const embed = new EmbedBuilder()
-        .setColor(0xFFCC00) // Gelb für Verwarnung
+        .setColor(0xFFCC00)
         .setTitle('Benutzer Verwarnt')
         .setDescription(`${targetUser.tag} wurde verwarnt.`)
         .addFields(
@@ -71,18 +70,18 @@ const command: SlashCommand = {
           { name: 'Verwarnungs-ID', value: warning.id.toString(), inline: true }
         )
         .setTimestamp()
-        .setFooter({ text: `Aktion ausgeführt in ${interaction.guild?.name}` });
+        .setFooter({ text: `Aktion ausgeführt in ${interaction.guild.name}` });
 
       await interaction.reply({ embeds: [embed] });
 
       try {
-        await targetUser.send(`Du wurdest auf dem Server **${interaction.guild?.name}** verwarnt.\n**Grund:** ${reason}`);
+        await targetUser.send(`Du wurdest auf dem Server **${interaction.guild.name}** verwarnt.\n**Grund:** ${reason}`);
       } catch (dmError) {
         await interaction.followUp({ content: `Konnte den Benutzer nicht per DM benachrichtigen.`, ephemeral: true });
       }
 
       if (guildSettings.modLogChannelId) {
-        const logChannel = interaction.guild!.channels.cache.get(guildSettings.modLogChannelId);
+        const logChannel = interaction.guild.channels.cache.get(guildSettings.modLogChannelId);
         if (logChannel && logChannel.isTextBased()) {
           await logChannel.send({ embeds: [embed.setTitle('Neuer Verwarnungseintrag')] });
         }

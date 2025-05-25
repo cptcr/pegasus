@@ -23,11 +23,11 @@ const command: SlashCommand = {
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)
       .setTitle(`Serverinformationen für ${guild.name}`)
-      .setThumbnail(guild.iconURL({ dynamic: true }))
+      .setThumbnail(guild.iconURL({ extension: 'png', size: 1024 }))
       .addFields(
-        { name: 'Server Name', value: guild.name, inline: true },
+        { name: 'Servername', value: guild.name, inline: true },
         { name: 'Server ID', value: guild.id, inline: true },
-        { name: 'Besitzer', value: `${owner.user.tag} (${owner.id})`, inline: true },
+        { name: 'Besitzer', value: `<span class="math-inline">\{owner\.user\.tag\} \(</span>{owner.id})`, inline: true },
         { name: 'Mitglieder', value: `Gesamt: ${guild.memberCount}\nNutzer: ${guild.members.cache.filter(member => !member.user.bot).size}\nBots: ${guild.members.cache.filter(member => member.user.bot).size}`, inline: true },
         { name: 'Kanäle', value: `Text: ${guild.channels.cache.filter(c => c.isTextBased() && !c.isThread()).size}\nVoice: ${guild.channels.cache.filter(c => c.isVoiceBased()).size}\nKategorien: ${guild.channels.cache.filter(c => c.type === 4).size}`, inline: true },
         { name: 'Rollen', value: guild.roles.cache.size.toString(), inline: true },

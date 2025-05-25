@@ -324,27 +324,14 @@ model TicketCategory {
 }
 
 model Ticket {
-  id          Int            @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   guildId     String
-  channelId   String
   userId      String
-  moderatorId String?
-  categoryId  Int?
-  category    String         @default("general")
-  subject     String
-  status      TicketStatus   @default(OPEN)
-  priority    TicketPriority @default(MEDIUM)
+  channelId   String
+  status      String
   closedAt    DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  // Relationen
-  guild          Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  user           User            @relation("TicketUser", fields: [userId], references: [id])
-  moderator      User?           @relation("TicketModerator", fields: [moderatorId], references: [id])
-  ticketCategory TicketCategory? @relation(fields: [categoryId], references: [id])
-
-  @@map("tickets")
+  moderatorId String?
+  closeReason String?  // Added field for close reason
 }
 
 // Custom Commands

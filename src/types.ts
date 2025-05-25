@@ -94,6 +94,7 @@ export interface CooldownConfig {
 }
 
 export interface GuildSettings {
+  geizhalsLocation: string;
   id: string;
   name: string; // Added name to GuildSettings for consistency
   prefix: string;

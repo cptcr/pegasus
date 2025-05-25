@@ -1,9 +1,9 @@
 import { ClientWithCommands, Feature } from '../../types';
-import { Events, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, PermissionsBitField, OverwriteResolvable, ChannelType, GuildMember } from 'discord.js';
+import { Events, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, PermissionsBitField, OverwriteResolvable, ChannelType, GuildMember, User } from 'discord.js';
 import { getGuildSettings } from '../../utils/guildSettings';
 
-const TICKET_CATEGORY_NAME_PREFIX = "Support Tickets"; // Or load from config/db
-const TICKET_LOG_ACTION_COLOR = 0x00BFFF; // DeepSkyBlue
+const TICKET_CATEGORY_NAME_PREFIX = "Support Tickets";
+const TICKET_LOG_ACTION_COLOR = 0x00BFFF;
 
 async function logTicketAction(client: ClientWithCommands, guildId: string, title: string, user: User, ticketChannel: TextChannel, moderator?: User, reason?: string, fields?: {name: string, value: string}[]) {
     const settings = await getGuildSettings(guildId, client);
@@ -13,10 +13,10 @@ async function logTicketAction(client: ClientWithCommands, guildId: string, titl
             const embed = new EmbedBuilder()
                 .setColor(TICKET_LOG_ACTION_COLOR)
                 .setTitle(title)
-                .setDescription(`Ticket: ${ticketChannel.toString()} (${ticketChannel.name})`)
+                .setDescription(`Ticket: <span class="math-inline">\{ticketChannel\.toString\(\)\} \(</span>{ticketChannel.name})`)
                 .addFields(
-                    { name: 'Benutzer', value: `${user.tag} (${user.id})`, inline: true },
-                    ...(moderator ? [{ name: 'Bearbeiter', value: `${moderator.tag} (${moderator.id})`, inline: true }] : []),
+                    { name: 'Benutzer', value: `<span class="math-inline">\{user\.tag\} \(</span>{user.id})`, inline: true },
+                    ...(moderator ? [{ name: 'Bearbeiter', value: `<span class="math-inline">\{moderator\.tag\} \(</span>{moderator.id})`, inline: true }] : []),
                     ...(reason ? [{ name: 'Grund/Details', value: reason, inline: false }] : []),
                     ...(fields || [])
                 )
@@ -49,7 +49,7 @@ const ticketsFeature: Feature = {
             await interaction.reply({ content: 'Ungültige Ticket-ID.', ephemeral: true });
             return;
         }
-        
+
         const ticketRecord = await client.prisma.ticket.findUnique({
             where: { id: ticketId, guildId: interaction.guildId }
         });
@@ -63,7 +63,7 @@ const ticketsFeature: Feature = {
             await interaction.reply({ content: 'Dieses Ticket ist bereits geschlossen.', ephemeral: true });
             return;
         }
-        
+
         const member = interaction.member as GuildMember;
         const canClose = member.permissions.has(PermissionsBitField.Flags.ManageChannels) || ticketRecord.userId === interaction.user.id;
 
@@ -71,12 +71,11 @@ const ticketsFeature: Feature = {
             await interaction.reply({ content: 'Du bist nicht berechtigt, dieses Ticket zu schließen.', ephemeral: true });
             return;
         }
-        
+
         const ticketChannel = interaction.guild.channels.cache.get(ticketRecord.channelId) as TextChannel | undefined;
 
         if (!ticketChannel) {
             await interaction.reply({ content: 'Der Kanal für dieses Ticket konnte nicht gefunden werden. Möglicherweise wurde er manuell gelöscht.', ephemeral: true });
-            // Ticket in DB trotzdem als geschlossen markieren
              await client.prisma.ticket.update({
                 where: { id: ticketId },
                 data: { status: 'CLOSED', closedAt: new Date(), moderatorId: interaction.user.id },
@@ -93,14 +92,12 @@ const ticketsFeature: Feature = {
             .setLabel("Grund für das Schließen (optional)")
             .setStyle(TextInputStyle.Paragraph)
             .setRequired(false);
-        
+
         const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(reasonInput);
         modal.addComponents(firstActionRow);
 
         await interaction.showModal(modal);
 
-      } else if (interaction.customId.startsWith('confirm_close_ticket_')) {
-          // This part is now handled by the modal submission below
       } else if (interaction.customId.startsWith('reopen_ticket_')) {
           const ticketIdString = interaction.customId.split('_')[2];
           const ticketId = parseInt(ticketIdString);
@@ -123,7 +120,7 @@ const ticketsFeature: Feature = {
             await interaction.reply({content: 'Ticket-Kanal nicht gefunden.', ephemeral: true});
             return;
           }
-          
+
           await client.prisma.ticket.update({
               where: { id: ticketId },
               data: { status: 'OPEN', closedAt: null, moderatorId: null }
@@ -138,7 +135,7 @@ const ticketsFeature: Feature = {
             .setDescription(`Dieses Ticket wurde von ${interaction.user.tag} wiedereröffnet.`)
             .setTimestamp();
           await ticketChannel.send({embeds: [reopenEmbed]});
-          
+
           const row = new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(
                     new ButtonBuilder()
@@ -147,7 +144,7 @@ const ticketsFeature: Feature = {
                         .setStyle(ButtonStyle.Danger)
                         .setEmoji('🔒')
                 );
-          await interaction.message?.edit({ components: [row]}); // Edit the "Ticket Geschlossen" message
+          await interaction.message?.edit({ components: [row]});
           await interaction.reply({content: 'Ticket wurde wiedereröffnet.', ephemeral: true});
 
            logTicketAction(client, interaction.guildId, 'Ticket Wiedereröffnet', interaction.user, ticketChannel, interaction.user);
@@ -172,7 +169,7 @@ const ticketsFeature: Feature = {
                 await interaction.reply({ content: 'Ticket nicht gefunden.', ephemeral: true });
                 return;
             }
-            
+
             const ticketChannel = interaction.guild.channels.cache.get(ticketRecord.channelId) as TextChannel | undefined;
              if (!ticketChannel) {
                 await interaction.reply({ content: 'Der Kanal für dieses Ticket konnte nicht gefunden werden. Es wird in der Datenbank als geschlossen markiert.', ephemeral: true });
@@ -187,7 +184,7 @@ const ticketsFeature: Feature = {
                 where: { id: ticketId },
                 data: { status: 'CLOSED', closedAt: new Date(), moderatorId: interaction.user.id, closeReason: reason },
             });
-            
+
             await interaction.reply({ content: 'Ticket wird geschlossen...', ephemeral: true });
 
             const closeEmbed = new EmbedBuilder()
@@ -202,7 +199,6 @@ const ticketsFeature: Feature = {
             setTimeout(async () => {
                  try {
                     await ticketChannel.setName(`geschlossen-${ticketChannel.name.replace(/^ticket-\d+-/, '')}`.substring(0,100));
-                    // Nur dem Ersteller und Admins erlauben, den Kanal zu sehen
                     const overwrites: OverwriteResolvable[] = [
                         {
                             id: interaction.guild!.roles.everyone,
@@ -213,7 +209,6 @@ const ticketsFeature: Feature = {
                             allow: [PermissionsBitField.Flags.ViewChannel],
                             deny: [PermissionsBitField.Flags.SendMessages],
                         },
-                         // Erlaube Admins weiterhin Zugriff
                         ...interaction.guild!.roles.cache
                             .filter(role => role.permissions.has(PermissionsBitField.Flags.Administrator))
                             .map(role => ({ id: role.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }))
@@ -234,7 +229,6 @@ const ticketsFeature: Feature = {
                     console.error("Fehler beim Ändern des Ticket-Kanals:", channelError);
                 }
             }, 3000);
-
 
             logTicketAction(client, interaction.guildId, 'Ticket Geschlossen', interaction.user, ticketChannel, interaction.user, reason);
         }
