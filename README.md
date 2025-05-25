@@ -1,220 +1,224 @@
-# Hinko Discord Bot v2.0.0
+# Pegasus Discord Bot v2.0.0
 
-A comprehensive Discord bot with leveling system, moderation tools, web dashboard, and advanced features.
+Ein umfassender Discord-Bot mit Levelsystem, Moderationswerkzeugen, Web-Dashboard und erweiterten Funktionen.
 
-## 🚀 Features
+## 🚀 Funktionen
 
-- **Leveling System**: XP tracking for messages and voice activity
-- **Moderation Tools**: Warnings, quarantine, automod
-- **Web Dashboard**: Real-time management interface
-- **Geizhals Integration**: Price tracking for hardware
-- **Poll System**: Interactive community voting
-- **Giveaway System**: Automated contests
-- **Ticket System**: Support ticket management
-- **Custom Commands**: Guild-specific commands
-- **Join-to-Create**: Temporary voice channels
-- **Real-time Updates**: WebSocket-powered dashboard
+* **Levelsystem**: XP-Verfolgung für Nachrichten und Sprachaktivität
+* **Moderationswerkzeuge**: Verwarnungen, Quarantäne, Automod
+* **Web-Dashboard**: Echtzeit-Verwaltungsoberfläche
+* **Geizhals-Integration**: Preisverfolgung für Hardware
+* **Umfragesystem**: Interaktive Community-Abstimmungen
+* **Geschenksystem**: Automatisierte Wettbewerbe
+* **Ticketsystem**: Verwaltung von Support-Tickets
+* **Benutzerdefinierte Befehle**: Gildenspezifische Befehle
+* **Join-to-Create**: Temporäre Sprachkanäle
+* **Echtzeit-Updates**: WebSocket-gestütztes Dashboard
 
-## 📋 Prerequisites
+## 📋 Voraussetzungen
 
-- Node.js 18+
-- PostgreSQL 12+
-- Discord Application with Bot Token
-- (Optional) Redis for caching
-- (Optional) Geizhals API access
+* Node.js 18+
+* PostgreSQL 12+
+* Discord-Anwendung mit Bot-Token
+* (Optional) Redis für Caching
+* (Optional) Geizhals API-Zugang
 
 ## 🛠️ Installation
 
-### Quick Start with Docker
+### Schnellstart mit Docker
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/hinko-discord-bot.git
-   cd hinko-discord-bot
-   ```
+1.  **Repository klonen**
+    ```bash
+    git clone [https://github.com/cptcr/pegasus](https://github.com/cptcr/pegasus)
+    cd pegasus
+    ```
+2.  **Umgebung konfigurieren**
+    ```bash
+    cp .env.example .env
+    # .env mit Ihrer Konfiguration bearbeiten
+    ```
+3.  **Mit Docker Compose starten**
+    ```bash
+    docker-compose up -d
+    ```
 
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+### Manuelle Installation
 
-3. **Start with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
+1.  **Klonen und Abhängigkeiten installieren**
+    ```bash
+    git clone [https://github.com/cptcr/pegasus](https://github.com/cptcr/pegasus)
+    cd hinko-discord-bot
+    npm install
+    cd dashboard && npm install && cd ..
+    ```
+2.  **Datenbank einrichten**
+    ```bash
+    # PostgreSQL-Datenbank erstellen
+    createdb hinko_bot
+    
+    # Migrationen ausführen
+    npm run db:push
+    ```
+3.  **Umgebung konfigurieren**
+    ```bash
+    cp .env.example .env
+    # .env mit Ihrem Discord-Bot-Token und Ihrer Datenbank-URL bearbeiten
+    ```
+4.  **Bauen und starten**
+    ```bash
+    npm run build
+    npm start
+    ```
 
-### Manual Installation
+## 🔧 Konfiguration
 
-1. **Clone and install dependencies**
-   ```bash
-   git clone https://github.com/yourusername/hinko-discord-bot.git
-   cd hinko-discord-bot
-   npm install
-   cd dashboard && npm install && cd ..
-   ```
-
-2. **Set up database**
-   ```bash
-   # Create PostgreSQL database
-   createdb hinko_bot
-   
-   # Run migrations
-   npm run db:push
-   ```
-
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Discord bot token and database URL
-   ```
-
-4. **Build and start**
-   ```bash
-   npm run build
-   npm start
-   ```
-
-## 🔧 Configuration
-
-### Required Environment Variables
+### Erforderliche Umgebungsvariablen
 
 ```env
 # Discord Bot
-DISCORD_BOT_TOKEN="your_bot_token"
-DISCORD_CLIENT_ID="your_client_id"
-DISCORD_CLIENT_SECRET="your_client_secret"
+DISCORD_BOT_TOKEN="dein_bot_token"
+DISCORD_CLIENT_ID="deine_client_id"
+DISCORD_CLIENT_SECRET="dein_client_secret"
 
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/hinko_bot"
+# Datenbank
+DATABASE_URL="postgresql://benutzer:passwort@localhost:5432/hinko_bot"
 
-# Dashboard Security
-ADMIN_USER_ID="your_discord_user_id"
-TARGET_GUILD_ID="your_discord_guild_id"
-NEXTAUTH_SECRET="random_secret_key"
-```
+# Dashboard-Sicherheit
+ADMIN_USER_ID="deine_discord_benutzer_id"
+TARGET_GUILD_ID="deine_discord_gilden_id"
+NEXTAUTH_SECRET="zufaelliger_geheimer_schluessel"
+````
 
-### Discord Application Setup
+### Discord-Anwendung einrichten
 
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application
-3. Go to "Bot" section and create a bot
-4. Copy the bot token to `DISCORD_BOT_TOKEN`
-5. Go to "OAuth2" section and copy Client ID and Secret
-6. Add redirect URI: `http://localhost:3001/api/auth/callback/discord`
+1.  Gehen Sie zum [Discord Developer Portal](https://discord.com/developers/applications)
+2.  Erstellen Sie eine neue Anwendung
+3.  Gehen Sie zum Abschnitt "Bot" und erstellen Sie einen Bot
+4.  Kopieren Sie das Bot-Token in `DISCORD_BOT_TOKEN`
+5.  Gehen Sie zum Abschnitt "OAuth2" und kopieren Sie Client-ID und Secret
+6.  Fügen Sie eine Weiterleitungs-URI hinzu: `http://localhost:3001/api/auth/callback/discord`
 
-### Bot Permissions
+### Bot-Berechtigungen
 
-The bot requires the following permissions:
-- Manage Messages
-- Manage Roles
-- Manage Channels
-- View Channels
-- Send Messages
-- Embed Links
-- Attach Files
-- Read Message History
-- Use External Emojis
-- Add Reactions
-- Connect (Voice)
-- Move Members (Voice)
+Der Bot benötigt die folgenden Berechtigungen:
 
-**Permission Integer**: `8589934592`
+  * Nachrichten verwalten
+  * Rollen verwalten
+  * Kanäle verwalten
+  * Kanäle anzeigen
+  * Nachrichten senden
+  * Links einbetten
+  * Dateien anhängen
+  * Nachrichtenverlauf lesen
+  * Externe Emojis verwenden
+  * Reaktionen hinzufügen
+  * Verbinden (Sprache)
+  * Mitglieder verschieben (Sprache)
+
+**Berechtigungs-Integer**: `8589934592`
 
 ## 🚀 Deployment
 
-### Production Deployment
+### Produktions-Deployment
 
-1. **Using Docker (Recommended)**
-   ```bash
-   # Build production image
-   docker build -t hinko-bot .
-   
-   # Run with docker-compose
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
+1.  **Mit Docker (Empfohlen)**
+    ```bash
+    # Produktions-Image erstellen
+    docker build -t hinko-bot .
 
-2. **Manual Deployment**
-   ```bash
-   # Set production environment
-   export NODE_ENV=production
-   
-   # Build application
-   npm run build
-   cd dashboard && npm run build && cd ..
-   
-   # Start with PM2
-   pm2 start ecosystem.config.js
-   ```
+    # Mit docker-compose ausführen
+    docker-compose -f docker-compose.prod.yml up -d
+    ```
+2.  **Manuelles Deployment**
+    ```bash
+    # Produktionsumgebung setzen
+    export NODE_ENV=production
 
-### Environment-Specific Configurations
+    # Anwendung bauen
+    npm run build
+    cd dashboard && npm run build && cd ..
 
-**Development**
+    # Mit PM2 starten
+    pm2 start ecosystem.config.js
+    ```
+
+### Umgebungsspezifische Konfigurationen
+
+**Entwicklung**
+
 ```bash
-npm run dev:concurrent  # Starts both bot and dashboard
+npm run dev:concurrent  # Startet Bot und Dashboard
 ```
 
-**Production**
+**Produktion**
+
 ```bash
-npm start  # Starts bot only
-npm run start:dashboard  # Starts dashboard only
+npm start  # Startet nur den Bot
+npm run start:dashboard  # Startet nur das Dashboard
 ```
 
-## 📊 Dashboard Features
+## 📊 Dashboard-Funktionen
 
-Access the web dashboard at `http://localhost:3001`
+Greifen Sie auf das Web-Dashboard unter `http://localhost:3001` zu
 
-- **Real-time Statistics**: Live guild metrics
-- **User Management**: Level system oversight
-- **Moderation Tools**: Warnings and quarantine management
-- **System Settings**: Feature toggles and configuration
-- **Activity Monitoring**: Recent events and analytics
+  * **Echtzeit-Statistiken**: Live-Gildenmetriken
+  * **Benutzerverwaltung**: Übersicht über das Levelsystem
+  * **Moderationswerkzeuge**: Verwaltung von Verwarnungen und Quarantäne
+  * **Systemeinstellungen**: Funktionsschalter und Konfiguration
+  * **Aktivitätsüberwachung**: Aktuelle Ereignisse und Analysen
 
-### Dashboard Authentication
+### Dashboard-Authentifizierung
 
-Only users with the specified role in the target guild can access the dashboard. Configure these in your `.env`:
+Nur Benutzer mit der angegebenen Rolle in der Zielgilde können auf das Dashboard zugreifen. Konfigurieren Sie dies in Ihrer `.env`:
 
 ```env
-ADMIN_USER_ID="your_discord_user_id"
-TARGET_GUILD_ID="your_discord_guild_id"
+ADMIN_USER_ID="deine_discord_benutzer_id"
+TARGET_GUILD_ID="deine_discord_gilden_id"
 ```
 
-## 🎮 Bot Commands
+## 🎮 Bot-Befehle
 
-### Utility Commands
-- `/ping` - Bot latency and status
-- `/help` - Command help system
-- `/serverinfo` - Server information
+### Nützlichkeitsbefehle
 
-### Leveling Commands
-- `/level [user]` - Show user level
-- `/leaderboard` - Server leaderboard
-- `/rank [user]` - User ranking
+  * `/ping` - Bot-Latenz und Status
+  * `/hilfe` - Hilfesystem für Befehle
+  * `/serverinfo` - Serverinformationen
 
-### Moderation Commands
-- `/warn <user> <reason>` - Issue warning
-- `/warnings [user]` - View warnings
-- `/clearwarns <user>` - Clear warnings
-- `/quarantine <user> <reason>` - Quarantine user
+### Level-Befehle
 
-### Community Commands
-- `/poll create` - Create poll
-- `/giveaway create` - Create giveaway
-- `/ticket create` - Create support ticket
+  * `/level [benutzer]` - Benutzerlevel anzeigen
+  * `/rangliste` - Server-Rangliste
+  * `/rang [benutzer]` - Benutzerrang
 
-### Geizhals Commands (if enabled)
-- `/geizhals search <product>` - Search products
-- `/geizhals track <product> <price>` - Track price
-- `/geizhals deals [category]` - Show deals
+### Moderationsbefehle
 
-## 🔧 API Endpoints
+  * `/verwarnen <benutzer> <grund>` - Verwarnung aussprechen
+  * `/verwarnungen [benutzer]` - Verwarnungen anzeigen
+  * `/verwarnungenloeschen <benutzer>` - Verwarnungen löschen
+  * `/quarantaene <benutzer> <grund>` - Benutzer in Quarantäne versetzen
 
-### Health Check
+### Community-Befehle
+
+  * `/umfrage erstellen` - Umfrage erstellen
+  * `/geschenk erstellen` - Geschenk erstellen
+  * `/ticket erstellen` - Support-Ticket erstellen
+
+### Geizhals-Befehle (falls aktiviert)
+
+  * `/geizhals suche <produkt>` - Produkte suchen
+  * `/geizhals verfolgen <produkt> <preis>` - Preis verfolgen
+  * `/geizhals deals [kategorie]` - Angebote anzeigen
+
+## 🔧 API-Endpunkte
+
+### Zustandsprüfung
+
 ```
 GET /health
 ```
 
-### Dashboard API
+### Dashboard-API
+
 ```
 GET /api/dashboard/guild/{guildId}
 GET /api/dashboard/stats/{guildId}
@@ -222,247 +226,251 @@ GET /api/dashboard/activity/{guildId}
 POST /api/dashboard/settings/{guildId}
 ```
 
-## 🏗️ Architecture
+## 🏗️ Architektur
 
-### Project Structure
+### Projektstruktur
+
 ```
 hinko-discord-bot/
 ├── src/
-│   ├── commands/           # Slash commands
-│   ├── events/            # Discord event handlers
-│   ├── lib/               # Core libraries
-│   ├── services/          # Background services
-│   └── utils/             # Utility functions
-├── dashboard/             # Next.js web dashboard
-│   ├── pages/             # Dashboard pages
-│   ├── components/        # React components
-│   ├── lib/               # Dashboard utilities
-│   └── styles/            # CSS styles
-├── prisma/                # Database schema and migrations
-├── geizhals/              # Geizhals API integration
-└── docker/                # Docker configuration
+│   ├── commands/           # Slash-Befehle
+│   ├── events/            # Discord-Event-Handler
+│   ├── lib/               # Kernbibliotheken
+│   ├── services/          # Hintergrunddienste
+│   └── utils/             # Hilfsfunktionen
+├── dashboard/             # Next.js Web-Dashboard
+│   ├── pages/             # Dashboard-Seiten
+│   ├── components/        # React-Komponenten
+│   ├── lib/               # Dashboard-Hilfsprogramme
+│   └── styles/            # CSS-Stile
+├── prisma/                # Datenbankschema und Migrationen
+├── geizhals/              # Geizhals API-Integration
+└── docker/                # Docker-Konfiguration
 ```
 
-### Technology Stack
+### Technologie-Stack
 
 **Backend**
-- Node.js + TypeScript
-- Discord.js v14
-- Prisma ORM
-- PostgreSQL
-- Socket.IO
+
+  * Node.js + TypeScript
+  * Discord.js v14
+  * Prisma ORM
+  * PostgreSQL
+  * Socket.IO
 
 **Frontend**
-- Next.js 14
-- React 18
-- TailwindCSS
-- NextAuth.js
 
-**Infrastructure**
-- Docker & Docker Compose
-- Nginx (reverse proxy)
-- Redis (caching)
-- PM2 (process management)
+  * Next.js 14
+  * React 18
+  * TailwindCSS
+  * NextAuth.js
 
-## 🔍 Monitoring & Logging
+**Infrastruktur**
 
-### Health Checks
-The bot includes comprehensive health monitoring:
+  * Docker & Docker Compose
+  * Nginx (Reverse Proxy)
+  * Redis (Caching)
+  * PM2 (Prozessmanagement)
+
+## 🔍 Überwachung & Protokollierung
+
+### Zustandsprüfungen
+
+Der Bot enthält umfassende Zustandsüberwachung:
 
 ```bash
-# Check bot health
+# Bot-Zustand prüfen
 curl http://localhost:3000/health
 
-# Check dashboard health
+# Dashboard-Zustand prüfen
 curl http://localhost:3001/api/health
 ```
 
-### Logging
-Logs are structured and include:
-- Discord events
-- Database operations
-- API requests
-- Error tracking
-- Performance metrics
+### Protokollierung
 
-### Performance Monitoring
-- Memory usage tracking
-- Database connection monitoring
-- Real-time user activity
-- Command usage analytics
+Protokolle sind strukturiert und enthalten:
 
-## 🛡️ Security Features
+  * Discord-Ereignisse
+  * Datenbankoperationen
+  * API-Anfragen
+  * Fehlerverfolgung
+  * Leistungsmetriken
 
-### Authentication
-- Discord OAuth2 integration
-- Role-based access control
-- Session management
-- CSRF protection
+### Leistungsüberwachung
 
-### Data Protection
-- Environment variable encryption
-- Database connection security
-- Input validation and sanitization
-- Rate limiting
+  * Speichernutzungsverfolgung
+  * Datenbankverbindungsüberwachung
+  * Echtzeit-Benutzeraktivität
+  * Befehlsnutzungsanalysen
 
-### Access Control
-- Guild-specific permissions
-- Admin-only dashboard access
-- Command permission checks
-- Audit logging
+## 🛡️ Sicherheitsfunktionen
 
-## 🔧 Development
+### Authentifizierung
 
-### Development Setup
+  * Discord OAuth2-Integration
+  * Rollenbasierte Zugriffskontrolle
+  * Sitzungsverwaltung
+  * CSRF-Schutz
+
+### Datenschutz
+
+  * Verschlüsselung von Umgebungsvariablen
+  * Sicherheit der Datenbankverbindung
+  * Eingabevalidierung und -bereinigung
+  * Ratenbegrenzung
+
+### Zugriffskontrolle
+
+  * Gildenspezifische Berechtigungen
+  * Admin-exklusiver Dashboard-Zugriff
+  * Befehlsberechtigungsprüfungen
+  * Audit-Protokollierung
+
+## 🔧 Entwicklung
+
+### Entwicklungseinrichtung
+
 ```bash
-# Install dependencies
+# Abhängigkeiten installieren
 npm install
 cd dashboard && npm install && cd ..
 
-# Set up database
+# Datenbank einrichten
 npm run db:generate
 npm run db:push
 
-# Start development servers
+# Entwicklungsserver starten
 npm run dev:concurrent
 ```
 
-### Database Management
+### Datenbankverwaltung
+
 ```bash
-# Generate Prisma client
+# Prisma-Client generieren
 npm run db:generate
 
-# Push schema changes
+# Schemaänderungen pushen
 npm run db:push
 
-# Create migration
+# Migration erstellen
 npm run db:migrate
 
-# Reset database
+# Datenbank zurücksetzen
 npm run db:reset
 
-# Seed database
+# Datenbank mit Seed-Daten füllen
 npm run db:seed
 ```
 
-### Code Quality
+### Code-Qualität
+
 ```bash
-# Lint code
+# Code linten
 npm run lint
 
-# Fix linting issues
+# Linting-Probleme beheben
 npm run lint:fix
 
-# Type checking
+# Typüberprüfung
 npm run type-check
 
-# Run tests
+# Tests ausführen
 npm test
 ```
 
-## 📝 Contributing
+## 📝 Mitwirken
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Ensure code quality checks pass
-6. Submit a pull request
+1.  Forken Sie das Repository
+2.  Erstellen Sie einen Feature-Branch
+3.  Machen Sie Ihre Änderungen
+4.  Fügen Sie gegebenenfalls Tests hinzu
+5.  Stellen Sie sicher, dass die Code-Qualitätsprüfungen bestehen
+6.  Senden Sie einen Pull-Request
 
-### Development Guidelines
-- Use TypeScript for type safety
-- Follow ESLint configuration
-- Write meaningful commit messages
-- Document new features
-- Test your changes thoroughly
+### Entwicklungsrichtlinien
 
-## 🚨 Troubleshooting
+  * Verwenden Sie TypeScript für Typsicherheit
+  * Folgen Sie der ESLint-Konfiguration
+  * Schreiben Sie aussagekräftige Commit-Nachrichten
+  * Dokumentieren Sie neue Funktionen
+  * Testen Sie Ihre Änderungen gründlich
 
-### Common Issues
+## 🚨 Fehlerbehebung
 
-**Bot not responding to commands**
-- Check bot token is correct
-- Verify bot has necessary permissions
-- Ensure bot is in the target guild
-- Check database connection
+### Häufige Probleme
 
-**Dashboard not loading**
-- Verify NextAuth configuration
-- Check Discord OAuth2 settings
-- Ensure user has required role
-- Check console for errors
+**Bot reagiert nicht auf Befehle**
 
-**Database connection issues**
-- Verify DATABASE_URL format
-- Check PostgreSQL is running
-- Ensure database exists
-- Check firewall settings
+  * Überprüfen Sie, ob das Bot-Token korrekt ist
+  * Stellen Sie sicher, dass der Bot die erforderlichen Berechtigungen hat
+  * Stellen Sie sicher, dass der Bot in der Zielgilde ist
+  * Überprüfen Sie die Datenbankverbindung
 
-**Permission errors**
-- Verify bot permissions in Discord
-- Check role hierarchy
-- Ensure bot role is above target roles
-- Verify channel permissions
+**Dashboard lädt nicht**
 
-### Debug Mode
-Enable debug logging:
+  * Überprüfen Sie die NextAuth-Konfiguration
+  * Überprüfen Sie die Discord OAuth2-Einstellungen
+  * Stellen Sie sicher, dass der Benutzer die erforderliche Rolle hat
+  * Überprüfen Sie die Konsole auf Fehler
+
+**Datenbankverbindungsprobleme**
+
+  * Überprüfen Sie das `DATABASE_URL`-Format
+  * Überprüfen Sie, ob PostgreSQL läuft
+  * Stellen Sie sicher, dass die Datenbank existiert
+  * Überprüfen Sie die Firewall-Einstellungen
+
+**Berechtigungsfehler**
+
+  * Überprüfen Sie die Bot-Berechtigungen in Discord
+  * Überprüfen Sie die Rollenhierarchie
+  * Stellen Sie sicher, dass die Bot-Rolle über den Zielrollen liegt
+  * Überprüfen Sie die Kanalberechtigungen
+
+### Debug-Modus
+
+Debug-Protokollierung aktivieren:
+
 ```env
 DEBUG=true
 LOG_LEVEL=debug
 ```
+## 📄 Lizenz
 
-### Getting Help
-- Check the [Issues](https://github.com/yourusername/hinko-discord-bot/issues) page
-- Join our [Discord Server](https://discord.gg/your-server)
-- Read the [Wiki](https://github.com/yourusername/hinko-discord-bot/wiki)
+Dieses Projekt ist unter der Apache-2.0-Lizenz lizenziert - siehe die [LICENSE](https://github.com/cptcr/pegasus?tab=Apache-2.0-1-ov-file)-Datei für Details.
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Discord.js community
-- Prisma team
-- Next.js team
-- All contributors
+## 🙏 Thanks
+  * Discord.js | https://discord.js.org/
+  * Prisma  | https://www.prisma.io/
+  * Next.js/Vercel | https://nextjs.org/
+  * Neon Inc. | https://neon.tech/
 
 ## 🔄 Changelog
 
-### v2.0.0 (Current)
-- Complete rewrite in TypeScript
-- Web dashboard with real-time updates
-- Enhanced leveling system
-- Improved moderation tools
-- Docker support
-- Performance optimizations
-
-### v1.0.0
-- Initial release
-- Basic bot functionality
-- Level system
-- Simple moderation
+### v2.0.0 (Aktuell)
+  * Vollständige Neufassung in TypeScript
+  * Web-Dashboard mit Echtzeit-Updates
+  * Verbessertes Levelsystem
+  * Verbesserte Moderationswerkzeuge
+  * Docker-Unterstützung
+  * Leistungsoptimierungen
 
 ## 🚀 Roadmap
 
-### Upcoming Features
-- [ ] Advanced analytics dashboard
-- [ ] Multi-language support
-- [ ] Plugin system
-- [ ] Advanced automod rules
-- [ ] Music bot integration
-- [ ] Custom themes for dashboard
-- [ ] Mobile app companion
-- [ ] API for third-party integrations
+### Zukünftige Funktionen
 
-### Performance Improvements
-- [ ] Database query optimization
-- [ ] Caching strategy enhancement
-- [ ] Load balancing support
-- [ ] Microservices architecture
+  * [ ] Erweitertes Analyse-Dashboard
+  * [ ] Mehrsprachige Unterstützung
+  * [ ] Plugin-System
+  * [ ] Erweiterte Automod-Regeln
+  * [ ] Musikbot-Integration
+  * [ ] Benutzerdefinierte Themes für das Dashboard
 
----
+### Leistungsverbesserungen
+  * [ ] Optimierung von Datenbankabfragen
+  * [ ] Verbesserung der Caching-Strategie
+  * [ ] Unterstützung für Lastverteilung
 
-**Made with ❤️ for the Discord community**
+-----
 
-For support and updates, join our Discord server or check the GitHub repository.
+**Mit ❤️ von CPTCR**

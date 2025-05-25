@@ -1,81 +1,86 @@
-// src/events/interactionCreate.ts - Handle slash command interactions
+// src/events/interactionCreate.ts - Behandelt Slash-Befehl-Interaktionen
 import { Events, Interaction } from 'discord.js';
-import { Client, Event } from '../types';
-import { handleCooldown } from '../utils/cooldown';
+import { ClientWithCommands, Event, SlashCommand } from '../types'; // ClientWithCommands verwenden
+import { handleCooldown } from '../utils/cooldown'; // Cooldown-Helfer importieren
 
 const event: Event<typeof Events.InteractionCreate> = {
   name: Events.InteractionCreate,
-  async execute(interaction: Interaction) {
-    const client = interaction.client as Client;
-
-    // Handle slash commands
+  async execute(client: ClientWithCommands, interaction: Interaction) { // Client als erstes Argument
+    // Behandelt Slash-Befehle
     if (interaction.isChatInputCommand()) {
-      const command = client.slashCommands.get(interaction.commandName);
+      const command = client.slashCommands.get(interaction.commandName) as SlashCommand | undefined;
 
       if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
+        console.error(`Kein Befehl passend zu ${interaction.commandName} gefunden.`);
+        try {
+          await interaction.reply({
+            content: '❌ Dieser Befehl existiert nicht oder ist nicht mehr verfügbar.',
+            ephemeral: true,
+          });
+        } catch (replyError) {
+          console.error('Fehler beim Antworten auf unbekannten Befehl:', replyError);
+        }
         return;
       }
 
-      // Check for dev-only commands
+      // Prüft auf devOnly-Befehle
       if (command.devOnly && !client.config.devUsers.includes(interaction.user.id)) {
-        await interaction.reply({ 
-          content: '⚠️ This command can only be used by bot developers.', 
-          ephemeral: true 
+        await interaction.reply({
+          content: '⚠️ Dieser Befehl kann nur von Bot-Entwicklern verwendet werden.',
+          ephemeral: true,
+        });
+        return;
+      }
+      
+      // Prüft auf testOnly-Befehle (nur in devGuilds)
+      if (command.testOnly && !client.config.devGuilds.includes(interaction.guildId || '')) {
+        await interaction.reply({
+          content: '⚠️ Dieser Befehl ist nur auf Test-Servern verfügbar.',
+          ephemeral: true,
         });
         return;
       }
 
-      // Handle command cooldowns
+      // Handhabt Befehls-Cooldowns
       const cooldownResult = handleCooldown({
         userId: interaction.user.id,
         commandName: interaction.commandName,
-        cooldownAmount: command.cooldown || 0,
+        cooldownAmount: command.cooldown || 0, // Standard-Cooldown von 0, falls nicht definiert
       }, client);
 
       if (cooldownResult.onCooldown) {
-        await interaction.reply({ 
-          content: `⏱️ Please wait ${cooldownResult.remainingTime.toFixed(1)} more seconds before using this command again.`, 
-          ephemeral: true 
+        await interaction.reply({
+          content: `⏱️ Bitte warte noch ${cooldownResult.remainingTime.toFixed(1)} Sekunden, bevor du diesen Befehl erneut verwendest.`,
+          ephemeral: true,
         });
         return;
       }
 
       try {
-        await command.execute(interaction);
+        // Führt den Befehl aus
+        await command.execute(interaction, client);
       } catch (error) {
-        console.error(`Error executing command ${interaction.commandName}:`, error);
-        const errorMessage = 'There was an error while executing this command!';
-        
+        console.error(`Fehler beim Ausführen des Befehls ${interaction.commandName}:`, error);
+        const errorMessage = ' Beim Ausführen dieses Befehls ist ein interner Fehler aufgetreten.';
+
         if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ 
-            content: errorMessage, 
-            ephemeral: true 
-          });
+          await interaction.followUp({
+            content: errorMessage,
+            ephemeral: true,
+          }).catch(followUpError => console.error("Fehler beim Follow-Up:", followUpError));
         } else {
-          await interaction.reply({ 
-            content: errorMessage, 
-            ephemeral: true 
-          });
+          await interaction.reply({
+            content: errorMessage,
+            ephemeral: true,
+          }).catch(replyError => console.error("Fehler beim Reply:", replyError));
         }
       }
     }
-
-    // Handle other interaction types as needed (buttons, select menus, etc.)
-    else if (interaction.isButton()) {
-      // Handle button interactions
-    }
-    else if (interaction.isStringSelectMenu()) {
-      // Handle select menu interactions
-    }
-    else if (interaction.isModalSubmit()) {
-      // Handle modal submissions
-    }
+    // Hier könnten andere Interaktionstypen behandelt werden (Buttons, Select-Menüs, Modals)
+    // else if (interaction.isButton()) { ... }
+    // else if (interaction.isStringSelectMenu()) { ... }
+    // else if (interaction.isModalSubmit()) { ... }
   }
 };
 
 export default event;
-
-
-
-

@@ -1,16 +1,17 @@
-// src/index.ts - Main entry point for the bot
+// src/index.ts - Haupteinstiegspunkt für den Bot
 import { config } from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Collection, Events } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 import { registerCommands } from './commands';
 import { registerEvents } from './events';
 import { loadFeatures } from './features';
-import { BotConfig } from './types';
+import { BotConfig, ClientWithCommands } from './types'; // Angepasster Client-Typ
+import { defaultConfig as botDefaultSettings } from '../../config'; // Import aus dem Hauptverzeichnis
 
-// Load environment variables
+// Umgebungsvariablen laden
 config();
 
-// Create Discord client with required intents
+// Discord-Client mit erforderlichen Intents erstellen
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,7 +19,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.MessageContent, // Erforderlich für Prefix-Befehle
     GatewayIntentBits.DirectMessages,
   ],
   partials: [
@@ -28,19 +29,18 @@ const client = new Client({
     Partials.User,
     Partials.GuildMember,
   ],
-});
+}) as ClientWithCommands; // Cast zum erweiterten Client-Typ
 
-// Initialize Prisma
+// Prisma initialisieren
 const prisma = new PrismaClient();
 
-// Bot configuration object
+// Bot-Konfigurationsobjekt
+// Die devGuilds, devUsers, devRoles werden jetzt aus der Haupt-config.ts geladen
 const botConfig: BotConfig = {
-  devGuilds: process.env.NODE_ENV === 'development' 
-    ? (process.env.DEV_GUILDS || '').split(',').filter(Boolean)
-    : [],
-  devUsers: (process.env.DEV_USERS || '').split(',').filter(Boolean),
-  devRoles: (process.env.DEV_ROLES || '').split(',').filter(Boolean),
-  defaultPrefix: '!',
+  devGuilds: botDefaultSettings.devGuilds,
+  devUsers: botDefaultSettings.devUsers,
+  devRoles: botDefaultSettings.devRoles,
+  defaultPrefix: process.env.DEFAULT_PREFIX || '!', // Standard-Prefix aus .env oder '!'
   enabledFeatures: {
     leveling: process.env.ENABLE_LEVELING !== 'false',
     moderation: process.env.ENABLE_MODERATION !== 'false',
@@ -48,48 +48,57 @@ const botConfig: BotConfig = {
     polls: process.env.ENABLE_POLLS !== 'false',
     giveaways: process.env.ENABLE_GIVEAWAYS !== 'false',
     tickets: process.env.ENABLE_TICKETS === 'true',
-    music: process.env.ENABLE_MUSIC === 'true',
-    joinToCreate: process.env.ENABLE_JOIN_TO_CREATE === 'true',
+    music: process.env.ENABLE_MUSIC === 'true', // Standardmäßig deaktiviert, falls nicht gesetzt
+    joinToCreate: process.env.ENABLE_JOIN_TO_CREATE === 'true', // Standardmäßig deaktiviert
   },
   debug: process.env.DEBUG === 'true',
 };
 
-// Initialize collections on the client
+// Collections auf dem Client initialisieren
 client.commands = new Collection();
 client.slashCommands = new Collection();
 client.cooldowns = new Collection();
 client.config = botConfig;
 client.prisma = prisma;
 
-// Register event handlers
+// Event-Handler registrieren
 registerEvents(client);
 
-// Register commands (both slash and prefix)
-registerCommands(client);
+// Befehle registrieren (Slash und Prefix)
+// Die Registrierung von Slash-Befehlen erfolgt jetzt im 'ready'-Event,
+// nachdem der Client initialisiert wurde und client.user!.id verfügbar ist.
+// registerCommands(client) wird später aufgerufen.
 
-// Load all features
+// Alle Features laden
 loadFeatures(client);
 
-// Login to Discord with the bot token
+// Bei Discord mit dem Bot-Token anmelden
 client.login(process.env.DISCORD_BOT_TOKEN)
   .then(() => {
-    console.log(`🤖 Bot logged in as ${client.user?.tag}`);
+    console.log(`🤖 Bot angemeldet als ${client.user?.tag}`);
   })
   .catch(error => {
-    console.error('Failed to login:', error);
+    console.error('Fehler beim Anmelden des Bots:', error);
     process.exit(1);
   });
 
-// Handle process termination
+// Prozessbeendigung handhaben
 const handleExit = async () => {
-  console.log('Shutting down...');
+  console.log('Bot wird heruntergefahren...');
   client.destroy();
   await prisma.$disconnect();
+  console.log('Bot erfolgreich heruntergefahren.');
   process.exit(0);
 };
 
 process.on('SIGINT', handleExit);
 process.on('SIGTERM', handleExit);
 process.on('unhandledRejection', (error) => {
-  console.error('Unhandled promise rejection:', error);
+  console.error('Unerwarteter Promise-Fehler:', error);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Ungefangene Ausnahme:', error);
+  // Optional: Graceful shutdown hier, aber Vorsicht vor Endlosschleifen
+  // handleExit();
 });

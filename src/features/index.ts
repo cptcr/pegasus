@@ -1,9 +1,9 @@
-// src/features/index.ts - Features loading system
+// src/features/index.ts - Ladesystem für Features
 import fs from 'fs';
 import path from 'path';
-import { Client, Feature } from '../types';
+import { ClientWithCommands, Feature } from '../types'; // ClientWithCommands verwenden
 
-export async function loadFeatures(client: Client): Promise<void> {
+export async function loadFeatures(client: ClientWithCommands): Promise<void> {
   const featuresPath = path.join(__dirname);
   const featureFolders = fs.readdirSync(featuresPath).filter(
     folder => fs.statSync(path.join(featuresPath, folder)).isDirectory()
@@ -11,46 +11,58 @@ export async function loadFeatures(client: Client): Promise<void> {
 
   const loadedFeatures: string[] = [];
   const disabledFeatures: string[] = [];
+  let count = 0;
+
+  console.log(`🔎 Lade Features aus ${featureFolders.length} Ordner(n)...`);
 
   for (const folder of featureFolders) {
-    const featurePath = path.join(featuresPath, folder, 'index.ts');
-    const featureJsPath = path.join(featuresPath, folder, 'index.js');
-    
-    // Skip if the feature doesn't have an index file
-    if (!fs.existsSync(featurePath) && !fs.existsSync(featureJsPath)) {
-      console.warn(`⚠️ Feature ${folder} does not have an index file. Skipping.`);
+    const indexPath = path.join(featuresPath, folder, 'index.ts');
+    const indexPathJs = path.join(featuresPath, folder, 'index.js');
+    let featureFilePath: string | null = null;
+
+    if (fs.existsSync(indexPath)) {
+      featureFilePath = indexPath;
+    } else if (fs.existsSync(indexPathJs)) {
+      featureFilePath = indexPathJs;
+    }
+
+    if (!featureFilePath) {
+      console.warn(`⚠️ Feature-Ordner ${folder} enthält keine index.ts oder index.js. Überspringe.`);
       continue;
     }
 
     try {
-      const feature = require(path.join(featuresPath, folder)).default as Feature;
-      
-      if (!feature.name || !feature.initialize) {
-        console.warn(`⚠️ Feature ${folder} is missing required "name" or "initialize" property. Skipping.`);
+      const featureModule = require(featureFilePath);
+      const feature = (featureModule.default || featureModule) as Feature;
+
+      if (!feature.name || typeof feature.initialize !== 'function') {
+        console.warn(`⚠️ Feature in ${folder} (${featureFilePath}) exportiert kein gültiges Feature-Objekt.`);
         continue;
       }
 
-      // Check if the feature is enabled in bot config
-      const featureName = feature.name.toLowerCase();
-      const isEnabled = feature.enabled !== false && (
-        client.config.enabledFeatures[featureName as keyof typeof client.config.enabledFeatures] !== false
-      );
+      // Prüft, ob das Feature in der Bot-Konfiguration aktiviert ist
+      const featureConfigKey = feature.name.toLowerCase() as keyof BotConfig['enabledFeatures'];
+      const isGloballyEnabled = client.config.enabledFeatures[featureConfigKey] !== false;
+      const isFeatureSelfEnabled = feature.enabled !== false; // Feature-eigene Aktivierung
 
-      if (!isEnabled) {
+      if (!isGloballyEnabled || !isFeatureSelfEnabled) {
         disabledFeatures.push(feature.name);
+        console.log(`  🚫 Feature übersprungen (deaktiviert): ${feature.name}`);
         continue;
       }
 
-      // Initialize the feature
+      // Initialisiert das Feature
       await feature.initialize(client);
       loadedFeatures.push(feature.name);
+      count++;
+      console.log(`  👍 Feature geladen und initialisiert: ${feature.name}`);
     } catch (error) {
-      console.error(`❌ Error loading feature ${folder}:`, error);
+      console.error(`❌ Fehler beim Laden des Features ${folder}:`, error);
     }
   }
 
-  console.log(`✨ Loaded ${loadedFeatures.length} features: ${loadedFeatures.join(', ')}`);
+  console.log(`✨ ${count} Feature(s) erfolgreich geladen: ${loadedFeatures.join(', ') || 'Keine'}`);
   if (disabledFeatures.length > 0) {
-    console.log(`🚫 Disabled features: ${disabledFeatures.join(', ')}`);
+    console.log(`🚫 Deaktivierte Features: ${disabledFeatures.join(', ')}`);
   }
 }
