@@ -16,6 +16,11 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const databaseEvents = new EventEmitter();
 
 export class DatabaseService {
+  static getGuildWithFullStats: any;
+  static syncGuild: any;
+  static createGuild(arg0: any) {
+    throw new Error('Method not implemented.');
+  }
   static prisma = prisma;
   static events = databaseEvents;
 

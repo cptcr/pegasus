@@ -1,4 +1,3 @@
-
 // dashboard/components/ProtectedLayout.tsx
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
@@ -47,9 +46,9 @@ export default function ProtectedLayout({
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-500 mx-auto"></div>
+          <div className="w-32 h-32 mx-auto border-b-2 border-indigo-500 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600">Verifying access...</p>
           <p className="text-sm text-gray-500">Checking guild membership and permissions...</p>
         </div>
@@ -59,9 +58,9 @@ export default function ProtectedLayout({
 
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <ExclamationTriangleIcon className="h-16 w-16 text-red-500 mx-auto" />
+          <ExclamationTriangleIcon className="w-16 h-16 mx-auto text-red-500" />
           <h1 className="mt-4 text-2xl font-bold text-red-600">Access Denied</h1>
           <p className="mt-2 text-gray-600">Redirecting...</p>
         </div>
@@ -72,11 +71,11 @@ export default function ProtectedLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <ShieldCheckIcon className="h-8 w-8 text-indigo-600" />
+              <ShieldCheckIcon className="w-8 h-8 text-indigo-600" />
               <span className="ml-2 text-xl font-semibold text-gray-900">
                 Hinko Dashboard
               </span>
@@ -88,7 +87,7 @@ export default function ProtectedLayout({
                   <img
                     src={`https://cdn.discordapp.com/avatars/${session.user.id}/${session.user.avatar}.png`}
                     alt="Avatar"
-                    className="h-8 w-8 rounded-full"
+                    className="w-8 h-8 rounded-full"
                   />
                 )}
                 <span className="text-sm text-gray-700">
@@ -96,16 +95,16 @@ export default function ProtectedLayout({
                 </span>
               </div>
               
-              <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+              <div className="px-2 py-1 text-xs text-green-600 bg-green-100 rounded">
                 Authorized
               </div>
               
               <button
                 onClick={handleSignOut}
-                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 transition-colors"
+                className="flex items-center space-x-1 text-gray-500 transition-colors hover:text-gray-700"
                 title="Sign Out"
               >
-                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
                 <span className="text-sm">Sign Out</span>
               </button>
             </div>
@@ -119,9 +118,9 @@ export default function ProtectedLayout({
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
+      <footer className="mt-12 bg-white border-t border-gray-200">
+        <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
               Hinko Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}
             </div>

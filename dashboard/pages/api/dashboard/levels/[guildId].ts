@@ -25,10 +25,17 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     const limitNumber = Math.min(100, Math.max(1, parseInt(limit as string)));
 
     const levelData = await DatabaseService.getLevelData(guildId, pageNumber, limitNumber);
+    
+    // Set cache headers
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    
     res.status(200).json(levelData);
   } catch (error) {
     console.error('Error fetching level data:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error : undefined
+    });
   }
 }
 

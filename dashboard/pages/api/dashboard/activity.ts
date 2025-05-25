@@ -1,4 +1,4 @@
-// dashboard/pages/api/dashboard/activity.ts (Real-time Activity Data)
+// dashboard/pages/api/dashboard/activity.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../lib/auth';
 import { DatabaseService } from '../../../lib/database';
@@ -22,94 +22,187 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 
   try {
-    // Get real activity data from the last 7 days
-    const activityData = await DatabaseService.getRecentActivity(guildId, 7);
-    
-    // Get additional activity metrics
+    // Get recent activity data from database
     const [
-      todayActivity,
-      weeklyTrends,
-      monthlyComparison
+      recentWarns,
+      recentPolls,
+      recentGiveaways,
+      recentTickets,
+      todayWarns,
+      todayPolls,
+      todayGiveaways,
+      todayTickets
     ] = await Promise.all([
-      // Today's activity
-      DatabaseService.getRecentActivity(guildId, 1),
-      
-      // Weekly trends (compare with previous week)
-      Promise.all([
-        DatabaseService.getRecentActivity(guildId, 7),
-        DatabaseService.getRecentActivity(guildId, 14)
-      ]).then(([thisWeek, lastTwoWeeks]) => {
-        const lastWeek = {
-          recentWarns: lastTwoWeeks.recentWarns - thisWeek.recentWarns,
-          recentPolls: lastTwoWeeks.recentPolls - thisWeek.recentPolls,
-          recentGiveaways: lastTwoWeeks.recentGiveaways - thisWeek.recentGiveaways,
-          recentTickets: lastTwoWeeks.recentTickets - thisWeek.recentTickets,
-        };
-        
-        return {
-          thisWeek,
-          lastWeek,
-          trends: {
-            warns: thisWeek.recentWarns - lastWeek.recentWarns,
-            polls: thisWeek.recentPolls - lastWeek.recentPolls,
-            giveaways: thisWeek.recentGiveaways - lastWeek.recentGiveaways,
-            tickets: thisWeek.recentTickets - lastWeek.recentTickets,
+      // Last 7 days activity
+      DatabaseService.prisma.warn.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           }
-        };
+        }
       }),
-      
-      // Monthly comparison
-      Promise.all([
-        DatabaseService.getRecentActivity(guildId, 30),
-        DatabaseService.getRecentActivity(guildId, 60)
-      ]).then(([thisMonth, lastTwoMonths]) => {
-        const lastMonth = {
-          recentWarns: lastTwoMonths.recentWarns - thisMonth.recentWarns,
-          recentPolls: lastTwoMonths.recentPolls - thisMonth.recentPolls,
-          recentGiveaways: lastTwoMonths.recentGiveaways - thisMonth.recentGiveaways,
-          recentTickets: lastTwoMonths.recentTickets - thisMonth.recentTickets,
-        };
-        
-        return {
-          thisMonth,
-          lastMonth,
-          growth: {
-            warns: thisMonth.recentWarns - lastMonth.recentWarns,
-            polls: thisMonth.recentPolls - lastMonth.recentPolls,
-            giveaways: thisMonth.recentGiveaways - lastMonth.recentGiveaways,
-            tickets: thisMonth.recentTickets - lastMonth.recentTickets,
+      DatabaseService.prisma.poll.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           }
-        };
+        }
+      }),
+      DatabaseService.prisma.giveaway.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      DatabaseService.prisma.ticket.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      // Today's activity
+      DatabaseService.prisma.warn.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0))
+          }
+        }
+      }),
+      DatabaseService.prisma.poll.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0))
+          }
+        }
+      }),
+      DatabaseService.prisma.giveaway.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0))
+          }
+        }
+      }),
+      DatabaseService.prisma.ticket.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0))
+          }
+        }
       })
     ]);
 
-    // Calculate activity scores and trends
-    const activityScore = calculateActivityScore(activityData);
-    const healthScore = calculateHealthScore(activityData, weeklyTrends.trends);
+    // Get weekly trends (compare with previous week)
+    const [
+      lastWeekWarns,
+      lastWeekPolls,
+      lastWeekGiveaways,
+      lastWeekTickets
+    ] = await Promise.all([
+      DatabaseService.prisma.warn.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      DatabaseService.prisma.poll.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      DatabaseService.prisma.giveaway.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      DatabaseService.prisma.ticket.count({
+        where: {
+          guildId,
+          createdAt: {
+            gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          }
+        }
+      })
+    ]);
+
+    // Calculate trends
+    const trends = {
+      warns: recentWarns - lastWeekWarns,
+      polls: recentPolls - lastWeekPolls,
+      giveaways: recentGiveaways - lastWeekGiveaways,
+      tickets: recentTickets - lastWeekTickets,
+    };
+
+    // Calculate activity score based on various factors
+    const activityScore = calculateActivityScore({
+      recentPolls,
+      recentGiveaways,
+      recentTickets,
+      recentWarns
+    });
+
+    // Calculate health score
+    const healthScore = calculateHealthScore({
+      recentPolls,
+      recentGiveaways,
+      recentTickets,
+      recentWarns
+    }, trends);
 
     const response = {
       // Basic activity data (last 7 days)
-      ...activityData,
+      recentWarns,
+      recentPolls,
+      recentGiveaways,
+      recentTickets,
       
       // Today's activity
-      today: todayActivity,
+      today: {
+        recentWarns: todayWarns,
+        recentPolls: todayPolls,
+        recentGiveaways: todayGiveaways,
+        recentTickets: todayTickets
+      },
       
       // Trends and comparisons
-      trends: weeklyTrends.trends,
-      weeklyComparison: weeklyTrends,
-      monthlyComparison: monthlyComparison,
+      trends,
+      weeklyComparison: {
+        thisWeek: { recentWarns, recentPolls, recentGiveaways, recentTickets },
+        lastWeek: { recentWarns: lastWeekWarns, recentPolls: lastWeekPolls, recentGiveaways: lastWeekGiveaways, recentTickets: lastWeekTickets },
+        trends
+      },
       
       // Calculated metrics
       metrics: {
         activityScore,
         healthScore,
-        totalEvents: activityData.recentWarns + activityData.recentPolls + 
-                    activityData.recentGiveaways + activityData.recentTickets,
+        totalEvents: recentWarns + recentPolls + recentGiveaways + recentTickets,
         averageDaily: {
-          warns: Math.round(activityData.recentWarns / 7 * 10) / 10,
-          polls: Math.round(activityData.recentPolls / 7 * 10) / 10,
-          giveaways: Math.round(activityData.recentGiveaways / 7 * 10) / 10,
-          tickets: Math.round(activityData.recentTickets / 7 * 10) / 10,
+          warns: Math.round(recentWarns / 7 * 10) / 10,
+          polls: Math.round(recentPolls / 7 * 10) / 10,
+          giveaways: Math.round(recentGiveaways / 7 * 10) / 10,
+          tickets: Math.round(recentTickets / 7 * 10) / 10,
         }
       },
       

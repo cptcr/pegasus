@@ -22,10 +22,17 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
   try {
     const moderationData = await DatabaseService.getModerationData(guildId);
+    
+    // Set cache headers
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    
     res.status(200).json(moderationData);
   } catch (error) {
     console.error('Error fetching moderation data:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error : undefined
+    });
   }
 }
 

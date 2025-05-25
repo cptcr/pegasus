@@ -43,12 +43,13 @@ interface ExtendedToken extends JWT {
   username?: string;
   discriminator?: string;
   avatar?: string;
+  hasRequiredAccess?: boolean;
+  lastValidated?: number;
 }
 
 declare module "next-auth" {
   interface Session {
     user: {
-      [x: string]: null;
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -70,6 +71,117 @@ declare module "next-auth/jwt" {
     username?: string;
     discriminator?: string;
     avatar?: string;
+    hasRequiredAccess?: boolean;
+    lastValidated?: number;
+  }
+}
+
+// Rate limiting helper
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return false;
+  }
+  
+  if (userLimit.count >= 3) { // Max 3 requests per minute
+    return true;
+  }
+  
+  userLimit.count++;
+  return false;
+}
+
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: Error;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('retry-after') || '1');
+        console.log(`Rate limited, retrying after ${retryAfter} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      if (i === maxRetries - 1) break;
+      
+      // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+  
+  throw lastError!;
+}
+
+async function validateUserAccess(accessToken: string, userId: string): Promise<boolean> {
+  try {
+    // Check rate limiting
+    if (isRateLimited(userId)) {
+      console.log(`Rate limited for user ${userId}, using cached result`);
+      return false;
+    }
+
+    // First, check if user is in the target guild
+    const guildsResponse = await fetchWithRetry('https://discord.com/api/users/@me/guilds', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!guildsResponse.ok) {
+      console.log(`Failed to fetch guilds for user ${userId}. Status: ${guildsResponse.status}`);
+      return false;
+    }
+    
+    const guilds: UserGuild[] = await guildsResponse.json();
+    const targetGuild = guilds.find(guild => guild.id === TARGET_GUILD_ID);
+
+    if (!targetGuild) {
+      console.log(`User ${userId} NOT in target guild ${TARGET_GUILD_ID}`);
+      return false;
+    }
+
+    console.log(`User ${userId} IS in target guild ${TARGET_GUILD_ID}`);
+    
+    // Check if user has required role in the guild
+    try {
+      const memberResponse = await fetchWithRetry(
+        `https://discord.com/api/users/@me/guilds/${TARGET_GUILD_ID}/member`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (!memberResponse.ok) {
+        console.log(`Failed to fetch member data for user ${userId}. Status: ${memberResponse.status}`);
+        
+        // If we can't verify the role but they're in the guild, we'll deny access for security
+        return false;
+      }
+
+      const memberData: GuildMember = await memberResponse.json();
+      
+      const hasRole = memberData.roles.includes(REQUIRED_ROLE_ID);
+      console.log(`User ${userId} role check: ${hasRole ? 'HAS' : 'MISSING'} required role ${REQUIRED_ROLE_ID}`);
+      
+      return hasRole;
+
+    } catch (memberError) {
+      console.error(`Error fetching member data for user ${userId}:`, memberError);
+      return false;
+    }
+
+  } catch (error) {
+    console.error(`Error validating access for user ${userId}:`, error);
+    return false;
   }
 }
 
@@ -94,7 +206,31 @@ export const authOptions: NextAuthOptions = {
         token.username = (profile as DiscordProfile).username;
         token.discriminator = (profile as DiscordProfile).discriminator;
         token.avatar = (profile as DiscordProfile).avatar;
+        token.hasRequiredAccess = false;
+        token.lastValidated = 0;
       }
+
+      // Only re-validate if it's been more than 5 minutes since last validation
+      const now = Date.now();
+      const shouldValidate = !token.lastValidated || (now - token.lastValidated) > 300000; // 5 minutes
+
+      if (token.accessToken && token.id && shouldValidate) {
+        try {
+          const hasAccess = await validateUserAccess(token.accessToken, token.id);
+          token.hasRequiredAccess = hasAccess;
+          token.lastValidated = now;
+          
+          if (hasAccess) {
+            console.log(`✅ Access validated for user ${token.username}`);
+          } else {
+            console.log(`❌ Access denied for user ${token.username}`);
+          }
+        } catch (error) {
+          console.error('Error during token validation:', error);
+          // Keep existing access status on error to avoid disrupting existing sessions
+        }
+      }
+
       return token;
     },
     
@@ -105,62 +241,9 @@ export const authOptions: NextAuthOptions = {
       if (token.avatar) session.user.avatar = token.avatar;
       if (token.accessToken) session.accessToken = token.accessToken;
 
-      session.user.hasRequiredAccess = false; 
+      // Use cached validation result
+      session.user.hasRequiredAccess = token.hasRequiredAccess || false;
 
-      if (token.accessToken && session.user.id) {
-        try {
-          // First, check if user is in the guild
-          const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
-            headers: { Authorization: `Bearer ${token.accessToken}` },
-          });
-          
-          if (guildsResponse.ok) {
-            const allUserGuilds: UserGuild[] = await guildsResponse.json();
-            const targetGuild = allUserGuilds.find(g => g.id === TARGET_GUILD_ID);
-
-            if (targetGuild) {
-              session.user.guilds = [targetGuild];
-
-              // Now check if user has the required role in that guild
-              try {
-                const memberResponse = await fetch(
-                  `https://discord.com/api/users/@me/guilds/${TARGET_GUILD_ID}/member`,
-                  {
-                    headers: { Authorization: `Bearer ${token.accessToken}` },
-                  }
-                );
-
-                if (memberResponse.ok) {
-                  const memberData: GuildMember = await memberResponse.json();
-                  
-                  // Check if user has the required role
-                  if (memberData.roles.includes(REQUIRED_ROLE_ID)) {
-                    session.user.hasRequiredAccess = true;
-                    console.log(`✅ Access granted for user ${session.user.username} - has required role`);
-                  } else {
-                    console.log(`❌ Access denied for user ${session.user.username} - missing required role ${REQUIRED_ROLE_ID}`);
-                    console.log(`User roles:`, memberData.roles);
-                  }
-                } else {
-                  console.log(`❌ Failed to fetch member data for user ${session.user.username} in guild ${TARGET_GUILD_ID}`);
-                }
-              } catch (memberError) {
-                console.error('Error fetching guild member data:', memberError);
-              }
-            } else {
-              console.log(`❌ User ${session.user.username} not in target guild ${TARGET_GUILD_ID}`);
-              session.user.guilds = [];
-            }
-          } else {
-            console.error(`Session callback: Failed to fetch guilds. Status: ${guildsResponse.status}`);
-            session.user.guilds = [];
-          }
-        } catch (error) {
-          console.error('Session callback - Error fetching user data:', error);
-          session.user.guilds = [];
-          session.user.hasRequiredAccess = false;
-        }
-      }
       return session;
     },
 
@@ -177,56 +260,15 @@ export const authOptions: NextAuthOptions = {
       console.log(`Required: Guild ${TARGET_GUILD_ID} and Role ${REQUIRED_ROLE_ID}`);
 
       try {
-        // Check if user is in the target guild
-        const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        if (!guildsResponse.ok) {
-          console.log(`SignIn: Failed to fetch guilds. Status: ${guildsResponse.status}`);
-          return false;
-        }
+        const hasAccess = await validateUserAccess(accessToken, discordProfile.id);
         
-        const guilds: UserGuild[] = await guildsResponse.json();
-        const targetUserGuild = guilds.find(guild => guild.id === TARGET_GUILD_ID);
-
-        if (!targetUserGuild) {
-          console.log(`SignIn: User ${discordProfile.username} NOT in target guild ${TARGET_GUILD_ID}`);
+        if (hasAccess) {
+          console.log(`✅ SignIn: Access GRANTED for user ${discordProfile.username}`);
+          return true;
+        } else {
+          console.log(`❌ SignIn: Access DENIED for user ${discordProfile.username}`);
           return false;
         }
-
-        console.log(`SignIn: User ${discordProfile.username} IS in target guild ${TARGET_GUILD_ID}`);
-        
-        // Check if user has required role in the guild
-        try {
-          const memberResponse = await fetch(
-            `https://discord.com/api/users/@me/guilds/${TARGET_GUILD_ID}/member`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            }
-          );
-
-          if (!memberResponse.ok) {
-            console.log(`SignIn: Failed to fetch member data. Status: ${memberResponse.status}`);
-            return false;
-          }
-
-          const memberData: GuildMember = await memberResponse.json();
-          
-          if (memberData.roles.includes(REQUIRED_ROLE_ID)) {
-            console.log(`✅ SignIn: Access GRANTED for user ${discordProfile.username} - has required role ${REQUIRED_ROLE_ID}`);
-            return true;
-          } else {
-            console.log(`❌ SignIn: Access DENIED for user ${discordProfile.username} - missing required role ${REQUIRED_ROLE_ID}`);
-            console.log(`User roles in guild:`, memberData.roles);
-            return false;
-          }
-
-        } catch (memberError) {
-          console.error('SignIn: Error fetching member data:', memberError);
-          return false;
-        }
-
       } catch (error) {
         console.error('SignIn callback critical error:', error);
         return false;
@@ -245,6 +287,22 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+
+  // Add custom error handling
+  events: {
+    async signIn(message) {
+      console.log('SignIn event:', message.user.email || message.user.name);
+    },
+    async session(message) {
+      // Only log if there's an issue
+      if (!message.session.user?.hasRequiredAccess) {
+        console.log('Session event: User without required access');
+      }
+    },
+    async signOut(message) {
+      console.log('SignOut event:', message.token?.email || 'Unknown user');
+    },
+  },
 };
 
 export default NextAuth(authOptions);

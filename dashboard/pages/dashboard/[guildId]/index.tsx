@@ -1,4 +1,4 @@
-// dashboard/pages/dashboard/[guildId]/index.tsx (Fixed Dark Mode Enhanced)
+// dashboard/pages/dashboard/[guildId]/index.tsx
 import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
@@ -18,11 +18,7 @@ import {
   CommandLineIcon,
   ArrowPathIcon,
   EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  CircleStackIcon,
   ClockIcon,
-  //TrendingUpIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
@@ -48,6 +44,9 @@ interface GuildStats {
   enableAutomod: boolean;
   enableMusic: boolean;
   enableJoinToCreate: boolean;
+  engagementRate: number;
+  moderationRate: number;
+  lastUpdated: string;
 }
 
 interface Guild {
@@ -56,6 +55,11 @@ interface Guild {
   memberCount: number;
   iconURL?: string;
   stats: GuildStats;
+  status: {
+    botOnline: boolean;
+    databaseConnected: boolean;
+    lastSync: string;
+  };
 }
 
 interface RecentActivity {
@@ -63,6 +67,23 @@ interface RecentActivity {
   recentPolls: number;
   recentGiveaways: number;
   recentTickets: number;
+  today: {
+    recentWarns: number;
+    recentPolls: number;
+    recentGiveaways: number;
+    recentTickets: number;
+  };
+  metrics: {
+    activityScore: number;
+    healthScore: number;
+    totalEvents: number;
+    averageDaily: {
+      warns: number;
+      polls: number;
+      giveaways: number;
+      tickets: number;
+    };
+  };
 }
 
 export default function GuildDashboard() {
@@ -128,7 +149,7 @@ export default function GuildDashboard() {
         <div className="text-center">
           <div className="w-32 h-32 mx-auto border-b-2 border-indigo-400 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-300">Loading dashboard...</p>
-          <p className="text-sm text-gray-500">This may take a moment on first load</p>
+          <p className="text-sm text-gray-500">Fetching real-time data from database...</p>
         </div>
       </div>
     );
@@ -165,7 +186,7 @@ export default function GuildDashboard() {
   return (
     <div className="min-h-screen bg-gray-900">
       <Head>
-        <title>Hinko Bot Dashboard - {guild.name}</title>
+        <title>Pegasus Bot Dashboard - {guild.name}</title>
         <meta name="description" content="Admin Dashboard for Hinko Discord Bot" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -182,12 +203,29 @@ export default function GuildDashboard() {
                   <ShieldCheckIcon className="w-8 h-8 text-indigo-400" />
                 )}
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Hinko Dashboard</h1>
+                  <h1 className="text-2xl font-bold text-white">Pegasus Dashboard</h1>
                   <p className="text-sm text-gray-400">{guild.name}</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Status Indicators */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  guild.status.botOnline ? 'bg-green-400' : 'bg-red-400'
+                }`}></div>
+                <span className="text-xs text-gray-400">
+                  Bot {guild.status.botOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  guild.status.databaseConnected ? 'bg-green-400' : 'bg-red-400'
+                }`}></div>
+                <span className="text-xs text-gray-400">
+                  DB {guild.status.databaseConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
               {lastUpdate && (
                 <div className="text-sm text-gray-400">
                   Last updated: {lastUpdate.toLocaleTimeString()}
@@ -239,18 +277,21 @@ export default function GuildDashboard() {
               icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
               href={`#`}
               color="purple"
+              disabled={!guild.stats.enablePolls}
             />
             <QuickActionCard
               title="Giveaways"
               icon={<GiftIcon className="w-6 h-6" />}
               href={`#`}
               color="yellow"
+              disabled={!guild.stats.enableGiveaways}
             />
             <QuickActionCard
               title="Tickets"
               icon={<TicketIcon className="w-6 h-6" />}
               href={`#`}
               color="indigo"
+              disabled={!guild.stats.enableTickets}
             />
           </div>
         </div>
@@ -265,14 +306,15 @@ export default function GuildDashboard() {
               icon={<UsersIcon className="w-6 h-6" />}
               color="indigo"
               trend="up"
-              description="Active members with levels"
+              description="Users with XP tracked"
+              change={`${guild.stats.engagementRate}% of members`}
             />
             <StatsCard
               title="Active Warnings"
               value={guild.stats.totalWarns}
               icon={<ExclamationTriangleIcon className="w-6 h-6" />}
               color="red"
-              change={activity?.recentWarns ? `+${activity.recentWarns} this week` : undefined}
+              change={activity?.today.recentWarns ? `+${activity.today.recentWarns} today` : undefined}
               description="Unresolved user warnings"
             />
             <StatsCard
@@ -280,7 +322,7 @@ export default function GuildDashboard() {
               value={guild.stats.openTickets}
               icon={<TicketIcon className="w-6 h-6" />}
               color="purple"
-              change={activity?.recentTickets ? `+${activity.recentTickets} this week` : undefined}
+              change={activity?.today.recentTickets ? `+${activity.today.recentTickets} today` : undefined}
               description="Support tickets awaiting response"
             />
             <StatsCard
@@ -302,16 +344,18 @@ export default function GuildDashboard() {
               value={guild.stats.activePolls}
               icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
               color="blue"
-              change={activity?.recentPolls ? `+${activity.recentPolls} this week` : undefined}
+              change={activity?.today.recentPolls ? `+${activity.today.recentPolls} today` : undefined}
               description="Running community polls"
+              disabled={!guild.stats.enablePolls}
             />
             <StatsCard
               title="Active Giveaways"
               value={guild.stats.activeGiveaways}
               icon={<GiftIcon className="w-6 h-6" />}
               color="green"
-              change={activity?.recentGiveaways ? `+${activity.recentGiveaways} this week` : undefined}
+              change={activity?.today.recentGiveaways ? `+${activity.today.recentGiveaways} today` : undefined}
               description="Ongoing giveaways"
+              disabled={!guild.stats.enableGiveaways}
             />
             <StatsCard
               title="Price Trackers"
@@ -319,6 +363,7 @@ export default function GuildDashboard() {
               icon={<BellIcon className="w-6 h-6" />}
               color="orange"
               description="Geizhals price trackers"
+              disabled={!guild.stats.geizhalsEnabled}
             />
             <StatsCard
               title="Quarantined"
@@ -329,6 +374,72 @@ export default function GuildDashboard() {
             />
           </div>
         </div>
+
+        {/* Activity Metrics */}
+        {activity && (
+          <div className="mb-8">
+            <h2 className="mb-4 text-xl font-semibold text-white">Activity Metrics</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Activity Score</h3>
+                    <p className="text-sm text-gray-400">Overall server activity</p>
+                  </div>
+                  <div className="text-3xl font-bold text-indigo-400">
+                    {Math.round(activity.metrics.activityScore)}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="w-full h-2 bg-gray-700 rounded-full">
+                    <div 
+                      className="h-2 transition-all duration-300 bg-indigo-600 rounded-full"
+                      style={{ width: `${activity.metrics.activityScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Health Score</h3>
+                    <p className="text-sm text-gray-400">Server health status</p>
+                  </div>
+                  <div className="text-3xl font-bold text-green-400">
+                    {Math.round(activity.metrics.healthScore)}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="w-full h-2 bg-gray-700 rounded-full">
+                    <div 
+                      className="h-2 transition-all duration-300 bg-green-600 rounded-full"
+                      style={{ width: `${activity.metrics.healthScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Weekly Events</h3>
+                    <p className="text-sm text-gray-400">Total events this week</p>
+                  </div>
+                  <div className="text-3xl font-bold text-purple-400">
+                    {activity.metrics.totalEvents}
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-gray-400">
+                  <div className="flex justify-between">
+                    <span>Daily avg:</span>
+                    <span>{Math.round(activity.metrics.totalEvents / 7 * 10) / 10}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Feature Status */}
         <div className="mb-8">
@@ -390,24 +501,28 @@ export default function GuildDashboard() {
                 <ActivitySummary
                   title="New Warnings"
                   count={activity.recentWarns}
+                  dailyAvg={activity.metrics.averageDaily.warns}
                   color="red"
                   icon={<ExclamationTriangleIcon className="w-5 h-5" />}
                 />
                 <ActivitySummary
                   title="New Polls"
                   count={activity.recentPolls}
+                  dailyAvg={activity.metrics.averageDaily.polls}
                   color="blue"
                   icon={<ChatBubbleLeftRightIcon className="w-5 h-5" />}
                 />
                 <ActivitySummary
                   title="New Giveaways"
                   count={activity.recentGiveaways}
+                  dailyAvg={activity.metrics.averageDaily.giveaways}
                   color="green"
                   icon={<GiftIcon className="w-5 h-5" />}
                 />
                 <ActivitySummary
                   title="New Tickets"
                   count={activity.recentTickets}
+                  dailyAvg={activity.metrics.averageDaily.tickets}
                   color="purple"
                   icon={<TicketIcon className="w-5 h-5" />}
                 />
@@ -456,9 +571,10 @@ interface StatsCardProps {
   change?: string;
   trend?: 'up' | 'down' | 'neutral';
   description?: string;
+  disabled?: boolean;
 }
 
-function StatsCard({ title, value, icon, color, change, trend, description }: StatsCardProps) {
+function StatsCard({ title, value, icon, color, change, trend, description, disabled }: StatsCardProps) {
   const colorClasses = {
     indigo: 'bg-indigo-900/20 text-indigo-400 border-indigo-500/20',
     red: 'bg-red-900/20 text-red-400 border-red-500/20',
@@ -471,7 +587,7 @@ function StatsCard({ title, value, icon, color, change, trend, description }: St
   };
 
   return (
-    <div className="p-6 transition-colors bg-gray-800 border border-gray-700 rounded-lg shadow-lg hover:border-gray-600">
+    <div className={`p-6 transition-colors bg-gray-800 border border-gray-700 rounded-lg shadow-lg hover:border-gray-600 ${disabled ? 'opacity-50' : ''}`}>
       <div className="flex items-center">
         <div className={`p-3 rounded-full border ${colorClasses[color]}`}>
           {icon}
@@ -492,6 +608,9 @@ function StatsCard({ title, value, icon, color, change, trend, description }: St
           {change && (
             <p className="mt-1 text-xs text-gray-400">{change}</p>
           )}
+          {disabled && (
+            <p className="mt-1 text-xs text-orange-400">Feature disabled</p>
+          )}
         </div>
       </div>
     </div>
@@ -503,9 +622,10 @@ interface QuickActionCardProps {
   icon: React.ReactNode;
   href: string;
   color: 'blue' | 'red' | 'green' | 'purple' | 'yellow' | 'indigo';
+  disabled?: boolean;
 }
 
-function QuickActionCard({ title, icon, href, color }: QuickActionCardProps) {
+function QuickActionCard({ title, icon, href, color, disabled }: QuickActionCardProps) {
   const colorClasses = {
     blue: 'bg-blue-600 hover:bg-blue-700 border-blue-500',
     red: 'bg-red-600 hover:bg-red-700 border-red-500',
@@ -514,6 +634,16 @@ function QuickActionCard({ title, icon, href, color }: QuickActionCardProps) {
     yellow: 'bg-yellow-600 hover:bg-yellow-700 border-yellow-500',
     indigo: 'bg-indigo-600 hover:bg-indigo-700 border-indigo-500',
   };
+
+  if (disabled) {
+    return (
+      <div className={`bg-gray-700 text-gray-400 p-4 rounded-lg shadow-lg border border-gray-600 opacity-50 flex flex-col items-center text-center cursor-not-allowed`}>
+        {icon}
+        <span className="mt-2 text-sm font-medium">{title}</span>
+        <span className="text-xs text-gray-500">Disabled</span>
+      </div>
+    );
+  }
 
   return (
     <Link 
@@ -561,11 +691,12 @@ function FeatureStatus({ name, enabled, icon, description, stats }: FeatureStatu
 interface ActivitySummaryProps {
   title: string;
   count: number;
+  dailyAvg: number;
   color: 'red' | 'blue' | 'green' | 'purple';
   icon: React.ReactNode;
 }
 
-function ActivitySummary({ title, count, color, icon }: ActivitySummaryProps) {
+function ActivitySummary({ title, count, dailyAvg, color, icon }: ActivitySummaryProps) {
   const colorClasses = {
     red: 'text-red-400',
     blue: 'text-blue-400',
@@ -591,6 +722,9 @@ function ActivitySummary({ title, count, color, icon }: ActivitySummaryProps) {
         {count.toLocaleString()}
       </div>
       <div className="text-sm text-gray-400">{title}</div>
+      <div className="text-xs text-gray-500">
+        {dailyAvg.toFixed(1)}/day avg
+      </div>
     </div>
   );
 }

@@ -2,31 +2,62 @@
 import { GetServerSideProps } from 'next';
 import { getSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
-import { ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 export default function SignIn() {
   const router = useRouter();
-  const { error } = router.query;
+  const { error, callbackUrl } = router.query;
+  const [isLoading, setIsLoading] = useState(false);
+  const [shouldAutoRedirect, setShouldAutoRedirect] = useState(true);
 
-  const handleSignIn = () => {
-    signIn('discord', { 
-      callbackUrl: '/dashboard',
-      redirect: true 
-    });
+  const handleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signIn('discord', { 
+        callbackUrl: (callbackUrl as string) || '/dashboard/554266392262737930',
+        redirect: true 
+      });
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
+    // Don't auto-redirect if there was an error
+    if (error) {
+      setShouldAutoRedirect(false);
+      return;
+    }
+
     // Auto-redirect to Discord login if no error is present
-    if (!error && router.isReady) {
+    if (shouldAutoRedirect && router.isReady) {
       console.log('Auto-redirecting to Discord login...');
       handleSignIn();
     }
-  }, [error, router.isReady]);
+  }, [error, router.isReady, shouldAutoRedirect]);
+
+  const getErrorMessage = (errorCode: string) => {
+    switch (errorCode) {
+      case 'AccessDenied':
+        return 'Access denied - you do not have the required permissions.';
+      case 'OAuthSignin':
+      case 'OAuthCallback':
+      case 'OAuthCreateAccount':
+        return 'Error connecting to Discord. Please try again.';
+      case 'RateLimit':
+        return 'Too many requests. Please wait a moment before trying again.';
+      case 'Verification':
+        return 'Unable to verify your Discord permissions. Please try again.';
+      default:
+        return 'Authentication failed - please try again.';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center">
+    <div className="flex flex-col justify-center min-h-screen bg-gray-50">
       <Head>
         <title>Sign In - Hinko Bot Dashboard</title>
         <meta name="description" content="Sign in to access the Hinko Bot Dashboard" />
@@ -34,41 +65,43 @@ export default function SignIn() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <ShieldCheckIcon className="h-12 w-12 text-indigo-600" />
+          <ShieldCheckIcon className="w-12 h-12 text-indigo-600" />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h2 className="mt-6 text-3xl font-extrabold text-center text-gray-900">
           Sign in to Dashboard
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          {error ? 'Authentication failed - please try again' : 'Redirecting to Discord...'}
+        <p className="mt-2 text-sm text-center text-gray-600">
+          {error ? 'Authentication failed - please try again' : 
+           isLoading ? 'Redirecting to Discord...' : 
+           'Access the Hinko Bot administration panel'}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="px-4 py-8 bg-white shadow sm:rounded-lg sm:px-10">
           <div className="space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="p-4 border border-red-200 rounded-md bg-red-50">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <ShieldCheckIcon className="h-5 w-5 text-red-400" />
+                    <ExclamationTriangleIcon className="w-5 h-5 text-red-400" />
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-red-800">
                       Authentication Error
                     </h3>
                     <div className="mt-2 text-sm text-red-700">
-                      <p>Please ensure you are using the correct Discord account.</p>
+                      <p>{getErrorMessage(error as string)}</p>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div className="p-4 border border-blue-200 rounded-md bg-blue-50">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <ShieldCheckIcon className="h-5 w-5 text-blue-400" />
+                  <ShieldCheckIcon className="w-5 h-5 text-blue-400" />
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-blue-800">
@@ -76,23 +109,49 @@ export default function SignIn() {
                   </h3>
                   <div className="mt-2 text-sm text-blue-700">
                     <p>
-                      This dashboard is restricted to authorized administrators only.
-                      Expected Role ID: 797927858420187186 in Guild: 554266392262737930
+                      This dashboard requires membership in a specific Discord server and role.
                     </p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      <li>Discord Server ID: <code className="px-1 font-mono bg-blue-100 rounded">554266392262737930</code></li>
+                      <li>Required Role ID: <code className="px-1 font-mono bg-blue-100 rounded">797927858420187186</code></li>
+                    </ul>
                   </div>
                 </div>
               </div>
             </div>
 
+            {error === 'RateLimit' && (
+              <div className="p-4 border border-yellow-200 rounded-md bg-yellow-50">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">
+                      Rate Limited
+                    </h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>
+                        Discord API rate limit reached. Please wait 1-2 minutes before trying again.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <button
-                onClick={handleSignIn}
-                disabled={!error && router.isReady} // Disable if auto-redirecting
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50"
+                onClick={() => {
+                  setShouldAutoRedirect(false);
+                  handleSignIn();
+                }}
+                disabled={isLoading}
+                className="flex justify-center w-full px-4 py-3 text-sm font-medium text-white transition-colors duration-200 bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {!error && router.isReady ? (
+                {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    <div className="w-5 h-5 mr-2 border-b-2 border-white rounded-full animate-spin"></div>
                     Redirecting to Discord...
                   </>
                 ) : (
@@ -106,18 +165,41 @@ export default function SignIn() {
               </button>
             </div>
 
-            <div className="text-xs text-gray-500 text-center">
+            <div className="text-xs text-center text-gray-500">
               By signing in, you acknowledge that access is restricted and monitored.
             </div>
+
+            {/* Retry suggestion for rate limit errors */}
+            {error === 'RateLimit' && (
+              <div className="text-center">
+                <p className="mb-2 text-sm text-gray-600">
+                  If you continue to see this error:
+                </p>
+                <button
+                  onClick={() => {
+                    // Clear error and try again after a delay
+                    router.replace('/auth/signin', undefined, { shallow: true });
+                    setTimeout(() => {
+                      setShouldAutoRedirect(true);
+                    }, 2000);
+                  }}
+                  className="text-sm text-indigo-600 underline hover:text-indigo-500"
+                >
+                  Wait and try again automatically
+                </button>
+              </div>
+            )}
 
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-4">
                 <details className="text-xs">
-                  <summary className="cursor-pointer text-gray-500">Debug Info</summary>
-                  <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+                  <summary className="text-gray-500 cursor-pointer">Debug Info</summary>
+                  <div className="p-2 mt-2 text-xs bg-gray-100 rounded">
                     <p>Expected Role ID: 797927858420187186</p>
                     <p>Expected Guild ID: 554266392262737930</p>
                     <p>Error: {error || 'none'}</p>
+                    <p>Callback URL: {callbackUrl || 'default'}</p>
+                    <p>Auto Redirect: {shouldAutoRedirect ? 'enabled' : 'disabled'}</p>
                     <p>Note: You need the ROLE, not just server membership!</p>
                   </div>
                 </details>
@@ -133,10 +215,10 @@ export default function SignIn() {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
 
-  if (session) {
+  if (session?.user?.hasRequiredAccess) {
     return {
       redirect: {
-        destination: '/dashboard',
+        destination: '/dashboard/554266392262737930',
         permanent: false,
       },
     };
