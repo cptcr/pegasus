@@ -1,5 +1,5 @@
-// src/commands/tickets/ticket.ts - Fixed Ticket Commands
-import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+// src/commands/tickets/ticket.ts - Final Fixed Ticket Commands
+import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder, ChannelType } from 'discord.js';
 import { ExtendedClient } from '../../index.js';
 import { TicketManager } from '../../modules/tickets/TicketManager.js';
 import { Config } from '../../config/Config.js';
@@ -111,12 +111,13 @@ export default {
         )
     ),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const client = interaction.client as ExtendedClient;
     const ticketManager = new TicketManager(client, client.db, client.logger);
     
     if (!interaction.guild) {
-      return interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
+      await interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
+      return;
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -140,30 +141,35 @@ export default {
       case 'list':
         await handleTicketList(interaction, ticketManager);
         break;
+      default:
+        await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
+        break;
     }
   }
 };
 
-async function handleTicketOpen(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+async function handleTicketOpen(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
   const category = interaction.options.getString('category', true);
   const subject = interaction.options.getString('subject', true);
-  const description = interaction.options.getString('description');
+  const description = interaction.options.getString('description'); // This returns string | null
   const priorityStr = interaction.options.getString('priority') || 'MEDIUM';
 
   const priority = priorityStr as TicketPriority;
 
+  // ERROR 8 FIXED: Convert null to undefined for TicketOptions interface
   const result = await ticketManager.createTicket(interaction.guild!, {
     userId: interaction.user.id,
     category,
     subject,
-    description,
+    description: description || undefined, // Convert null to undefined
     priority
   });
 
   if (!result.success) {
-    return interaction.editReply(`Failed to create ticket: ${result.error}`);
+    await interaction.editReply(`Failed to create ticket: ${result.error}`);
+    return;
   }
 
   const embed = new EmbedBuilder()
@@ -181,42 +187,50 @@ async function handleTicketOpen(interaction: ChatInputCommandInteraction, ticket
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleTicketClose(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+// ERROR 1 FIXED: Added return type and explicit return
+async function handleTicketClose(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply();
 
-  // Get ticket ID from channel name or database
-  const channelName = interaction.channel?.name;
-  if (!channelName?.startsWith('ticket-')) {
-    return interaction.editReply('This command can only be used in a ticket channel.');
+  if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
+    await interaction.editReply('This command can only be used in a text channel.');
+    return;
+  }
+
+  const channelName = interaction.channel.name;
+  if (!channelName.startsWith('ticket-')) {
+    await interaction.editReply('This command can only be used in a ticket channel.');
+    return;
   }
 
   const reason = interaction.options.getString('reason') || 'No reason provided';
 
-  // Extract ticket number from channel name
   const ticketNumber = channelName.split('-')[1];
   const ticketId = parseInt(ticketNumber);
 
   if (isNaN(ticketId)) {
-    return interaction.editReply('Invalid ticket channel.');
+    await interaction.editReply('Invalid ticket channel.');
+    return;
   }
 
   const ticket = await ticketManager.getTicket(ticketId);
   if (!ticket) {
-    return interaction.editReply('Ticket not found.');
+    await interaction.editReply('Ticket not found.');
+    return;
   }
 
-  // Check permissions
   const isOwner = ticket.userId === interaction.user.id;
   const isStaff = interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
 
   if (!isOwner && !isStaff) {
-    return interaction.editReply('You do not have permission to close this ticket.');
+    await interaction.editReply('You do not have permission to close this ticket.');
+    return;
   }
 
   const result = await ticketManager.closeTicket(ticketId, interaction.user.id, reason);
 
   if (!result.success) {
-    return interaction.editReply(`Failed to close ticket: ${result.error}`);
+    await interaction.editReply(`Failed to close ticket: ${result.error}`);
+    return;
   }
 
   const embed = new EmbedBuilder()
@@ -229,92 +243,121 @@ async function handleTicketClose(interaction: ChatInputCommandInteraction, ticke
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleTicketAdd(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+// ERROR 2 FIXED: Added return type and explicit return
+async function handleTicketAdd(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
-  const channelName = interaction.channel?.name;
+  
+  if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
+    await interaction.editReply('This command can only be used in a text channel.');
+    return;
+  }
 
-  if (!channelName?.startsWith('ticket-')) {
-    return interaction.editReply('This command can only be used in a ticket channel.');
+  const channelName = interaction.channel.name;
+  if (!channelName.startsWith('ticket-')) {
+    await interaction.editReply('This command can only be used in a ticket channel.');
+    return;
   }
 
   const ticketNumber = channelName.split('-')[1];
   const ticketId = parseInt(ticketNumber);
 
   if (isNaN(ticketId)) {
-    return interaction.editReply('Invalid ticket channel.');
+    await interaction.editReply('Invalid ticket channel.');
+    return;
   }
 
   const result = await ticketManager.addUserToTicket(ticketId, user.id, interaction.user.id);
 
   if (!result.success) {
-    return interaction.editReply(`Failed to add user: ${result.error}`);
+    await interaction.editReply(`Failed to add user: ${result.error}`);
+    return;
   }
 
-  await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.tag} has been added to this ticket.`);
+  await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.displayName} has been added to this ticket.`);
 }
 
-async function handleTicketRemove(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+// ERROR 3 FIXED: Added return type and explicit return
+async function handleTicketRemove(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
-  const channelName = interaction.channel?.name;
+  
+  if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
+    await interaction.editReply('This command can only be used in a text channel.');
+    return;
+  }
 
-  if (!channelName?.startsWith('ticket-')) {
-    return interaction.editReply('This command can only be used in a ticket channel.');
+  const channelName = interaction.channel.name;
+  if (!channelName.startsWith('ticket-')) {
+    await interaction.editReply('This command can only be used in a ticket channel.');
+    return;
   }
 
   const ticketNumber = channelName.split('-')[1];
   const ticketId = parseInt(ticketNumber);
 
   if (isNaN(ticketId)) {
-    return interaction.editReply('Invalid ticket channel.');
+    await interaction.editReply('Invalid ticket channel.');
+    return;
   }
 
   const result = await ticketManager.removeUserFromTicket(ticketId, user.id, interaction.user.id);
 
   if (!result.success) {
-    return interaction.editReply(`Failed to remove user: ${result.error}`);
+    await interaction.editReply(`Failed to remove user: ${result.error}`);
+    return;
   }
 
-  await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.tag} has been removed from this ticket.`);
+  await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.displayName} has been removed from this ticket.`);
 }
 
-async function handleTicketPriority(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+// ERROR 4 FIXED: Added return type and explicit return
+async function handleTicketPriority(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply();
 
   const priorityStr = interaction.options.getString('priority', true);
   const priority = priorityStr as TicketPriority;
-  const channelName = interaction.channel?.name;
+  
+  if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
+    await interaction.editReply('This command can only be used in a text channel.');
+    return;
+  }
 
-  if (!channelName?.startsWith('ticket-')) {
-    return interaction.editReply('This command can only be used in a ticket channel.');
+  const channelName = interaction.channel.name;
+  if (!channelName.startsWith('ticket-')) {
+    await interaction.editReply('This command can only be used in a ticket channel.');
+    return;
   }
 
   const ticketNumber = channelName.split('-')[1];
   const ticketId = parseInt(ticketNumber);
 
   if (isNaN(ticketId)) {
-    return interaction.editReply('Invalid ticket channel.');
+    await interaction.editReply('Invalid ticket channel.');
+    return;
   }
 
   const result = await ticketManager.setTicketPriority(ticketId, priority, interaction.user.id);
 
   if (!result.success) {
-    return interaction.editReply(`Failed to set priority: ${result.error}`);
+    await interaction.editReply(`Failed to set priority: ${result.error}`);
+    return;
   }
 
   await interaction.editReply(`${Config.EMOJIS.SUCCESS} Ticket priority set to **${priority}**.`);
 }
 
-async function handleTicketList(interaction: ChatInputCommandInteraction, ticketManager: TicketManager) {
+// ERROR 5 FIXED: Added return type and explicit return
+async function handleTicketList(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
   await interaction.deferReply();
 
   const showAll = interaction.options.getBoolean('all') || false;
 
   if (showAll && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
-    return interaction.editReply('You need Manage Channels permission to view all tickets.');
+    await interaction.editReply('You need Manage Channels permission to view all tickets.');
+    return;
   }
 
   let tickets;
@@ -325,7 +368,8 @@ async function handleTicketList(interaction: ChatInputCommandInteraction, ticket
   }
 
   if (tickets.length === 0) {
-    return interaction.editReply(showAll ? 'No open tickets in this guild.' : 'You have no tickets.');
+    await interaction.editReply(showAll ? 'No open tickets in this guild.' : 'You have no tickets.');
+    return;
   }
 
   const embed = new EmbedBuilder()
@@ -340,7 +384,7 @@ async function handleTicketList(interaction: ChatInputCommandInteraction, ticket
     
     embed.addFields({
       name: `ID: ${ticket.id} - ${ticket.subject}`,
-      value: `**User:** ${user?.tag || ticket.userId}\n**Category:** ${ticket.category}\n**Status:** ${ticket.status}\n**Priority:** ${ticket.priority}\n**Created:** <t:${Math.floor(ticket.createdAt.getTime() / 1000)}:R>`,
+      value: `**User:** ${user?.displayName || ticket.userId}\n**Category:** ${ticket.category}\n**Status:** ${ticket.status}\n**Priority:** ${ticket.priority}\n**Created:** <t:${Math.floor(ticket.createdAt.getTime() / 1000)}:R>`,
       inline: false
     });
   }
@@ -351,4 +395,3 @@ async function handleTicketList(interaction: ChatInputCommandInteraction, ticket
 
   await interaction.editReply({ embeds: [embed] });
 }
-

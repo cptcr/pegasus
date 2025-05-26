@@ -114,20 +114,17 @@ export default {
 
     switch (subcommand) {
       case 'create':
-        await handleGiveawayCreate(interaction, giveawayManager);
-        break;
+        return handleGiveawayCreate(interaction, giveawayManager);
       case 'end':
-        await handleGiveawayEnd(interaction, giveawayManager);
-        break;
+        return handleGiveawayEnd(interaction, giveawayManager);
       case 'reroll':
-        await handleGiveawayReroll(interaction, giveawayManager);
-        break;
+        return handleGiveawayReroll(interaction, giveawayManager);
       case 'list':
-        await handleGiveawayList(interaction, giveawayManager);
-        break;
+        return handleGiveawayList(interaction, giveawayManager);
       case 'participants':
-        await handleGiveawayParticipants(interaction, giveawayManager);
-        break;
+        return handleGiveawayParticipants(interaction, giveawayManager);
+      default:
+        return interaction.reply({ content: 'Invalid subcommand.', ephemeral: true });
     }
   }
 };
@@ -184,7 +181,7 @@ async function handleGiveawayCreate(interaction: ChatInputCommandInteraction, gi
     .setColor(Config.COLORS.SUCCESS)
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ embeds: [embed] });
 }
 
 async function handleGiveawayEnd(interaction: ChatInputCommandInteraction, giveawayManager: GiveawayManager) {
@@ -227,7 +224,7 @@ async function handleGiveawayEnd(interaction: ChatInputCommandInteraction, givea
     .setColor(Config.COLORS.SUCCESS)
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ embeds: [embed] });
 }
 
 async function handleGiveawayReroll(interaction: ChatInputCommandInteraction, giveawayManager: GiveawayManager) {
@@ -270,7 +267,7 @@ async function handleGiveawayReroll(interaction: ChatInputCommandInteraction, gi
     .setColor(Config.COLORS.SUCCESS)
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ embeds: [embed] });
 }
 
 async function handleGiveawayList(interaction: ChatInputCommandInteraction, giveawayManager: GiveawayManager) {
@@ -303,7 +300,7 @@ async function handleGiveawayList(interaction: ChatInputCommandInteraction, give
     embed.setFooter({ text: `Showing 10 of ${activeGiveaways.length} giveaways` });
   }
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ embeds: [embed] });
 }
 
 async function handleGiveawayParticipants(interaction: ChatInputCommandInteraction, giveawayManager: GiveawayManager) {
@@ -339,7 +336,7 @@ async function handleGiveawayParticipants(interaction: ChatInputCommandInteracti
     embed.setFooter({ text: `Showing 20 of ${participants.length} participants` });
   }
 
-  await interaction.editReply({ embeds: [embed] });
+  return interaction.editReply({ embeds: [embed] });
 }
 
 // Helper function to parse duration strings

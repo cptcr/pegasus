@@ -1,5 +1,5 @@
-// src/handlers/ButtonHandler.ts - Button Interaction Handler
-import { ButtonInteraction } from 'discord.js';
+// src/handlers/ButtonHandler.ts - Fixed Button Interaction Handler
+import { ButtonInteraction, PermissionFlagsBits } from 'discord.js';
 import { ExtendedClient } from '../index.js';
 import { QuarantineManager } from '../modules/quarantine/QuarantineManager.js';
 import { PollManager } from '../modules/polls/PollManager.js';
@@ -71,7 +71,8 @@ export class ButtonHandler {
     
     // Check permissions
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ModerateMembers)) {
-      return interaction.reply({ content: 'You do not have permission to use this button.', ephemeral: true });
+      await interaction.reply({ content: 'You do not have permission to use this button.', ephemeral: true });
+      return;
     }
 
     if (action === 'remove') {
@@ -100,14 +101,15 @@ export class ButtonHandler {
       const ticket = await this.ticketManager.getTicket(parseInt(ticketId));
       
       if (!ticket) {
-        return interaction.reply({ content: 'Ticket not found.', ephemeral: true });
+        await interaction.reply({ content: 'Ticket not found.', ephemeral: true });
+        return;
       }
 
       const isOwner = ticket.userId === interaction.user.id;
       const isStaff = interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
 
       if (!isOwner && !isStaff) {
-        return interaction.reply({ content: 'You do not have permission to close this ticket.', ephemeral: true });
+        await interaction.reply({ content: 'You do not have permission to close this ticket.', ephemeral: true });
       }
 
       const result = await this.ticketManager.closeTicket(parseInt(ticketId), interaction.user.id);

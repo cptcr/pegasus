@@ -1,4 +1,4 @@
-// Fixed prisma/schema.prisma - Compatible with Dashboard
+// prisma/schema.prisma - Fixed and Complete Schema
 generator client {
   provider = "prisma-client-js"
 }
@@ -40,6 +40,7 @@ model Guild {
   welcomeChannelId       String?
   joinToCreateChannelId  String?
   joinToCreateCategoryId String?
+  staffRoleId            String?
   
   // Role Configuration
   quarantineRoleId       String?
@@ -73,6 +74,7 @@ model Guild {
   geizhalsTrackers  GeizhalsTracker[]
   quarantineEntries QuarantineEntry[]
   automodRules      AutomodRule[]
+  ticketCategories  TicketCategory[]
 
   @@map("guilds")
 }
@@ -129,16 +131,24 @@ model Warn {
   @@map("warns")
 }
 
+enum QuarantineType {
+  USER
+  CHANNEL
+  ROLE
+}
+
 model QuarantineEntry {
-  id          Int      @id @default(autoincrement())
-  targetId    String
-  targetType  String   // USER, CHANNEL, ROLE
-  guildId     String
-  moderatorId String
-  reason      String
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int             @id @default(autoincrement())
+  targetId      String
+  targetType    QuarantineType
+  guildId       String
+  moderatorId   String
+  reason        String
+  active        Boolean         @default(true)
+  expiresAt     DateTime?
+  previousRoles String[]        @default([])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   // Relations
   guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -206,7 +216,7 @@ model PollOption {
 }
 
 model PollVote {
-  id       Int    @id @default(autoincrement())
+  id       Int @id @default(autoincrement())
   pollId   Int
   optionId Int
   userId   String
@@ -258,25 +268,59 @@ model GiveawayEntry {
   @@map("giveaway_entries")
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model Ticket {
-  id          Int       @id @default(autoincrement())
-  guildId     String
-  channelId   String
-  userId      String
-  moderatorId String?
-  category    String
-  subject     String
-  status      String    @default("OPEN") // OPEN, IN_PROGRESS, WAITING, CLOSED
-  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  closedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           Int            @id @default(autoincrement())
+  guildId      String
+  channelId    String
+  userId       String
+  moderatorId  String?
+  category     String
+  subject      String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  closeReason  String?
+  closedAt     DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   // Relations
   guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tickets")
+}
+
+model TicketCategory {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  name        String
+  description String?
+  emoji       String?
+  channelId   String?
+  categoryId  String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("ticket_categories")
 }
 
 model CustomCommand {

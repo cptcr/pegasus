@@ -1,11 +1,11 @@
-
-// src/events/interactionCreate.ts - Interaction Handler Event
-import { Events, Interaction } from 'discord.js';
+// src/events/interactionCreate.ts - Fixed Interaction Handler Event
+import { Events, Interaction, Collection, PermissionFlagsBits } from 'discord.js';
+import { ExtendedClient } from '../index.js';
 import { ButtonHandler } from '../handlers/ButtonHandler.js';
 
 export default {
   name: Events.InteractionCreate,
-  async execute(interaction: Interaction, client: ExtendedClient) {
+  async execute(interaction: Interaction, client: ExtendedClient): Promise<void> {
     try {
       if (interaction.isChatInputCommand()) {
         // Handle slash commands
@@ -33,10 +33,11 @@ export default {
 
           if (now < expirationTime) {
             const timeLeft = (expirationTime - now) / 1000;
-            return interaction.reply({
+            void interaction.reply({
               content: `Please wait ${timeLeft.toFixed(1)} more seconds before using this command.`,
               ephemeral: true
             });
+            return;
           }
         }
 
@@ -57,4 +58,29 @@ export default {
         
       } else if (interaction.isModalSubmit()) {
         // Handle modal submissions
-        client.logger.debug(`Modal submission: ${interaction.customId}`
+        client.logger.debug(`Modal submission: ${interaction.customId}`);
+      }
+
+    } catch (error) {
+      client.logger.error('Error handling interaction:', error);
+      
+      const errorMessage = 'There was an error while executing this interaction!';
+      
+      if (interaction.isRepliable()) {
+        if (interaction.replied || interaction.deferred) {
+          try {
+            await interaction.followUp({ content: errorMessage, ephemeral: true });
+          } catch (followUpError) {
+            client.logger.error('Error sending follow up:', followUpError);
+          }
+        } else {
+          try {
+            await interaction.reply({ content: errorMessage, ephemeral: true });
+          } catch (replyError) {
+            client.logger.error('Error sending reply:', replyError);
+          }
+        }
+      }
+    }
+  }
+};

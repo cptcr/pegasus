@@ -9,7 +9,11 @@ import {
   PermissionsBitField,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  VoiceChannel,
+  NewsChannel,
+  StageChannel,
+  ButtonInteraction
 } from 'discord.js';
 import { PrismaClient, QuarantineType } from '@prisma/client';
 import { Logger } from '../../utils/Logger.js';
@@ -306,11 +310,11 @@ export class QuarantineManager {
       });
 
       // Update channel permissions to restrict quarantined users
-      const channels = guild.channels.cache.filter(c => c.isTextBased() || c.isVoiceBased());
+      const channels = guild.channels.cache.filter(c => (c.isTextBased() || c.isVoiceBased()) && !c.isThread());
       
       for (const [, channel] of channels) {
         try {
-          await channel.permissionOverwrites.create(role, {
+          await (channel as TextChannel | VoiceChannel | NewsChannel | StageChannel).permissionOverwrites.create(role, {
             SendMessages: false,
             AddReactions: false,
             Speak: false,

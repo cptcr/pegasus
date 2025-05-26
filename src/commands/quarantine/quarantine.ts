@@ -1,6 +1,4 @@
-
-// Quarantine Commands
-// src/commands/quarantine/quarantine.ts
+// src/commands/quarantine/quarantine.ts - Fixed Quarantine Commands
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { ExtendedClient } from '../../index.js';
 import { QuarantineManager } from '../../modules/quarantine/QuarantineManager.js';
@@ -94,12 +92,13 @@ export default {
         .setDescription('Setup quarantine system for this guild')
     ),
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const client = interaction.client as ExtendedClient;
     const quarantineManager = new QuarantineManager(client, client.db, client.logger);
     
     if (!interaction.guild) {
-      return interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
+      await interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
+      return;
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -123,11 +122,14 @@ export default {
       case 'setup':
         await handleQuarantineSetup(interaction, quarantineManager);
         break;
+      default:
+        await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
+        break;
     }
   }
 };
 
-async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -137,7 +139,8 @@ async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, qua
 
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
   if (!member) {
-    return interaction.editReply('User not found in this guild.');
+    await interaction.editReply('User not found in this guild.');
+    return;
   }
 
   // Parse duration
@@ -145,10 +148,12 @@ async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, qua
   if (durationStr) {
     duration = parseDuration(durationStr);
     if (!duration) {
-      return interaction.editReply('Invalid duration format. Use formats like: 1d, 12h, 30m');
+      await interaction.editReply('Invalid duration format. Use formats like: 1d, 12h, 30m');
+      return;
     }
     if (duration > Config.QUARANTINE.MAX_DURATION) {
-      return interaction.editReply('Duration cannot exceed 30 days.');
+      await interaction.editReply('Duration cannot exceed 30 days.');
+      return;
     }
   }
 
@@ -160,12 +165,13 @@ async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, qua
   });
 
   if (!result.success) {
-    return interaction.editReply(`Failed to quarantine user: ${result.error}`);
+    await interaction.editReply(`Failed to quarantine user: ${result.error}`);
+    return;
   }
 
   const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} User Quarantined`)
-    .setDescription(`Successfully quarantined ${user.tag}`)
+    .setDescription(`Successfully quarantined ${user.displayName}`)
     .addFields(
       { name: 'Reason', value: reason, inline: true },
       { 
@@ -180,7 +186,7 @@ async function handleQuarantineAdd(interaction: ChatInputCommandInteraction, qua
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleQuarantineRemove(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineRemove(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -194,12 +200,13 @@ async function handleQuarantineRemove(interaction: ChatInputCommandInteraction, 
   );
 
   if (!result.success) {
-    return interaction.editReply(`Failed to remove quarantine: ${result.error}`);
+    await interaction.editReply(`Failed to remove quarantine: ${result.error}`);
+    return;
   }
 
   const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} Quarantine Removed`)
-    .setDescription(`Successfully removed quarantine from ${user.tag}`)
+    .setDescription(`Successfully removed quarantine from ${user.displayName}`)
     .addFields({ name: 'Reason', value: reason })
     .setColor(Config.COLORS.SUCCESS)
     .setTimestamp();
@@ -207,24 +214,25 @@ async function handleQuarantineRemove(interaction: ChatInputCommandInteraction, 
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleQuarantineStatus(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineStatus(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
   const status = await quarantineManager.getQuarantineStatus(interaction.guild!.id, user.id);
 
   if (!status) {
-    return interaction.editReply(`${user.tag} is not currently quarantined.`);
+    await interaction.editReply(`${user.displayName} is not currently quarantined.`);
+    return;
   }
 
   const moderator = await interaction.client.users.fetch(status.moderatorId).catch(() => null);
 
   const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.QUARANTINE} Quarantine Status`)
-    .setDescription(`${user.tag} is currently quarantined`)
+    .setDescription(`${user.displayName} is currently quarantined`)
     .addFields(
       { name: 'Reason', value: status.reason, inline: true },
-      { name: 'Moderator', value: moderator?.tag || status.moderatorId, inline: true },
+      { name: 'Moderator', value: moderator?.displayName || status.moderatorId, inline: true },
       { name: 'Since', value: `<t:${Math.floor(status.createdAt.getTime() / 1000)}:R>`, inline: true }
     )
     .setColor(Config.COLORS.QUARANTINE)
@@ -241,7 +249,7 @@ async function handleQuarantineStatus(interaction: ChatInputCommandInteraction, 
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleQuarantineHistory(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineHistory(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -250,12 +258,13 @@ async function handleQuarantineHistory(interaction: ChatInputCommandInteraction,
   const history = await quarantineManager.getQuarantineHistory(interaction.guild!.id, user.id, limit);
 
   if (history.length === 0) {
-    return interaction.editReply(`${user.tag} has no quarantine history.`);
+    await interaction.editReply(`${user.displayName} has no quarantine history.`);
+    return;
   }
 
   const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.QUARANTINE} Quarantine History`)
-    .setDescription(`Showing last ${history.length} entries for ${user.tag}`)
+    .setDescription(`Showing last ${history.length} entries for ${user.displayName}`)
     .setColor(Config.COLORS.INFO)
     .setTimestamp();
 
@@ -265,7 +274,7 @@ async function handleQuarantineHistory(interaction: ChatInputCommandInteraction,
     
     embed.addFields({
       name: `Entry ${i + 1} ${entry.active ? '(Active)' : ''}`,
-      value: `**Reason:** ${entry.reason}\n**Moderator:** ${moderator?.tag || entry.moderatorId}\n**Date:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>`,
+      value: `**Reason:** ${entry.reason}\n**Moderator:** ${moderator?.displayName || entry.moderatorId}\n**Date:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>`,
       inline: false
     });
   }
@@ -273,13 +282,14 @@ async function handleQuarantineHistory(interaction: ChatInputCommandInteraction,
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleQuarantineList(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineList(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const activeQuarantines = await quarantineManager.getActiveQuarantines(interaction.guild!.id);
 
   if (activeQuarantines.length === 0) {
-    return interaction.editReply('No active quarantines in this guild.');
+    await interaction.editReply('No active quarantines in this guild.');
+    return;
   }
 
   const embed = new EmbedBuilder()
@@ -294,8 +304,8 @@ async function handleQuarantineList(interaction: ChatInputCommandInteraction, qu
     const moderator = await interaction.client.users.fetch(entry.moderatorId).catch(() => null);
     
     embed.addFields({
-      name: `${user?.tag || entry.targetId}`,
-      value: `**Reason:** ${entry.reason}\n**Moderator:** ${moderator?.tag || entry.moderatorId}\n**Since:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>${entry.expiresAt ? `\n**Expires:** <t:${Math.floor(entry.expiresAt.getTime() / 1000)}:R>` : ''}`,
+      name: `${user?.displayName || entry.targetId}`,
+      value: `**Reason:** ${entry.reason}\n**Moderator:** ${moderator?.displayName || entry.moderatorId}\n**Since:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>${entry.expiresAt ? `\n**Expires:** <t:${Math.floor(entry.expiresAt.getTime() / 1000)}:R>` : ''}`,
       inline: true
     });
   }
@@ -307,13 +317,14 @@ async function handleQuarantineList(interaction: ChatInputCommandInteraction, qu
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleQuarantineSetup(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager) {
+async function handleQuarantineSetup(interaction: ChatInputCommandInteraction, quarantineManager: QuarantineManager): Promise<void> {
   await interaction.deferReply();
 
   const result = await quarantineManager.setupQuarantineRole(interaction.guild!);
 
   if (!result.success) {
-    return interaction.editReply(`Failed to setup quarantine system: ${result.error}`);
+    await interaction.editReply(`Failed to setup quarantine system: ${result.error}`);
+    return;
   }
 
   const embed = new EmbedBuilder()
@@ -330,11 +341,11 @@ async function handleQuarantineSetup(interaction: ChatInputCommandInteraction, q
 }
 
 // Helper function to parse duration strings
-function parseDuration(duration: string): number | null {
+function parseDuration(duration: string): number | undefined {
   const regex = /^(\d+)([dhm])$/i;
   const match = duration.match(regex);
   
-  if (!match) return null;
+  if (!match) return undefined;
   
   const value = parseInt(match[1]);
   const unit = match[2].toLowerCase();
@@ -343,6 +354,6 @@ function parseDuration(duration: string): number | null {
     case 'd': return value * 24 * 60 * 60 * 1000; // days to ms
     case 'h': return value * 60 * 60 * 1000; // hours to ms
     case 'm': return value * 60 * 1000; // minutes to ms
-    default: return null;
+    default: return undefined;
   }
 }

@@ -1,4 +1,4 @@
-// src/modules/polls/PollManager.ts - Poll System
+// src/modules/polls/PollManager.ts - Final Fixed Poll System
 import {
   Guild,
   TextChannel,
@@ -6,8 +6,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType,
-  Message,
   User,
   ButtonInteraction
 } from 'discord.js';
@@ -33,12 +31,12 @@ export interface PollData {
   channelId: string;
   messageId: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   creatorId: string;
   multiple: boolean;
   anonymous: boolean;
   active: boolean;
-  endsAt?: Date;
+  endTime?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   options: PollOptionData[];
@@ -49,7 +47,8 @@ export interface PollOptionData {
   id: number;
   pollId: number;
   text: string;
-  emoji?: string;
+  emoji?: string | null;
+  orderIndex: number;
 }
 
 export interface PollVoteData {
@@ -57,7 +56,6 @@ export interface PollVoteData {
   pollId: number;
   optionId: number;
   userId: string;
-  createdAt: Date;
 }
 
 export class PollManager {
@@ -103,7 +101,7 @@ export class PollManager {
       }
 
       // Calculate end time
-      const endsAt = options.duration ? new Date(Date.now() + options.duration) : null;
+      const endTime = options.duration ? new Date(Date.now() + options.duration) : null;
 
       // Create poll in database
       const poll = await this.db.poll.create({
@@ -116,11 +114,12 @@ export class PollManager {
           multiple: options.allowMultiple || false,
           anonymous: options.anonymous || false,
           active: true,
-          endsAt,
+          endTime,
           options: {
             create: options.options.map((text, index) => ({
               text,
-              emoji: Config.POLL.VOTE_EMOJIS[index] || `${index + 1}️⃣`
+              emoji: Config.POLL.VOTE_EMOJIS[index] || `${index + 1}️⃣`,
+              orderIndex: index
             }))
           }
         },
@@ -143,9 +142,12 @@ export class PollManager {
       });
 
       // Set expiration timer if duration is specified
-      if (endsAt) {
-        this.setExpirationTimer(poll.id, endsAt);
+      if (endTime) {
+        this.setExpirationTimer(poll.id, endTime);
       }
+
+      // Log the action
+      await this.logPollAction(guild.id, 'POLL_CREATED', poll as PollData);
 
       this.logger.info(`Poll created in ${guild.name} by ${options.creatorId}: ${options.title}`);
 
@@ -191,7 +193,7 @@ export class PollManager {
       await this.updatePollMessage(poll as PollData);
 
       // Log the action
-      await this.logPollAction(poll.guildId, 'POLL_ENDED', poll, moderatorId);
+      await this.logPollAction(poll.guildId, 'POLL_ENDED', poll as PollData, moderatorId);
 
       this.logger.info(`Poll ${pollId} ended in guild ${poll.guildId}`);
 
@@ -220,22 +222,27 @@ export class PollManager {
         include: { options: true, votes: true }
       });
 
+      // ERROR 1 FIXED: Proper null check and early return
       if (!poll || !poll.active) {
-        return interaction.reply({ content: 'This poll is no longer active.', ephemeral: true });
+        await interaction.reply({ content: 'This poll is no longer active.', ephemeral: true });
+        return;
       }
 
-      // Check if poll has expired
-      if (poll.endsAt && poll.endsAt < new Date()) {
+      // ERROR 2 FIXED: Check poll exists before accessing endTime
+      if (poll.endTime && poll.endTime < new Date()) {
         await this.endPoll(pollId);
-        return interaction.reply({ content: 'This poll has expired.', ephemeral: true });
+        await interaction.reply({ content: 'This poll has expired.', ephemeral: true });
+        return;
       }
 
       const option = poll.options.find(opt => opt.id === optionId);
+      // ERROR 3 FIXED: Remove duplicate option check
       if (!option) {
-        return interaction.reply({ content: 'Invalid poll option.', ephemeral: true });
+        await interaction.reply({ content: 'Invalid poll option.', ephemeral: true });
+        return;
       }
 
-      // Check if user has already voted
+      // ERROR 4 FIXED: Remove optional chaining since we know poll exists
       const existingVotes = poll.votes.filter(vote => vote.userId === interaction.user.id);
 
       if (!poll.multiple && existingVotes.length > 0) {
@@ -247,7 +254,7 @@ export class PollManager {
           }
         });
       } else if (poll.multiple) {
-        // Multiple choice poll - check if already voted for this option
+        // ERROR 5 FIXED: Remove optional chaining since existingVotes is guaranteed to exist
         const existingVoteForOption = existingVotes.find(vote => vote.optionId === optionId);
         if (existingVoteForOption) {
           // Remove vote for this option
@@ -298,10 +305,14 @@ export class PollManager {
 
     } catch (error) {
       this.logger.error('Error handling poll vote:', error);
-      await interaction.reply({ 
-        content: 'An error occurred while processing your vote.', 
-        ephemeral: true 
-      });
+      
+      // Safe error handling - check if already replied
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: 'An error occurred while processing your vote.', 
+          ephemeral: true 
+        });
+      }
     }
   }
 
@@ -397,8 +408,11 @@ export class PollManager {
     const totalVotes = poll.votes.length;
     const uniqueVoters = new Set(poll.votes.map(vote => vote.userId)).size;
 
+    // Sort options by orderIndex for consistent display
+    const sortedOptions = poll.options.sort((a, b) => a.orderIndex - b.orderIndex);
+
     // Add options with vote counts
-    for (const option of poll.options) {
+    for (const option of sortedOptions) {
       const votes = voteCounts.get(option.id) || 0;
       const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
       const progressBar = this.createProgressBar(percentage);
@@ -419,13 +433,13 @@ export class PollManager {
       footerText += ' • Anonymous';
     }
     
-    if (poll.endsAt) {
+    if (poll.endTime) {
       if (poll.active) {
         footerText += ` • Ends `;
         embed.setFooter({ text: footerText });
         embed.addFields({
           name: 'Ends',
-          value: `<t:${Math.floor(poll.endsAt.getTime() / 1000)}:R>`,
+          value: `<t:${Math.floor(poll.endTime.getTime() / 1000)}:R>`,
           inline: true
         });
       } else {
@@ -456,7 +470,10 @@ export class PollManager {
     let currentRow = new ActionRowBuilder<ButtonBuilder>();
     let buttonCount = 0;
 
-    for (const option of poll.options) {
+    // Sort options by orderIndex for consistent display
+    const sortedOptions = poll.options.sort((a, b) => a.orderIndex - b.orderIndex);
+
+    for (const option of sortedOptions) {
       const button = new ButtonBuilder()
         .setCustomId(`poll_${poll.id}_${option.id}`)
         .setLabel(option.text)
@@ -523,8 +540,8 @@ export class PollManager {
   /**
    * Set expiration timer for poll
    */
-  private setExpirationTimer(pollId: number, endsAt: Date): void {
-    const delay = endsAt.getTime() - Date.now();
+  private setExpirationTimer(pollId: number, endTime: Date): void {
+    const delay = endTime.getTime() - Date.now();
     
     if (delay <= 0) {
       // Already expired, process immediately
@@ -548,7 +565,7 @@ export class PollManager {
         const expiredPolls = await this.db.poll.findMany({
           where: {
             active: true,
-            endsAt: {
+            endTime: {
               lte: new Date()
             }
           }
@@ -604,10 +621,10 @@ export class PollManager {
         embed.addFields({ name: 'Ended by', value: `${moderator.tag} (${moderator.id})`, inline: true });
       }
 
-      if (poll.endsAt) {
+      if (poll.endTime) {
         embed.addFields({ 
           name: action === 'POLL_CREATED' ? 'Ends' : 'Was scheduled to end', 
-          value: `<t:${Math.floor(poll.endsAt.getTime() / 1000)}:F>`, 
+          value: `<t:${Math.floor(poll.endTime.getTime() / 1000)}:F>`, 
           inline: true 
         });
       }
@@ -629,15 +646,15 @@ export class PollManager {
         where: {
           guildId: guild.id,
           active: true,
-          endsAt: {
+          endTime: {
             not: null
           }
         }
       });
 
       for (const poll of activePolls) {
-        if (poll.endsAt) {
-          this.setExpirationTimer(poll.id, poll.endsAt);
+        if (poll.endTime) {
+          this.setExpirationTimer(poll.id, poll.endTime);
         }
       }
 
@@ -678,4 +695,3 @@ export class PollManager {
     }
   }
 }
-

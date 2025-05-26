@@ -1,11 +1,18 @@
-// src/index.ts - Pegasus Bot v2.0.0 Main Entry Point
-import { Client, GatewayIntentBits, Collection, ActivityType, REST, Routes } from 'discord.js';
+// src/index.ts - Fixed Pegasus Bot v2.0.0 Main Entry Point
+import { 
+  Client, 
+  GatewayIntentBits, 
+  Collection, 
+  ActivityType, 
+  REST, 
+  Routes 
+} from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { EventHandler } from './handlers/EventHandler.js';
+import { EventHandler} from './handlers/EventHandler.js';
 import { CommandHandler } from './handlers/CommandHandler.js';
 import { DatabaseManager } from './database/DatabaseManager.js';
 import { Logger } from './utils/Logger.js';
