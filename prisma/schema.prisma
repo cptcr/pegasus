@@ -74,6 +74,7 @@ model User {
   ownedTempChannels   TempVoiceChannel[]
 
   @@map("users")
+  Poll Poll[]
 }
 
 model Warn {
@@ -187,60 +188,49 @@ model MonthlyLeaderboard {
   @@unique([guildId, userId, month, year])
   @@map("monthly_leaderboards")
 }
-
-// Poll System
 model Poll {
-  id          Int       @id @default(autoincrement())
-  guildId     String
-  channelId   String
-  messageId   String?
-  title       String
-  description String?
-  creatorId   String
-  multiple    Boolean   @default(false)
-  anonymous   Boolean   @default(false)
-  endTime     DateTime?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  channelId String
+  messageId String   @unique
+  title     String
+  creatorId String
+  multiple  Boolean  @default(false)
+  anonymous Boolean  @default(false)
+  active    Boolean  @default(true)
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Relationen
-  guild   Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
   options PollOption[]
   votes   PollVote[]
-
-  @@map("polls")
+  guild   Guild      @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 }
 
 model PollOption {
-  id         Int      @id @default(autoincrement())
-  pollId     Int
-  text       String
-  emoji      String?
-  orderIndex Int
-  createdAt  DateTime @default(now())
+  id     Int    @id @default(autoincrement())
+  pollId Int
+  text   String
+  emoji  String? // Emoji als Indikator
 
-  // Relationen
-  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  poll  Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes PollVote[]
-
-  @@map("poll_options")
 }
 
 model PollVote {
-  id        Int      @id @default(autoincrement())
-  pollId    Int
-  optionId  Int
-  userId    String
-  createdAt DateTime @default(now())
+  id         Int     @id @default(autoincrement())
+  pollId     Int
+  optionId   Int
+  userId     String
+  createdAt  DateTime @default(now())
 
-  // Relationen
   poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
   user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([pollId, optionId, userId])
-  @@map("poll_votes")
+  @@unique([pollId, optionId, userId]) // Stellt sicher, dass ein Benutzer nur einmal pro Option stimmen kann (bei Mehrfachauswahl)
+                                      // Für einfache Auswahl wird die Logik im Code benötigt.
 }
 
 // Giveaway System

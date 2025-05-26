@@ -15,6 +15,22 @@ import {
 } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
 
+export interface PollData {
+  id: number;
+  guildId: string;
+  channelId: string;
+  messageId: string;
+  title: string;
+  creatorId: string;
+  multiple: boolean;
+  anonymous: boolean;
+  active: boolean;
+  endsAt?: Date | null;
+  options: { id: number; text: string; emoji?: string | null; votesCount?: number }[];
+  votes?: Map<string, string[]>; // Temporär für aktive Umfragen, key = option.text, value = userId[]
+  totalVotes?: number;
+}
+
 export interface BotConfig {
   devGuilds: string[];
   devUsers: string[];
