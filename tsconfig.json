@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["ES2020"],
-    "module": "CommonJS",
+    "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -29,6 +29,9 @@
     "paths": {
       "@/*": ["./src/*"]
     }
+  },
+  "ts-node": {
+    "esm": true
   },
   "include": [
     "src/**/*",
