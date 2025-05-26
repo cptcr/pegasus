@@ -9,18 +9,21 @@ import { EventHandler } from './handlers/EventHandler.js';
 import { CommandHandler } from './handlers/CommandHandler.js';
 import { DatabaseManager } from './database/DatabaseManager.js';
 import { Logger } from './utils/Logger.js';
-import { Config } from './config/Config.js';
+import { Config, validateConfig } from './config/Config.js';
+import { WebSocketManager } from './api/WebSocketManager.js';
+import { createServer } from 'http';
 
 // Load environment variables
 config();
 
 // Extended Client interface
-interface ExtendedClient extends Client {
+export interface ExtendedClient extends Client {
   commands: Collection<string, any>;
   cooldowns: Collection<string, Collection<string, number>>;
   db: PrismaClient;
   logger: Logger;
   config: typeof Config;
+  wsManager?: WebSocketManager;
 }
 
 class PegasusBot {
@@ -30,14 +33,25 @@ class PegasusBot {
   private eventHandler: EventHandler;
   private commandHandler: CommandHandler;
   private databaseManager: DatabaseManager;
+  private wsManager?: WebSocketManager;
+  private httpServer?: any;
 
   constructor() {
+    // Validate configuration first
+    const configValidation = validateConfig();
+    if (!configValidation.valid) {
+      console.error('❌ Configuration validation failed:');
+      configValidation.errors.forEach(error => console.error(`  - ${error}`));
+      process.exit(1);
+    }
+
     // Initialize logger
     this.logger = new Logger();
     
     // Initialize database
     this.db = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      errorFormat: 'pretty'
     });
 
     // Initialize Discord client with required intents
@@ -93,8 +107,13 @@ class PegasusBot {
       // Load events
       await this.loadEvents();
 
+      // Initialize WebSocket server if enabled
+      if (Config.FEATURES.ENABLE_WEB_DASHBOARD) {
+        await this.initializeWebSocket();
+      }
+
       // Login to Discord
-      await this.client.login(process.env.DISCORD_BOT_TOKEN);
+      await this.client.login(Config.BOT_TOKEN);
 
       this.logger.success('✅ Pegasus Bot started successfully!');
       
@@ -157,7 +176,9 @@ class PegasusBot {
         await this.loadCommandsFromDirectory(itemPath);
       } else if (item.endsWith('.ts') || item.endsWith('.js')) {
         try {
-          const command = await import(itemPath);
+          // Convert to file URL for ES modules
+          const fileUrl = `file://${itemPath.replace(/\\/g, '/')}`;
+          const command = await import(fileUrl);
           const commandData = command.default || command;
 
           if (commandData.data && commandData.execute) {
@@ -184,12 +205,12 @@ class PegasusBot {
         }
       }
 
-      const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN!);
+      const rest = new REST().setToken(Config.BOT_TOKEN);
 
-      if (process.env.NODE_ENV === 'development' && process.env.GUILD_ID) {
+      if (process.env.NODE_ENV === 'development' && Config.DEV.GUILD_ID) {
         // Register commands to specific guild in development
         await rest.put(
-          Routes.applicationGuildCommands(Config.CLIENT_ID, process.env.GUILD_ID),
+          Routes.applicationGuildCommands(Config.CLIENT_ID, Config.DEV.GUILD_ID),
           { body: commands }
         );
         this.logger.success(`✅ Registered ${commands.length} guild commands`);
@@ -222,17 +243,46 @@ class PegasusBot {
   }
 
   /**
+   * Initialize WebSocket server for dashboard
+   */
+  private async initializeWebSocket(): Promise<void> {
+    try {
+      this.httpServer = createServer();
+      this.wsManager = new WebSocketManager(this.httpServer, this.client, this.logger);
+      this.client.wsManager = this.wsManager;
+
+      this.httpServer.listen(Config.API.WEBSOCKET_PORT, () => {
+        this.logger.success(`✅ WebSocket server listening on port ${Config.API.WEBSOCKET_PORT}`);
+      });
+    } catch (error) {
+      this.logger.error('❌ Failed to initialize WebSocket server:', error);
+    }
+  }
+
+  /**
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
     try {
       this.logger.info('🛑 Shutting down Pegasus Bot...');
       
+      // Close WebSocket server
+      if (this.wsManager) {
+        this.wsManager.close();
+      }
+
+      if (this.httpServer) {
+        this.httpServer.close();
+      }
+      
       // Disconnect from Discord
       this.client.destroy();
       
       // Disconnect from database
       await this.db.$disconnect();
+      
+      // Close logger
+      this.logger.close();
       
       this.logger.success('✅ Bot shutdown complete');
       process.exit(0);
@@ -264,5 +314,4 @@ process.on('uncaughtException', (error) => {
 // Start the bot
 bot.initialize().catch(console.error);
 
-export { ExtendedClient };
 export default bot;

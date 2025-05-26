@@ -21,7 +21,8 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "docker:build": "docker build -t pegasus-bot .",
-    "docker:run": "docker-compose up -d"
+    "docker:run": "docker-compose up -d",
+    "setup": "npm run db:generate && npm run db:push"
   },
   "keywords": [
     "discord",

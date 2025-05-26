@@ -1,4 +1,4 @@
-// src/utils/Logger.ts - Enhanced Logger with File Support
+// src/utils/Logger.ts - Fixed Logger Implementation
 import fs from 'fs';
 import path from 'path';
 import { Config } from '../config/Config.js';
@@ -133,25 +133,6 @@ export class Logger {
     // Console output
     this.logToConsole(entry);
 
-  /**
-   * Core logging method
-   */
-  private log(level: LogLevel, message: string, data?: any, stack?: string): void {
-    if (level < this.logLevel) {
-      return;
-    }
-
-    const entry: LogEntry = {
-      timestamp: new Date(),
-      level,
-      message,
-      data,
-      stack
-    };
-
-    // Console output
-    this.logToConsole(entry);
-
     // File output
     if (this.logStream) {
       this.logToFile(entry);
@@ -248,77 +229,6 @@ export class Logger {
   }
 
   /**
-   * Rotate log files if they get too large
-   */
-  async rotateLogs(): Promise<void> {
-    if (!this.logFile || !fs.existsSync(this.logFile)) {
-      return;
-    }
-
-    try {
-      const stats = fs.statSync(this.logFile);
-      const maxSize = this.parseSize(Config.LOGGING.MAX_SIZE || '10mb');
-      
-      if (stats.size > maxSize) {
-        // Close current stream
-        if (this.logStream) {
-          this.logStream.end();
-        }
-
-        // Rotate files
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const rotatedFile = this.logFile.replace(/\.log$/, `-${timestamp}.log`);
-        
-        fs.renameSync(this.logFile, rotatedFile);
-        
-        // Clean up old files
-        await this.cleanupOldLogs();
-        
-        // Create new stream
-        this.logStream = fs.createWriteStream(this.logFile, { flags: 'a' });
-        
-        this.info('Log file rotated', { rotatedTo: rotatedFile });
-      }
-      
-    } catch (error) {
-      console.error('Failed to rotate logs:', error);
-    }
-  }
-
-  /**
-   * Clean up old log files
-   */
-  private async cleanupOldLogs(): Promise<void> {
-    if (!this.logFile) return;
-
-    try {
-      const logDir = path.dirname(this.logFile);
-      const logBaseName = path.basename(this.logFile, '.log');
-      const maxFiles = Config.LOGGING.MAX_FILES || 5;
-      
-      const files = fs.readdirSync(logDir)
-        .filter(file => file.startsWith(logBaseName) && file.endsWith('.log') && file !== path.basename(this.logFile))
-        .map(file => ({
-          name: file,
-          path: path.join(logDir, file),
-          mtime: fs.statSync(path.join(logDir, file)).mtime
-        }))
-        .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-      
-      // Remove old files beyond the limit
-      if (files.length > maxFiles) {
-        for (let i = maxFiles; i < files.length; i++) {
-          fs.unlinkSync(files[i].path);
-          this.debug('Deleted old log file', { file: files[i].name });
-        }
-      }
-      
-    } catch (error) {
-      console.error('Failed to cleanup old logs:', error);
-    }
-  }
-
-  /**
    * Parse size string to bytes
    */
   private parseSize(sizeStr: string): number {
@@ -391,6 +301,3 @@ export class ContextLogger {
 
 // Export singleton instance
 export const logger = new Logger();
-
-// Export LogLevel enum for external use
-export { LogLevel };

@@ -1,11 +1,9 @@
-// Poll Commands
-// src/commands/polls/poll.ts
-import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits } from 'discord.js';
-import { ExtendedClient } from '../../index.js';
+// src/commands/polls/poll.ts - Fixed Poll Commands
+import { ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder as PollEmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { PollManager } from '../../modules/polls/PollManager.js';
-import { Config } from '../../config/Config.js';
+import { ExtendedClient } from '@/index.js';
 
-export default {
+export const pollCommand = {
   data: new SlashCommandBuilder()
     .setName('poll')
     .setDescription('Poll system commands')
@@ -134,7 +132,7 @@ async function handlePollCreate(interaction: ChatInputCommandInteraction, pollMa
   // Parse duration
   let duration: number | undefined;
   if (durationStr) {
-    duration = parseDuration(durationStr);
+    duration = parsePollDuration(durationStr);
     if (!duration) {
       return interaction.editReply('Invalid duration format. Use formats like: 1d, 12h, 30m');
     }
@@ -157,7 +155,7 @@ async function handlePollCreate(interaction: ChatInputCommandInteraction, pollMa
     return interaction.editReply(`Failed to create poll: ${result.error}`);
   }
 
-  const embed = new EmbedBuilder()
+  const embed = new PollEmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} Poll Created`)
     .setDescription(`Successfully created poll: **${title}**`)
     .addFields(
@@ -209,7 +207,7 @@ async function handlePollEnd(interaction: ChatInputCommandInteraction, pollManag
     return interaction.editReply(`Failed to end poll: ${result.error}`);
   }
 
-  const embed = new EmbedBuilder()
+  const embed = new PollEmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} Poll Ended`)
     .setDescription(`Successfully ended poll: **${poll.title}**`)
     .addFields(
@@ -231,7 +229,7 @@ async function handlePollList(interaction: ChatInputCommandInteraction, pollMana
     return interaction.editReply('No active polls in this guild.');
   }
 
-  const embed = new EmbedBuilder()
+  const embed = new PollEmbedBuilder()
     .setTitle(`${Config.EMOJIS.POLL} Active Polls`)
     .setDescription(`${activePolls.length} active poll(s)`)
     .setColor(Config.COLORS.INFO)
@@ -281,7 +279,7 @@ async function handlePollParticipants(interaction: ChatInputCommandInteraction, 
     return interaction.editReply('No participants in this poll yet.');
   }
 
-  const embed = new EmbedBuilder()
+  const embed = new PollEmbedBuilder()
     .setTitle(`${Config.EMOJIS.POLL} Poll Participants`)
     .setDescription(`**${poll.title}**\n\n${participants.length} participant(s)`)
     .setColor(Config.COLORS.INFO)
@@ -297,8 +295,8 @@ async function handlePollParticipants(interaction: ChatInputCommandInteraction, 
   await interaction.editReply({ embeds: [embed] });
 }
 
-// Helper function to parse duration strings
-function parseDuration(duration: string): number | null {
+// Helper function to parse duration strings for polls
+function parsePollDuration(duration: string): number | null {
   const regex = /^(\d+)([dhm])$/i;
   const match = duration.match(regex);
   
