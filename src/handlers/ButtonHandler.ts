@@ -1,10 +1,11 @@
-// src/handlers/ButtonHandler.ts - Fixed Button Interaction Handler
-import { ButtonInteraction, PermissionFlagsBits } from 'discord.js';
+// src/handlers/ButtonHandler.ts - Fixed and Completed Button Interaction Handler
+import { ButtonInteraction } from 'discord.js';
 import { ExtendedClient } from '../index.js';
 import { QuarantineManager } from '../modules/quarantine/QuarantineManager.js';
 import { PollManager } from '../modules/polls/PollManager.js';
 import { GiveawayManager } from '../modules/giveaways/GiveawayManager.js';
 import { TicketManager } from '../modules/tickets/TicketManager.js';
+import { Join2CreateManager } from '../modules/voice/Join2CreateManager.js';
 
 export class ButtonHandler {
   private client: ExtendedClient;
@@ -12,6 +13,7 @@ export class ButtonHandler {
   private pollManager: PollManager;
   private giveawayManager: GiveawayManager;
   private ticketManager: TicketManager;
+  private j2cManager: Join2CreateManager;
 
   constructor(client: ExtendedClient) {
     this.client = client;
@@ -19,105 +21,60 @@ export class ButtonHandler {
     this.pollManager = new PollManager(client, client.db, client.logger);
     this.giveawayManager = new GiveawayManager(client, client.db, client.logger);
     this.ticketManager = new TicketManager(client, client.db, client.logger);
+    this.j2cManager = new Join2CreateManager(client, client.db, client.logger);
   }
 
-  async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+  /**
+   * Handles all button interactions and routes them to the appropriate manager.
+   * Assumes button custom IDs are in the format "prefix:action:data"
+   * e.g., "giveaway:enter:12345" or "ticket:close"
+   * @param interaction The ButtonInteraction to handle.
+   */
+  public async handle(interaction: ButtonInteraction): Promise<void> {
+    // We only handle buttons from within guilds.
+    if (!interaction.guild) return;
+
+    const [prefix] = interaction.customId.split(':');
+
     try {
-      const customId = interaction.customId;
+      switch (prefix) {
+        case 'giveaway':
+          // Delegate to the GiveawayManager to handle entries
+          await this.giveawayManager.handleButtonInteraction(interaction);
+          break;
 
-      // Quarantine buttons
-      if (customId.startsWith('quarantine_')) {
-        await this.handleQuarantineButton(interaction);
-        return;
+        case 'poll':
+          // Delegate to the PollManager to handle votes
+          await this.pollManager.handleButtonInteraction(interaction);
+          break;
+
+        case 'ticket':
+          // Delegate to the TicketManager for actions like close, claim, etc.
+          await this.ticketManager.handleButtonInteraction(interaction);
+          break;
+
+        case 'quarantine':
+          // Delegate to the QuarantineManager for moderator actions
+          await this.quarantineManager.handleButtonInteraction(interaction);
+          break;
+        
+        case 'j2c': // Prefix for Join2Create buttons
+          // Delegate to the Join2CreateManager for channel owner actions
+          await this.j2cManager.handleButtonInteraction(interaction);
+          break;
+
+        default:
+          this.client.logger.warn(`[ButtonHandler] Received a button with an unknown prefix: ${prefix}`);
+          await interaction.reply({ content: 'This button is either unknown or has expired.', ephemeral: true });
+          break;
       }
-
-      // Poll buttons
-      if (customId.startsWith('poll_')) {
-        await this.pollManager.handleVote(interaction);
-        return;
-      }
-
-      // Giveaway buttons
-      if (customId.startsWith('giveaway_')) {
-        await this.giveawayManager.handleEntry(interaction);
-        return;
-      }
-
-      // Ticket buttons
-      if (customId.startsWith('ticket_')) {
-        await this.handleTicketButton(interaction);
-        return;
-      }
-
-      // Unknown button
-      await interaction.reply({ content: 'Unknown button interaction.', ephemeral: true });
-
     } catch (error) {
-      this.client.logger.error('Error handling button interaction:', error);
-      
+      this.client.logger.error(`[ButtonHandler] An error occurred while handling button ${interaction.customId}:`, error);
+      // Inform the user that something went wrong without exposing details
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ 
-          content: 'An error occurred while processing your request.', 
-          ephemeral: true 
-        });
-      }
-    }
-  }
-
-  private async handleQuarantineButton(interaction: ButtonInteraction): Promise<void> {
-    if (!interaction.guild) return;
-
-    const [, action, userId] = interaction.customId.split('_');
-    
-    // Check permissions
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ModerateMembers)) {
-      await interaction.reply({ content: 'You do not have permission to use this button.', ephemeral: true });
-      return;
-    }
-
-    if (action === 'remove') {
-      const result = await this.quarantineManager.unquarantineUser(
-        interaction.guild,
-        userId,
-        interaction.user.id,
-        'Removed via button'
-      );
-
-      if (result.success) {
-        await interaction.reply({ content: 'User removed from quarantine.', ephemeral: true });
+        await interaction.reply({ content: 'An error occurred while processing this action. Please try again later.', ephemeral: true });
       } else {
-        await interaction.reply({ content: `Failed to remove quarantine: ${result.error}`, ephemeral: true });
-      }
-    }
-  }
-
-  private async handleTicketButton(interaction: ButtonInteraction): Promise<void> {
-    if (!interaction.guild) return;
-
-    const [, action, ticketId] = interaction.customId.split('_');
-
-    if (action === 'close') {
-      // Check if user is ticket owner or has staff permissions
-      const ticket = await this.ticketManager.getTicket(parseInt(ticketId));
-      
-      if (!ticket) {
-        await interaction.reply({ content: 'Ticket not found.', ephemeral: true });
-        return;
-      }
-
-      const isOwner = ticket.userId === interaction.user.id;
-      const isStaff = interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
-
-      if (!isOwner && !isStaff) {
-        await interaction.reply({ content: 'You do not have permission to close this ticket.', ephemeral: true });
-      }
-
-      const result = await this.ticketManager.closeTicket(parseInt(ticketId), interaction.user.id);
-
-      if (result.success) {
-        await interaction.reply({ content: 'Ticket closed successfully.', ephemeral: true });
-      } else {
-        await interaction.reply({ content: `Failed to close ticket: ${result.error}`, ephemeral: true });
+        await interaction.followUp({ content: 'An error occurred while processing this action. Please try again later.', ephemeral: true });
       }
     }
   }
