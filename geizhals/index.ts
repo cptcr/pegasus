@@ -3,8 +3,10 @@ config();
 
 const user = process.env.GEIZHALS_USERNAME;
 const apiKey = process.env.GEIZHALS_API_KEY;
+
 const baseUrl = "https://api.geizhals.net/gh/v9";
 
+// Type definitions based on the API documentation
 type LanguageCode = "de" | "en" | "pl";
 type LocationCode = "at" | "de" | "uk" | "pl" | "eu";
 type AvailabilityCode = "e" | "l" | "k";
@@ -308,17 +310,24 @@ export default class Geizhals {
     this.baseUrl = config.baseUrl || baseUrl;
     this.apiKey = config.apiKey || process.env.GEIZHALS_API_KEY || "";
     this.user = config.username || process.env.GEIZHALS_USERNAME || "";
-    this.timeout = config.timeout || 30000;
+    this.timeout = config.timeout || 30000; // 30 seconds
     this.retries = config.retries || 3;
     this.debug = config.debug || process.env.NODE_ENV === "development";
     this.defaultLocation = config.defaultLocation || "de";
     this.defaultLanguage = config.defaultLanguage || "de";
-    this.cache = config.cache !== false;
-    this.cacheTimeout = config.cacheTimeout || 300000;
+    this.cache = config.cache !== false; // enabled by default
+    this.cacheTimeout = config.cacheTimeout || 300000; // 5 minutes
     this.requestCache = new Map();
 
     if (!this.apiKey) {
       throw new Error("API key is required. Set GEIZHALS_API_KEY environment variable or pass it to constructor.");
+    }
+
+    if (this.debug) {
+      console.log("🔧 Geizhals API initialized in debug mode");
+      console.log(`📍 Default location: ${this.defaultLocation}`);
+      console.log(`🌐 Default language: ${this.defaultLanguage}`);
+      console.log(`⚡ Cache enabled: ${this.cache}`);
     }
   }
 
@@ -331,15 +340,19 @@ export default class Geizhals {
   }
 
   private async makeRequest<T>(
-    endpoint: string,
-    data: any,
+    endpoint: string, 
+    data: any, 
     options: RequestOptions = {}
   ): Promise<T> {
     const cacheKey = this.getCacheKey(endpoint, data);
-
+    
+    // Check cache if enabled and not skipped
     if (this.cache && !options.skipCache && this.requestCache.has(cacheKey)) {
       const cached = this.requestCache.get(cacheKey)!;
       if (this.isValidCache(cached.timestamp)) {
+        if (this.debug) {
+          console.log(`💾 Cache hit for ${endpoint}`);
+        }
         return cached.data;
       } else {
         this.requestCache.delete(cacheKey);
@@ -349,14 +362,23 @@ export default class Geizhals {
     const url = `${this.baseUrl}${endpoint}`;
     const requestTimeout = options.timeout || this.timeout;
     const maxRetries = options.retries || this.retries;
+    
+    if (this.debug) {
+      console.log(`🚀 Making request to ${endpoint}`);
+      console.log(`📤 Request data:`, JSON.stringify(data, null, 2));
+    }
 
     let lastError: Error | null = null;
-
+    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        if (this.debug && attempt > 1) {
+          console.log(`🔄 Retry attempt ${attempt}/${maxRetries} for ${endpoint}`);
+        }
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
-
+        
         const response = await fetch(url, {
           method: "POST",
           headers: {
@@ -375,41 +397,65 @@ export default class Geizhals {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const result = await response.json();
-
-        if (result.error) {
-          throw new Error(`API Error: ${result.error.error} (${result.error.code})`);
+        const result = await response.json() as T;
+        
+        if ((result as { error?: ErrorResponse }).error) {
+          if ((result as { error?: ErrorResponse }).error) {
+            throw new Error(`API Error: ${(result as { error: ErrorResponse }).error.error} (${(result as { error: ErrorResponse }).error.code})`);
+          }
         }
+
+        if (this.debug) {
+          console.log(`✅ Success for ${endpoint}`);
+          console.log(`📥 Response:`, JSON.stringify(result, null, 2));
+        }
+
+        // Cache successful responses
         if (this.cache) {
           this.requestCache.set(cacheKey, {
             data: result,
             timestamp: Date.now()
           });
         }
+
         return result;
+
       } catch (error) {
         lastError = error as Error;
+        
+        if (this.debug) {
+          console.log(`❌ Request failed (attempt ${attempt}/${maxRetries}):`, lastError.message);
+        }
+
+        // Don't retry on certain errors
         if (error instanceof Error) {
           if (error.name === 'AbortError') {
             throw new Error(`Request timeout after ${requestTimeout}ms`);
           }
           if (error.message.includes('400') || error.message.includes('401') || error.message.includes('403')) {
-            throw error;
+            throw error; // Don't retry client errors
           }
         }
+
+        // Wait before retry (exponential backoff)
         if (attempt < maxRetries) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          if (this.debug) {
+            console.log(`⏳ Waiting ${delay}ms before retry...`);
+          }
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
+
     throw lastError || new Error(`Request failed after ${maxRetries} attempts`);
   }
 
+  // Best Price Development endpoint
   async getBestPriceDevelopment(
     params: BestPriceDevelopmentParams,
     options: RequestOptions = {}
-  ): Promise<ApiResponse<{
+  ): Promise<ApiResponse<{ 
     deals: BestPriceDevelopmentData[];
     total: number;
     categories?: any;
@@ -426,6 +472,7 @@ export default class Geizhals {
     return this.makeRequest("/bestprice_development", { params: mergedParams }, options);
   }
 
+  // Categories endpoint
   async getCategories(
     params: CategoriesParams = {},
     options: RequestOptions = {}
@@ -437,8 +484,9 @@ export default class Geizhals {
     return this.makeRequest("/categories", { params: mergedParams }, options);
   }
 
+  // Category List endpoint
   async getCategoryList(
-    category: string,
+    category: string, 
     params: CategoryListParams = {},
     options: RequestOptions = {}
   ): Promise<ApiResponse<any>> {
@@ -450,9 +498,10 @@ export default class Geizhals {
     return this.makeRequest("/categorylist", { category, params: mergedParams }, options);
   }
 
+  // Query Product endpoint
   async queryProduct(
-    query: string,
-    type: "id" | "gtin" | "free" | "asin" = "free",
+    query: string, 
+    type: "id" | "gtin" | "free" | "asin" = "free", 
     params: ProductQueryParams = {},
     options: RequestOptions = {}
   ): Promise<ApiResponse<QueryProductResponse | QueryProductResponse[]>> {
@@ -464,6 +513,11 @@ export default class Geizhals {
     return this.makeRequest("/query_product", { query, type, params: mergedParams }, options);
   }
 
+  // Convenience methods for common operations
+
+  /**
+   * Search for products by name
+   */
   async searchProducts(searchTerm: string, options: {
     limit?: number;
     includeOffers?: boolean;
@@ -490,6 +544,9 @@ export default class Geizhals {
     } as ApiResponse<QueryProductResponse[]>;
   }
 
+  /**
+   * Get product details by Geizhals ID
+   */
   async getProductById(geizhalsId: string | number, options: {
     includeOffers?: boolean;
     numberOfOffers?: number;
@@ -511,12 +568,16 @@ export default class Geizhals {
       skipCache: options.skipCache
     });
 
+    // Ensure we have a single product response
     if (response.response && Array.isArray(response.response)) {
       return { ...response, response: response.response[0] };
     }
     return response as ApiResponse<QueryProductResponse>;
   }
 
+  /**
+   * Get products in a specific category with price drops
+   */
   async getCategoryDeals(categoryId: string, options: {
     minPriceDrop?: number;
     maxPrice?: number;
@@ -531,7 +592,7 @@ export default class Geizhals {
       pricemax: options.maxPrice,
       limit: options.limit || 30,
       loc: options.location || this.defaultLocation,
-      sort: "pp"
+      sort: "pp" // sort by percent drop descending
     };
 
     return this.getBestPriceDevelopment(params, {
@@ -540,6 +601,9 @@ export default class Geizhals {
     });
   }
 
+  /**
+   * Get top deals across all categories
+   */
   async getTopDeals(options: {
     limit?: number;
     location?: LocationCode;
@@ -559,10 +623,21 @@ export default class Geizhals {
     });
   }
 
+  // Development and debugging utilities
+
+  /**
+   * Clear the request cache
+   */
   clearCache(): void {
     this.requestCache.clear();
+    if (this.debug) {
+      console.log("🗑️ Cache cleared");
+    }
   }
 
+  /**
+   * Get cache statistics
+   */
   getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.requestCache.size,
@@ -570,19 +645,41 @@ export default class Geizhals {
     };
   }
 
+  /**
+   * Enable or disable debug mode
+   */
   setDebugMode(enabled: boolean): void {
     this.debug = enabled;
+    console.log(`🔧 Debug mode ${enabled ? 'enabled' : 'disabled'}`);
   }
 
+  /**
+   * Test API connectivity
+   */
   async testConnection(): Promise<boolean> {
     try {
+      if (this.debug) {
+        console.log("🔍 Testing API connection...");
+      }
+      
       await this.getCategories({ lang: "en" }, { timeout: 5000, skipCache: true });
+      
+      if (this.debug) {
+        console.log("✅ API connection successful");
+      }
+      
       return true;
     } catch (error) {
+      if (this.debug) {
+        console.log("❌ API connection failed:", error);
+      }
       return false;
     }
   }
 
+  /**
+   * Get detailed error information for debugging
+   */
   async debugRequest(endpoint: string, data: any): Promise<{
     success: boolean;
     response?: any;
@@ -590,9 +687,11 @@ export default class Geizhals {
     timing: number;
   }> {
     const startTime = Date.now();
+    
     try {
       const response = await this.makeRequest(endpoint, data, { skipCache: true });
       const timing = Date.now() - startTime;
+      
       return {
         success: true,
         response,
@@ -600,6 +699,7 @@ export default class Geizhals {
       };
     } catch (error) {
       const timing = Date.now() - startTime;
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
@@ -608,6 +708,9 @@ export default class Geizhals {
     }
   }
 
+  /**
+   * Batch multiple requests with automatic retry and rate limiting
+   */
   async batchRequests<T>(
     requests: Array<{
       endpoint: string;
@@ -622,35 +725,48 @@ export default class Geizhals {
     const concurrency = options.concurrency || 3;
     const delay = options.delayBetweenBatches || 100;
     const results: Array<{ success: boolean; data?: T; error?: string }> = [];
+    
+    if (this.debug) {
+      console.log(`🔄 Processing ${requests.length} requests with concurrency ${concurrency}`);
+    }
 
     for (let i = 0; i < requests.length; i += concurrency) {
       const batch = requests.slice(i, i + concurrency);
+      
       const batchPromises = batch.map(async (request) => {
         try {
           const data = await this.makeRequest<T>(
-            request.endpoint,
-            request.data,
+            request.endpoint, 
+            request.data, 
             request.options
           );
           return { success: true, data };
         } catch (error) {
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : String(error)
+          return { 
+            success: false, 
+            error: error instanceof Error ? error.message : String(error) 
           };
         }
       });
 
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
+      
+      if (this.debug) {
+        console.log(`✅ Completed batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(requests.length / concurrency)}`);
+      }
+
+      // Add delay between batches
       if (i + concurrency < requests.length && delay > 0) {
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
+
     return results;
   }
 }
 
+// Export types for use by consumers
 export type {
   BestPriceDevelopmentData,
   BestPriceDevelopmentParams,
@@ -669,50 +785,71 @@ export type {
   RequestOptions
 };
 
+// Development helper functions
 export const GeizhalsHelpers = {
+  /**
+   * Create a development-optimized client instance
+   */
   createDevClient(config: Partial<GeizhalsConfig> = {}): Geizhals {
     return new Geizhals({
       debug: true,
       cache: true,
-      cacheTimeout: 60000,
-      timeout: 10000,
-      retries: 1,
+      cacheTimeout: 60000, // 1 minute cache for development
+      timeout: 10000, // 10 second timeout
+      retries: 1, // Fewer retries in development
       ...config
     });
   },
+
+  /**
+   * Create a production-optimized client instance
+   */
   createProdClient(config: Partial<GeizhalsConfig> = {}): Geizhals {
     return new Geizhals({
       debug: false,
       cache: true,
-      cacheTimeout: 300000,
-      timeout: 30000,
-      retries: 3,
+      cacheTimeout: 300000, // 5 minute cache
+      timeout: 30000, // 30 second timeout
+      retries: 3, // More retries in production
       ...config
     });
   },
+
+  /**
+   * Validate API configuration
+   */
   validateConfig(config: GeizhalsConfig): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
+
     if (!config.apiKey && !process.env.GEIZHALS_API_KEY) {
       errors.push("API key is required");
     }
+
     if (config.timeout && config.timeout < 1000) {
       errors.push("Timeout should be at least 1000ms");
     }
+
     if (config.retries && (config.retries < 0 || config.retries > 10)) {
       errors.push("Retries should be between 0 and 10");
     }
+
     if (config.cacheTimeout && config.cacheTimeout < 0) {
       errors.push("Cache timeout should be positive");
     }
+
     return {
       valid: errors.length === 0,
       errors
     };
   },
+
+  /**
+   * Common category IDs for quick access
+   */
   categories: {
     SMARTPHONES: "handy",
     LAPTOPS: "nb",
-    PROCESSORS_INTEL: "cpu1151",
+    PROCESSORS_INTEL: "cpu1151", 
     PROCESSORS_AMD: "cpuamdam4",
     GRAPHICS_CARDS: "vga256",
     MOTHERBOARDS: "mb1151",
@@ -722,6 +859,9 @@ export const GeizhalsHelpers = {
     TABLETS: "tablet"
   } as const,
 
+  /**
+   * Generate test queries for development
+   */
   getTestQueries(): Array<{ name: string; query: string; type: "id" | "gtin" | "free" | "asin" }> {
     return [
       { name: "Search iPhone", query: "iPhone", type: "free" },

@@ -332,6 +332,14 @@ model Ticket {
   closedAt    DateTime?
   moderatorId String?
   closeReason String?  // Added field for close reason
+
+  TicketCategory TicketCategory[]
+
+  User User[] @relation("TicketUser")
+
+  moderatorUsers User[] @relation("TicketModerator")
+
+  Guild Guild[]
 }
 
 // Custom Commands

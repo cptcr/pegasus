@@ -16,7 +16,7 @@ async function executeErstellen(interaction: ChatInputCommandInteraction, client
         return;
     }
 
-    const durationMs = ms(durationString);
+    const durationMs = ms(durationString as ms.StringValue);
     if (!durationMs || durationMs <= 0 || durationMs > ms('30d')) { // Max 30 Tage
         await interaction.reply({ content: 'Ungültige Dauer angegeben. Beispiel: `30m`, `1h`, `2d` (Maximal 30 Tage).', ephemeral: true });
         return;
@@ -67,12 +67,12 @@ async function executeErstellen(interaction: ChatInputCommandInteraction, client
                 channelId: channel.id,
                 messageId: giveawayMessage.id,
                 prize: prize,
-                winnersCount: winnerCount,
+                winnerCount: winnerCount,
                 endTime: new Date(endTime),
                 creatorId: interaction.user.id,
                 active: true,
                 ended: false,
-                entries: []
+                entries: { create: [] }
             }
         });
 
@@ -151,11 +151,10 @@ async function executeNeurollen(interaction: ChatInputCommandInteraction, client
 }
 
 const command: SlashCommand = {
-  data: new SlashCommandBuilder()
-    .setName('geschenk')
+  data: new SlashCommandBuilder() as SlashCommandBuilder["setName"]('geschenk')
     .setDescription('Verwaltet Geschenke/Giveaways.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand: { setName: (arg0: string) => { (): any; new(): any; setDescription: { (arg0: string): { (): any; new(): any; addStringOption: { (arg0: (option: any) => any): { (): any; new(): any; addStringOption: { (arg0: (option: any) => any): { (): any; new(): any; addIntegerOption: { (arg0: (option: any) => any): { (): any; new(): any; addChannelOption: { (arg0: (option: any) => any): any; new(): any; }; }; new(): any; }; }; new(): any; }; }; new(): any; }; }; new(): any; }; }; }) =>
         subcommand
             .setName('erstellen')
             .setDescription('Erstellt ein neues Giveaway.')
@@ -168,13 +167,13 @@ const command: SlashCommand = {
                 .addChannelTypes(ChannelType.GuildText)
                 .setRequired(false))
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand: { setName: (arg0: string) => { (): any; new(): any; setDescription: { (arg0: string): { (): any; new(): any; addStringOption: { (arg0: (option: any) => any): any; new(): any; }; }; new(): any; }; }; }) =>
         subcommand
             .setName('beenden')
             .setDescription('Beendet ein Giveaway vorzeitig.')
             .addStringOption(option => option.setName('nachrichten_id').setDescription('Die ID der Giveaway-Nachricht.').setRequired(true))
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand: { setName: (arg0: string) => { (): any; new(): any; setDescription: { (arg0: string): { (): any; new(): any; addStringOption: { (arg0: (option: any) => any): any; new(): any; }; }; new(): any; }; }; }) =>
         subcommand
             .setName('neurollen')
             .setDescription('Zieht einen neuen Gewinner für ein beendetes Giveaway.')
@@ -182,7 +181,7 @@ const command: SlashCommand = {
     ),
   enabled: true,
   category: 'community',
-  async execute(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
+  async: any execute: any(interaction: ChatInputCommandInteraction, client: ClientWithCommands) {
     if (!interaction.guildId) {
         await interaction.reply({content: "Dieser Befehl ist nur auf Servern verfügbar.", ephemeral: true});
         return;

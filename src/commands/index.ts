@@ -1,4 +1,4 @@
-import { REST, Routes, Collection } from 'discord.js';
+import { REST, Routes, Collection, RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import { ClientWithCommands, SlashCommand, PrefixCommand } from '../types';
@@ -6,7 +6,7 @@ import { ClientWithCommands, SlashCommand, PrefixCommand } from '../types';
 export async function registerCommands(client: ClientWithCommands): Promise<void> {
   client.slashCommands = new Collection();
   client.commands = new Collection();
-  const slashCommandsToRegister = [];
+  const slashCommandsToRegister: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 
   const slashCommandsPath = path.join(__dirname, 'slash');
 
