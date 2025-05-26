@@ -1,144 +1,75 @@
-// src/commands/general/help.ts - Help Command
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
-import { ExtendedClient } from '../../index.js';
-import { Config } from '../../config/Config.js';
+// src/commands/general/help.ts
+import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { ExtendedClient } from '@/index';
+import { Config } from '@/config/Config';
+import { Command } from '@/types';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Show all available commands')
+    .setDescription('Lists all available commands or info about a specific command.')
     .addStringOption(option =>
-      option
-        .setName('command')
-        .setDescription('Get help for a specific command')
-        .setRequired(false)
-    ),
-
-  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const client = interaction.client as ExtendedClient;
+      option.setName('command')
+        .setDescription('The command you want help with')
+        .setRequired(false)),
+  
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     const commandName = interaction.options.getString('command');
 
-    if (commandName) {
-      // Show help for specific command
-      const command = client.commands.get(commandName);
+    if (!commandName) {
+      // Display all commands
+      const embed = new EmbedBuilder()
+        .setColor(Config.COLORS.INFO)
+        .setTitle('Pegasus Bot Commands')
+        .setDescription('Here is a list of all available commands. For more details on a specific command, use `/help [command_name]`.')
+        .setTimestamp();
+
+      // Group commands by category (inferred from file path)
+      const commandsByCategory: Map<string, Command[]> = new Map();
+      client.commands.forEach(cmd => {
+        // This assumes your command loader stores the category on the command object
+        // If not, you'd need to adjust how the category is determined.
+        // Let's assume the CommandHandler sets a `category` property.
+        const category = (cmd as any).category || 'General';
+        const categoryCommands = commandsByCategory.get(category) || [];
+        categoryCommands.push(cmd);
+        commandsByCategory.set(category, categoryCommands);
+      });
+
+      commandsByCategory.forEach((cmds, category) => {
+        const commandList = cmds.map(c => `\`${c.data.name}\``).join(', ');
+        embed.addFields({ name: `🔹 ${category.charAt(0).toUpperCase() + category.slice(1)}`, value: commandList });
+      });
       
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+
+    } else {
+      // Display details for a specific command
+      const command = client.commands.get(commandName.toLowerCase());
       if (!command) {
-        await interaction.reply({ 
-          content: `❌ Command \`${commandName}\` not found.`,
-          ephemeral: true 
-        });
-        return;
+        return interaction.reply({ content: `Sorry, I couldn't find a command called \`${commandName}\`.`, ephemeral: true });
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`${Config.EMOJIS.INFO} Help - /${commandName}`)
-        .setDescription(command.data.description || 'No description available')
         .setColor(Config.COLORS.INFO)
-        .addFields(
-          { name: 'Usage', value: `\`/${commandName}\``, inline: true },
-          { name: 'Category', value: getCommandCategory(commandName), inline: true }
-        )
+        .setTitle(`Help: \`/${command.data.name}\``)
+        .setDescription(command.data.description)
         .setTimestamp();
 
-      if (command.data.options && command.data.options.length > 0) {
-        const options = command.data.options.map((opt: any) => {
-          const required = opt.required ? '**[Required]**' : '*[Optional]*';
-          return `**${opt.name}** ${required}: ${opt.description}`;
+      if (command.data.options.length > 0) {
+        const optionsString = command.data.options.map(opt => {
+          const option = opt.toJSON();
+          const required = 'required' in option && option.required ? ' (Required)' : '';
+          return `\`${option.name}\`: ${option.description}${required}`;
         }).join('\n');
-
-        embed.addFields({ name: 'Options', value: options, inline: false });
+        embed.addFields({ name: 'Options', value: optionsString });
       }
 
-      await interaction.reply({ embeds: [embed] });
-      return;
-    }
-
-    // Show all commands grouped by category
-    const categories = {
-      'General': ['help', 'ping', 'info'],
-      'Moderation': ['quarantine', 'warn', 'kick', 'ban'],
-      'Fun & Engagement': ['poll', 'giveaway'],
-      'Support': ['ticket'],
-      'Utility': ['level', 'stats']
-    };
-
-    const embed = new EmbedBuilder()
-      .setTitle(`${Config.EMOJIS.INFO} Pegasus Bot - Help`)
-      .setDescription('Here are all available commands organized by category.\nUse `/help <command>` for detailed information about a specific command.')
-      .setColor(Config.COLORS.PRIMARY)
-      .setThumbnail(client.user?.displayAvatarURL() ?? null)
-      .setTimestamp();
-
-    for (const [category, commands] of Object.entries(categories)) {
-      const availableCommands = commands.filter(cmd => client.commands.has(cmd));
-      
-      if (availableCommands.length > 0) {
-        const commandList = availableCommands.map(cmd => {
-          const command = client.commands.get(cmd);
-          return `\`/${cmd}\` - ${command?.data.description || 'No description'}`;
-        }).join('\n');
-
-        embed.addFields({ 
-          name: `${getCategoryEmoji(category)} ${category}`, 
-          value: commandList, 
-          inline: false 
-        });
+      if (command.cooldown) {
+        embed.addFields({ name: 'Cooldown', value: `${command.cooldown} second(s)` });
       }
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
     }
-
-    embed.addFields(
-      { 
-        name: '🔗 Links', 
-        value: '[Developer](https://cptcr.dev)', 
-        inline: false 
-      },
-      { 
-        name: '📊 Bot Stats', 
-        value: `Servers: ${client.guilds.cache.size}\nUsers: ${client.users.cache.size}\nCommands: ${client.commands.size}`, 
-        inline: true 
-      },
-      { 
-        name: 'ℹ️ Bot Info', 
-        value: `Version: v2.0.0\nUptime: <t:${Math.floor((Date.now() - (client.uptime || 0)) / 1000)}:R>\nPing: ${client.ws.ping}ms`, 
-        inline: true 
-      }
-    );
-
-    embed.setFooter({ 
-      text: `Requested by ${interaction.user.tag}`, 
-      iconURL: interaction.user.displayAvatarURL() 
-    });
-
-    await interaction.reply({ embeds: [embed] });
-  }
-};
-
-function getCommandCategory(commandName: string): string {
-  const categories: { [key: string]: string[] } = {
-    'General': ['help', 'ping', 'info'],
-    'Moderation': ['quarantine', 'warn', 'kick', 'ban'],
-    'Fun & Engagement': ['poll', 'giveaway'],
-    'Support': ['ticket'],
-    'Utility': ['level', 'stats']
-  };
-
-  for (const [category, commands] of Object.entries(categories)) {
-    if (commands.includes(commandName)) {
-      return category;
-    }
-  }
-
-  return 'Unknown';
-}
-
-function getCategoryEmoji(category: string): string {
-  const emojis: { [key: string]: string } = {
-    'General': '🏠',
-    'Moderation': '🛡️',
-    'Fun & Engagement': '🎉',
-    'Support': '🎫',
-    'Utility': '🔧'
-  };
-
-  return emojis[category] || '📁';
-}
+  },
+} as Command;

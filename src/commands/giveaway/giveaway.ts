@@ -123,8 +123,6 @@ export default {
         return handleGiveawayList(interaction, giveawayManager);
       case 'participants':
         return handleGiveawayParticipants(interaction, giveawayManager);
-      default:
-        return interaction.reply({ content: 'Invalid subcommand.', ephemeral: true });
     }
   }
 };

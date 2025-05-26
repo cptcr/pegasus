@@ -1,77 +1,37 @@
 {
-  "name": "pegasus-bot",
-  "version": "2.0.0",
-  "description": "Advanced Discord Bot with Web Dashboard - Pegasus v2.0.0",
-  "type": "module",
-  "main": "dist/index.js",
-  "scripts": {
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "clean": "rimraf dist",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
-    "dashboard:dev": "cd dashboard && npm run dev",
-    "dashboard:build": "cd dashboard && npm run build",
-    "dashboard:start": "cd dashboard && npm start",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "jest",
-    "docker:build": "docker build -t pegasus-bot .",
-    "docker:run": "docker-compose up -d",
-    "setup": "npm run db:generate && npm run db:push"
-  },
-  "keywords": [
-    "discord",
-    "bot",
-    "typescript",
-    "prisma",
-    "dashboard",
-    "moderation",
-    "levels",
-    "polls",
-    "giveaways",
-    "tickets"
+  "name": "pegasus-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "dashboard"
   ],
-  "author": "Your Name",
-  "license": "MIT",
+  "scripts": {
+    "dev": "npm run build && npm-run-all --parallel dev:bot dev:dashboard",
+    "dev:bot": "ts-node-esm src/index.ts",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "build": "tsc -p tsconfig.json",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "start": "node dist/index.js",
+    "start:dashboard": "npm run start --workspace=dashboard",
+    "db:migrate": "npx prisma migrate dev",
+    "db:studio": "npx prisma studio",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
+  },
   "dependencies": {
-    "@prisma/client": "^5.7.1",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "socket.io": "^4.7.4",
-    "winston": "^3.11.0",
-    "cors": "^2.8.5",
-    "helmet": "^7.1.0",
-    "rate-limiter-flexible": "^2.4.2"
+    "@prisma/client": "^5.15.0",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "npm-run-all": "^4.1.5",
+    "winston": "^3.13.0"
   },
   "devDependencies": {
-    "@types/node": "^20.10.5",
-    "@types/express": "^4.17.21",
-    "@types/cors": "^2.8.17",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "eslint": "^8.56.0",
-    "jest": "^29.7.0",
-    "prisma": "^5.7.1",
-    "rimraf": "^5.0.5",
-    "tsx": "^4.6.0",
-    "typescript": "^5.3.3"
+    "@types/node": "^20.14.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.1",
+    "prisma": "^5.15.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/pegasus-bot.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/pegasus-bot/issues"
-  },
-  "homepage": "https://github.com/yourusername/pegasus-bot#readme"
+  "type": "module"
 }

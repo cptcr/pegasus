@@ -1,241 +1,86 @@
-// dashboard/server.js - Enhanced WebSocket Server
+// dashboard/server.js
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
+const { io: SocketIOClient } = require('socket.io-client');
+require('dotenv').config({ path: '../.env' }); // Load root .env file
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = parseInt(process.env.DASHBOARD_PORT) || 3001;
+const hostname = process.env.HOSTNAME || 'localhost';
+const dashboardPort = parseInt(process.env.DASHBOARD_PORT || '3001', 10);
+const botWsUrl = process.env.BOT_WEBSOCKET_URL || 'ws://localhost:3002';
+const targetGuildId = process.env.TARGET_GUILD_ID;
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname, port: dashboardPort });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const server = createServer(async (req, res) => {
+  const httpServer = createServer(async (req, res) => {
     try {
-      const parsedUrl = parse(req.url, true);
-      await handle(req, res, parsedUrl);
+      await handle(req, res, parse(req.url, true));
     } catch (err) {
-      console.error('Error occurred handling', req.url, err);
+      console.error('Next.js request handling error:', err);
       res.statusCode = 500;
       res.end('internal server error');
     }
   });
 
-  // Initialize Socket.IO
-  const io = new Server(server, {
-    cors: {
-      origin: process.env.NEXTAUTH_URL || `http://localhost:${port}`,
-      methods: ["GET", "POST"],
-      credentials: true
-    },
-    transports: ['websocket', 'polling']
+  // This is the server the dashboard frontend connects to
+  const io = new Server(httpServer, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
   });
-
-  // Make io available globally for the bot to use
   global.io = io;
 
-  // Connection handling
-  io.on('connection', (socket) => {
-    console.log(`📡 Client connected: ${socket.id}`);
-
-    // Join guild-specific room
-    socket.on('join:guild', (guildId) => {
-      if (guildId === '554266392262737930') { // Only allow our specific guild
-        socket.join(`guild:${guildId}`);
-        console.log(`📡 Client ${socket.id} joined guild room: ${guildId}`);
-        
-        // Send initial connection confirmation
-        socket.emit('connected', {
-          message: 'Connected to real-time updates',
-          guildId,
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
-
-    // Handle dashboard requests for live data
-    socket.on('request:guild:stats', async (guildId) => {
-      if (guildId === '554266392262737930') {
-        try {
-          // Mock response since we can't import DatabaseService here
-          const stats = {
-            totalUsers: 150,
-            totalWarns: 5,
-            activeQuarantine: 0,
-            totalTrackers: 12,
-            activePolls: 2,
-            activeGiveaways: 1,
-            openTickets: 3,
-            customCommands: 8,
-            levelRewards: 5,
-            automodRules: 3
-          };
-          
-          socket.emit('guild:stats:updated', {
-            guildId,
-            stats,
-            timestamp: new Date().toISOString()
-          });
-        } catch (error) {
-          console.error('Error fetching guild stats:', error);
-          socket.emit('error', { message: 'Failed to fetch guild stats' });
-        }
-      }
-    });
-
-    socket.on('request:activity', async (guildId) => {
-      if (guildId === '554266392262737930') {
-        try {
-          // Mock activity data
-          const activity = {
-            recentWarns: 2,
-            recentPolls: 1,
-            recentGiveaways: 0,
-            recentTickets: 2
-          };
-          
-          socket.emit('activity:updated', {
-            guildId,
-            activity,
-            timestamp: new Date().toISOString()
-          });
-        } catch (error) {
-          console.error('Error fetching activity:', error);
-          socket.emit('error', { message: 'Failed to fetch activity' });
-        }
-      }
-    });
-
-    // Handle dashboard actions
-    socket.on('dashboard:action', async (data) => {
-      const { action, guildId, payload } = data;
-      
-      if (guildId !== '554266392262737930') return;
-
-      try {
-        console.log(`Dashboard action: ${action}`, payload);
-        
-        // Emit success response
-        socket.emit('action:success', {
-          action,
-          guildId,
-          timestamp: new Date().toISOString()
-        });
-
-        // Broadcast update to all clients in the guild room
-        io.to(`guild:${guildId}`).emit('realtime:event', {
-          type: action.replace(':', '_'),
-          guildId,
-          data: payload,
-          timestamp: new Date().toISOString()
-        });
-
-      } catch (error) {
-        console.error('Error handling dashboard action:', error);
-        socket.emit('error', { 
-          message: 'Failed to execute action',
-          action,
-          error: error.message 
-        });
-      }
-    });
-
-    // Ping/pong for connection health
-    socket.on('ping', () => {
-      socket.emit('pong', { timestamp: new Date().toISOString() });
-    });
-
-    // Handle disconnection
-    socket.on('disconnect', (reason) => {
-      console.log(`📡 Client disconnected: ${socket.id} (${reason})`);
-    });
-
-    // Handle errors
-    socket.on('error', (error) => {
-      console.error('Socket error:', error);
-    });
+  httpServer.listen(dashboardPort, (err) => {
+    if (err) throw err;
+    console.log(`✅ Dashboard Next.js app ready on http://${hostname}:${dashboardPort}`);
+    initializeWebSocketBridge();
   });
 
-  // Periodic stats broadcast (every 30 seconds)
-  setInterval(async () => {
-    try {
-      const guildId = '554266392262737930';
-      
-      // Mock data for periodic updates
-      const stats = {
-        totalUsers: 150 + Math.floor(Math.random() * 10),
-        totalWarns: 5,
-        activeQuarantine: 0,
-        totalTrackers: 12,
-        activePolls: 2,
-        activeGiveaways: 1,
-        openTickets: 3,
-        customCommands: 8,
-        levelRewards: 5,
-        automodRules: 3
-      };
+  // This is the bridge that connects to the bot's WebSocket server
+  const initializeWebSocketBridge = () => {
+    console.log(`🔌 Dashboard bridge connecting to Bot WebSocket at ${botWsUrl}`);
+    const botSocket = SocketIOClient(botWsUrl, {
+      reconnectionDelayMax: 10000,
+      transports: ['websocket'],
+    });
 
-      const activity = {
-        recentWarns: Math.floor(Math.random() * 5),
-        recentPolls: Math.floor(Math.random() * 3),
-        recentGiveaways: Math.floor(Math.random() * 2),
-        recentTickets: Math.floor(Math.random() * 5)
-      };
+    botSocket.on('connect', () => {
+      console.log(`✅ Dashboard bridge connected to Bot WebSocket.`);
+      if (targetGuildId) {
+        botSocket.emit('join:guild', targetGuildId);
+      }
+    });
 
-      io.to(`guild:${guildId}`).emit('periodic:update', {
-        guildId,
-        stats,
-        activity,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error in periodic update:', error);
-    }
-  }, 30000);
-
-  // Health check endpoint for the WebSocket server
-  const healthCheck = () => {
-    return {
-      status: 'healthy',
-      connectedClients: io.engine.clientsCount,
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString()
-    };
+    botSocket.on('realtime:event', (event) => {
+      console.log(`[BRIDGE] Received event [${event.type}] from bot, relaying to dashboard clients.`);
+      io.to(`guild:${event.guildId}`).emit('realtime:event', event);
+    });
+    
+    botSocket.on('disconnect', (reason) => {
+      console.warn(`[BRIDGE] Disconnected from Bot WebSocket: ${reason}`);
+    });
+    
+    botSocket.on('connect_error', (err) => {
+      console.error(`[BRIDGE] Connection error with Bot WebSocket: ${err.message}`);
+    });
   };
 
-  server.listen(port, (err) => {
-    if (err) throw err;
-    console.log(`🌐 Dashboard server ready on http://${hostname}:${port}`);
-    console.log(`📡 WebSocket server ready for real-time updates`);
-    console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
-
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log('\n🛑 Received SIGTERM, shutting down dashboard server...');
-    io.close(() => {
-      console.log('📡 WebSocket server closed');
-      server.close(() => {
-        console.log('🌐 HTTP server closed');
-        process.exit(0);
-      });
+  io.on('connection', (socket) => {
+    console.log(`[DASHBOARD] Client connected: ${socket.id}`);
+    socket.on('join:guild', (guildId) => {
+      if (guildId === targetGuildId) {
+        socket.join(`guild:${guildId}`);
+        console.log(`[DASHBOARD] Client ${socket.id} joined guild room: ${guildId}`);
+      }
     });
-  });
-
-  process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down dashboard server...');
-    io.close(() => {
-      console.log('📡 WebSocket server closed');
-      server.close(() => {
-        console.log('🌐 HTTP server closed');
-        process.exit(0);
-      });
+    socket.on('disconnect', () => {
+      console.log(`[DASHBOARD] Client disconnected: ${socket.id}`);
     });
   });
 
 }).catch((ex) => {
-  console.error('Failed to start dashboard server:', ex);
+  console.error('Failed to start dashboard server:', ex.stack);
   process.exit(1);
 });

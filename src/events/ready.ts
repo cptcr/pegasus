@@ -1,45 +1,44 @@
-// src/events/ready.ts - Bot Ready Event
-import { Events, Guild } from 'discord.js';
+// src/events/ready.ts
+import { ActivityType } from 'discord.js';
 import { ExtendedClient } from '../index.js';
-import { GiveawayManager } from '../modules/giveaways/GiveawayManager.js';
-import { PollManager } from '../modules/polls/PollManager.js';
-import { QuarantineManager } from '../modules/quarantine/QuarantineManager.js';
+import { Config } from '../config/Config.js';
 
 export default {
-  name: Events.ClientReady,
+  name: 'ready',
   once: true,
   async execute(client: ExtendedClient) {
-    client.logger.success(`✅ ${client.user?.tag} is now online!`);
-    client.logger.info(`📊 Serving ${client.guilds.cache.size} guilds with ${client.users.cache.size} users`);
+    console.log(`✅ Logged in as ${client.user?.tag}`);
+    client.user?.setActivity('over the server', { type: ActivityType.Watching });
 
-    // Initialize managers for all guilds
-    const giveawayManager = new GiveawayManager(client, client.db, client.logger);
-    const pollManager = new PollManager(client, client.db, client.logger);
-    const quarantineManager = new QuarantineManager(client, client.db, client.logger);
-
-    for (const [guildId, guild] of client.guilds.cache) {
+    // Initialize all managers on ready
+    client.giveawayManager.init();
+    client.pollManager.init();
+    
+    // Initial fetch and periodic update for guild stats
+    const updateGuildStats = async () => {
       try {
-        // Ensure guild exists in database
-        await client.db.guild.upsert({
-          where: { id: guildId },
-          update: { name: guild.name },
-          create: {
-            id: guildId,
-            name: guild.name
-          }
-        });
+        const guild = await client.guilds.fetch(Config.TARGET_GUILD_ID);
+        if (!guild) return;
 
-        // Initialize systems for each guild
-        await giveawayManager.initializeGuild(guild);
-        await pollManager.initializeGuild(guild);
-        await quarantineManager.initializeGuild(guild);
+        // Fetch member counts
+        await guild.members.fetch();
+        const memberCount = guild.memberCount;
+        const onlineCount = guild.presences.cache.filter(p => p.status !== 'offline').size;
 
-        client.logger.debug(`Initialized systems for guild: ${guild.name}`);
+        const stats = {
+          memberCount,
+          onlineCount,
+        };
+
+        // Emit to dashboard
+        client.wsManager.emitRealtimeEvent(guild.id, 'guild:stats:updated', stats);
       } catch (error) {
-        client.logger.error(`Failed to initialize guild ${guild.name}:`, error);
+        client.logger.error('Failed to fetch and emit guild stats:', error);
       }
-    }
-
-    client.logger.success('🎯 All systems initialized successfully!');
-  }
+    };
+    
+    // Run once on startup, then every 5 minutes
+    updateGuildStats();
+    setInterval(updateGuildStats, 5 * 60 * 1000); // 5 minutes
+  },
 };
