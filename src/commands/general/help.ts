@@ -89,7 +89,7 @@ export default {
     embed.addFields(
       { 
         name: '🔗 Links', 
-        value: '[Support Server](https://discord.gg/example) • [Documentation](https://docs.example.com) • [Invite Bot](https://discord.com/oauth2/authorize?client_id=' + client.user?.id + '&scope=bot%20applications.commands)', 
+        value: '[Developer](https://cptcr.dev)', 
         inline: false 
       },
       { 
