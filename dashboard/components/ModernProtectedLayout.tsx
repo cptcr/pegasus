@@ -1,10 +1,10 @@
 // dashboard/components/ModernProtectedLayout.tsx
-import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useSession, signOut, SessionContextValue } from 'next-auth/react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
-import { 
-  ShieldCheckIcon, 
-  ArrowRightOnRectangleIcon, 
+import {
+  ShieldCheckIcon,
+  ArrowRightOnRectangleIcon,
   ExclamationTriangleIcon,
   UserCircleIcon,
   Bars3Icon,
@@ -12,22 +12,28 @@ import {
 } from '@heroicons/react/24/outline';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/lib/ThemeContext';
+import { DiscordProfile } from '@/types/index'; // Import the defined DiscordProfile
 
 interface ModernProtectedLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requiredGuildId?: string;
 }
 
-const ALLOWED_GUILD_ID = '554266392262737930';
-const REQUIRED_ROLE_ID = '797927858420187186';
+// Extend NextAuth SessionUser type
+interface ExtendedSessionUser extends DiscordProfile { // Use DiscordProfile for user shape
+  hasRequiredAccess?: boolean;
+}
 
-export default function ModernProtectedLayout({ 
-  children, 
-  requiredGuildId = ALLOWED_GUILD_ID 
+const ALLOWED_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930'; // Use environment variable
+const REQUIRED_ROLE_ID = process.env.NEXT_PUBLIC_REQUIRED_ROLE_ID || '797927858420187186'; // Use environment variable
+
+export default function ModernProtectedLayout({
+  children,
+  requiredGuildId = ALLOWED_GUILD_ID
 }: ModernProtectedLayoutProps) {
-  const { data: session, status } = useSession();
+  const { data: session, status }: SessionContextValue<{ user?: ExtendedSessionUser }> = useSession();
   const router = useRouter();
-  const { isDark } = useTheme();
+  const { isDark } = useTheme(); // isDark is already boolean from context
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,8 +46,9 @@ export default function ModernProtectedLayout({
       return;
     }
 
+    // Assuming session.user.hasRequiredAccess is set by the [...nextauth].ts callback
     if (session.user?.hasRequiredAccess !== true) {
-      console.log('Access denied - redirecting to error page');
+      console.log('Access denied - redirecting to error page (ModernProtectedLayout)');
       router.push('/auth/error?error=AccessDenied');
       return;
     }
@@ -53,6 +60,8 @@ export default function ModernProtectedLayout({
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/auth/signin' });
   };
+
+  const currentUser = session?.user;
 
   if (status === 'loading' || isLoading) {
     return (
@@ -99,7 +108,7 @@ export default function ModernProtectedLayout({
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-200 bg-gray-50 dark:bg-gray-900">
+    <div className={`min-h-screen transition-colors duration-200 ${isDark ? 'dark' : ''} bg-gray-50 dark:bg-gray-900`}>
       {/* Modern Navigation */}
       <nav className="sticky top-0 z-40 transition-colors duration-200 border-b border-gray-200 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md dark:border-gray-700">
         <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -123,45 +132,48 @@ export default function ModernProtectedLayout({
                 </div>
               </div>
             </div>
-            
+
             {/* Right side - User info and controls */}
             <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
               <ThemeToggle size="md" />
-              
+
               {/* User info - Desktop */}
-              <div className="items-center hidden space-x-3 md:flex">
-                <div className="flex items-center px-3 py-2 space-x-3 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700/50 dark:border-gray-600">
-                  {session?.user?.avatar ? (
-                    <img
-                      src={`https://cdn.discordapp.com/avatars/${session.user.id}/${session.user.avatar}.png`}
-                      alt="Avatar"
-                      className="w-8 h-8 rounded-full ring-2 ring-indigo-500/20"
-                    />
-                  ) : (
-                    <UserCircleIcon className="w-8 h-8 text-gray-400" />
-                  )}
-                  <div className="text-sm">
-                    <div className="font-medium text-gray-900 dark:text-gray-100">
-                      {session?.user?.username}
+              {currentUser && (
+                <div className="items-center hidden space-x-3 md:flex">
+                  <div className="flex items-center px-3 py-2 space-x-3 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700/50 dark:border-gray-600">
+                    {currentUser.avatar ? (
+                      <img
+                        src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
+                        alt="Avatar"
+                        className="w-8 h-8 rounded-full ring-2 ring-indigo-500/20"
+                      />
+                    ) : (
+                      <UserCircleIcon className="w-8 h-8 text-gray-400" />
+                    )}
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
+                        {currentUser.username}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        #{currentUser.discriminator}
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      #{session?.user?.discriminator}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <div className="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 border border-green-200 rounded-full dark:text-green-400 dark:bg-green-900/20 dark:border-green-800">
+                      Authorized
                     </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <div className="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 border border-green-200 rounded-full dark:text-green-400 dark:bg-green-900/20 dark:border-green-800">
-                    Authorized
-                  </div>
-                </div>
-              </div>
-              
+              )}
+
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 text-gray-500 transition-colors duration-200 rounded-lg md:hidden dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
               >
                 {isMobileMenuOpen ? (
                   <XMarkIcon className="w-6 h-6" />
@@ -169,7 +181,7 @@ export default function ModernProtectedLayout({
                   <Bars3Icon className="w-6 h-6" />
                 )}
               </button>
-              
+
               {/* Sign out button - Desktop */}
               <button
                 onClick={handleSignOut}
@@ -188,26 +200,28 @@ export default function ModernProtectedLayout({
           <div className="bg-white border-t border-gray-200 md:hidden dark:border-gray-700 dark:bg-gray-800">
             <div className="px-4 py-4 space-y-4">
               {/* User info - Mobile */}
-              <div className="flex items-center p-3 space-x-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                {session?.user?.avatar ? (
-                  <img
-                    src={`https://cdn.discordapp.com/avatars/${session.user.id}/${session.user.avatar}.png`}
-                    alt="Avatar"
-                    className="w-10 h-10 rounded-full ring-2 ring-indigo-500/20"
-                  />
-                ) : (
-                  <UserCircleIcon className="w-10 h-10 text-gray-400" />
-                )}
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {session?.user?.username}#{session?.user?.discriminator}
-                  </div>
-                  <div className="text-sm text-green-600 dark:text-green-400">
-                    Authorized Access
+              {currentUser && (
+                <div className="flex items-center p-3 space-x-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                  {currentUser.avatar ? (
+                    <img
+                      src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
+                      alt="Avatar"
+                      className="w-10 h-10 rounded-full ring-2 ring-indigo-500/20"
+                    />
+                  ) : (
+                    <UserCircleIcon className="w-10 h-10 text-gray-400" />
+                  )}
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                      {currentUser.username}#{currentUser.discriminator}
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400">
+                      Authorized Access
+                    </div>
                   </div>
                 </div>
-              </div>
-              
+              )}
+
               {/* Sign out button - Mobile */}
               <button
                 onClick={handleSignOut}
