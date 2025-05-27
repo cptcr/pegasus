@@ -1,52 +1,61 @@
-// dashboard/lib/discordService.ts
-import { Client, GatewayIntentBits, Guild, GuildChannel, Role, GuildMember, NonThreadGuildBasedChannel } from 'discord.js';
+// dashboard/lib/discordService.ts - Fixed Discord Service
+import { Client, GatewayIntentBits, Guild as DiscordJSGuild, GuildChannel, Role as DiscordJSRole, GuildMember, NonThreadGuildBasedChannel, OAuth2Guild } from 'discord.js';
+import { ApiChannel, ApiRole, DiscordGuildInfo } from '../types';
 
-const TARGET_GUILD_ID = '554266392262737930';
+const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || '554266392262737930';
 
 class DiscordService {
   private client: Client;
   private isInitialized = false;
+  private currentToken: string | null = null;
 
   constructor() {
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences,
       ],
     });
   }
 
-  async initialize() {
-    if (this.isInitialized) return;
+  async initialize(token?: string): Promise<void> {
+    if (this.isInitialized && token && this.currentToken === token) return;
+    if (this.isInitialized && !token && this.currentToken === process.env.DISCORD_BOT_TOKEN) return;
+
+    const loginToken = token || process.env.DISCORD_BOT_TOKEN;
+    this.currentToken = loginToken;
 
     try {
-      if (!process.env.DISCORD_BOT_TOKEN) {
-        console.warn('⚠️ Discord bot token not provided - running in mock mode');
+      if (!loginToken) {
+        console.warn('⚠️ Discord bot token not provided - Discord service cannot initialize.');
+        this.isInitialized = false;
         return;
       }
 
-      await this.client.login(process.env.DISCORD_BOT_TOKEN);
+      await this.client.login(loginToken);
       this.isInitialized = true;
       console.log('✅ Discord service initialized');
-      
-      // Log the target guild status
+
       const targetGuild = await this.getGuild(TARGET_GUILD_ID);
       if (targetGuild) {
         console.log(`✅ Target guild found: ${targetGuild.name} (${targetGuild.memberCount} members)`);
       } else {
-        console.warn(`⚠️ Target guild ${TARGET_GUILD_ID} not found - bot may not be in the guild`);
+        console.warn(`⚠️ Target guild ${TARGET_GUILD_ID} not found.`);
       }
     } catch (error) {
       console.error('❌ Failed to initialize Discord service:', error);
-      console.warn('⚠️ Discord service will run in mock mode');
+      this.isInitialized = false;
     }
   }
 
-  async getGuild(guildId: string): Promise<Guild | null> {
+  async getGuild(guildId: string): Promise<DiscordJSGuild | null> {
+    if (!this.isInitialized || !this.client.isReady()) {
+      console.warn(`[DiscordService] Service not ready for guild ${guildId}`);
+      return null;
+    }
+
     try {
-      if (!this.isInitialized) return null;
       return await this.client.guilds.fetch(guildId);
     } catch (error) {
       console.error(`Error fetching guild ${guildId}:`, error);
@@ -55,11 +64,14 @@ class DiscordService {
   }
 
   async getAllGuilds(): Promise<Array<{ id: string; name: string }>> {
+    if (!this.isInitialized || !this.client.isReady()) {
+      console.warn('[DiscordService] Service not ready for fetching all guilds');
+      return [];
+    }
+
     try {
-      if (!this.isInitialized) return [];
-      
       const guilds = await this.client.guilds.fetch();
-      return guilds.map(guild => ({
+      return guilds.map((guild: OAuth2Guild) => ({
         id: guild.id,
         name: guild.name
       }));
@@ -69,14 +81,16 @@ class DiscordService {
     }
   }
 
-  async getGuildChannels(guildId: string) {
+  async getGuildChannels(guildId: string): Promise<ApiChannel[]> {
     try {
       const guild = await this.getGuild(guildId);
       if (!guild) return this.getMockChannels();
 
       const channels = await guild.channels.fetch();
       return channels
-        .filter((channel): channel is NonThreadGuildBasedChannel => channel !== null && !(channel.isThread?.()))
+        .filter((channel): channel is NonThreadGuildBasedChannel => 
+          channel !== null && !channel.isThread()
+        )
         .map(channel => ({
           id: channel.id,
           name: channel.name,
@@ -90,19 +104,20 @@ class DiscordService {
     }
   }
 
-  async getGuildRoles(guildId: string) {
+  async getGuildRoles(guildId: string): Promise<ApiRole[]> {
     try {
       const guild = await this.getGuild(guildId);
       if (!guild) return this.getMockRoles();
 
       const roles = await guild.roles.fetch();
       return roles
-        .filter((role): role is Role => role !== null)
+        .filter((role): role is DiscordJSRole => role !== null)
         .map(role => ({
           id: role.id,
           name: role.name,
           color: role.color,
           position: role.position,
+          managed: role.managed,
         }))
         .sort((a, b) => b.position - a.position);
     } catch (error) {
@@ -114,25 +129,27 @@ class DiscordService {
   async getGuildMemberCount(guildId: string): Promise<number> {
     try {
       const guild = await this.getGuild(guildId);
-      if (!guild) return 0;
-
-      return guild.memberCount || 0;
+      return guild?.memberCount || 0;
     } catch (error) {
       console.error(`Error fetching member count for guild ${guildId}:`, error);
       return 0;
     }
   }
 
-  async getGuildInfo(guildId: string) {
+  async getGuildInfo(guildId: string): Promise<DiscordGuildInfo | null> {
     try {
       const guild = await this.getGuild(guildId);
       if (!guild) return this.getMockGuildInfo(guildId);
 
+      const onlineCount = guild.presences?.cache.filter(p => p.status !== 'offline').size || 0;
+
       return {
         id: guild.id,
         name: guild.name,
+        icon: guild.icon,
         iconURL: guild.iconURL(),
         memberCount: guild.memberCount,
+        onlineCount: onlineCount,
         ownerId: guild.ownerId,
         description: guild.description,
         createdAt: guild.createdAt,
@@ -148,10 +165,13 @@ class DiscordService {
     try {
       const guild = await this.getGuild(guildId);
       if (!guild) return null;
-
       return await guild.members.fetch(userId);
     } catch (error) {
-      console.error(`Error fetching member ${userId} in guild ${guildId}:`, error);
+      if (error instanceof Error && (error.message.includes('Unknown Member') || (error as any).code === 10007)) {
+        // Don't log "Unknown Member" as an error
+      } else {
+        console.error(`Error fetching member ${userId} in guild ${guildId}:`, error);
+      }
       return null;
     }
   }
@@ -160,7 +180,6 @@ class DiscordService {
     try {
       const member = await this.getGuildMember(guildId, userId);
       if (!member) return false;
-
       return member.roles.cache.has(requiredRoleId);
     } catch (error) {
       console.error(`Error checking permissions for user ${userId}:`, error);
@@ -177,49 +196,41 @@ class DiscordService {
   }
 
   async disconnect(): Promise<void> {
-    if (this.client) {
+    if (this.client && this.client.isReady()) {
       this.client.destroy();
       this.isInitialized = false;
+      this.currentToken = null;
       console.log('🔌 Discord service disconnected');
     }
   }
 
-  // Mock data for when Discord API is not available
-  private getMockChannels() {
+  // ===== MOCK DATA =====
+
+  private getMockChannels(): ApiChannel[] {
     return [
-      { id: '123456789', name: 'general', type: 0, parentId: null },
-      { id: '123456790', name: 'moderator-logs', type: 0, parentId: null },
-      { id: '123456791', name: 'level-ups', type: 0, parentId: null },
-      { id: '123456792', name: 'geizhals-alerts', type: 0, parentId: null },
-      { id: '123456793', name: 'welcome', type: 0, parentId: null },
-      { id: '123456794', name: 'General Voice', type: 2, parentId: null },
-      { id: '123456795', name: 'Text Channels', type: 4, parentId: null },
-      { id: '123456796', name: 'Voice Channels', type: 4, parentId: null },
+      { id: 'mock1', name: 'general', type: 0, parentId: null },
+      { id: 'mock2', name: 'announcements', type: 0, parentId: null },
     ];
   }
 
-  private getMockRoles() {
+  private getMockRoles(): ApiRole[] {
     return [
-      { id: '987654321', name: '@everyone', color: 0, position: 0 },
-      { id: '797927858420187186', name: 'Admin', color: 0xff0000, position: 10 },
-      { id: '987654322', name: 'Moderator', color: 0xff5500, position: 5 },
-      { id: '987654323', name: 'Member', color: 0x00ff00, position: 1 },
-      { id: '987654324', name: 'Level 10', color: 0x0000ff, position: 2 },
-      { id: '987654325', name: 'Level 25', color: 0xff00ff, position: 3 },
-      { id: '987654326', name: 'Level 50', color: 0xffff00, position: 4 },
+      { id: 'mock1', name: '@everyone', color: 0, position: 0, managed: false },
+      { id: 'mock2', name: 'Admin', color: 0xff0000, position: 10, managed: false },
     ];
   }
 
-  private getMockGuildInfo(guildId: string) {
-    // Only return mock info for the target guild
+  private getMockGuildInfo(guildId: string): DiscordGuildInfo | null {
     if (guildId === TARGET_GUILD_ID) {
       return {
         id: guildId,
-        name: 'Test Server',
+        name: 'Test Server (Mock)',
+        icon: null,
         iconURL: null,
         memberCount: 150,
-        ownerId: '123456789',
-        description: 'A Discord server for testing the Hinko bot',
+        onlineCount: 75,
+        ownerId: 'mockOwnerId',
+        description: 'A mock Discord server for testing.',
         createdAt: new Date('2020-01-01'),
         features: [],
       };
@@ -227,21 +238,21 @@ class DiscordService {
     return null;
   }
 
-  // Health check methods
-  async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: any }> {
+  async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: Record<string, unknown> }> {
     try {
-      if (!this.isInitialized) {
+      if (!this.isInitialized || !this.client.isReady()) {
         return {
           status: 'unhealthy',
           details: {
-            initialized: false,
-            message: 'Discord service not initialized'
+            initialized: this.isInitialized,
+            ready: this.client.isReady(),
+            message: 'Discord service not initialized or not ready'
           }
         };
       }
 
       const guild = await this.getGuild(TARGET_GUILD_ID);
-      
+
       return {
         status: guild ? 'healthy' : 'unhealthy',
         details: {
@@ -254,19 +265,18 @@ class DiscordService {
           timestamp: new Date().toISOString()
         }
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         status: 'unhealthy',
         details: {
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : 'Unknown error during health check',
           timestamp: new Date().toISOString()
         }
       };
     }
   }
 
-  // Bot status monitoring
-  getBotStatus() {
+  getBotStatus(): Record<string, unknown> {
     return {
       ready: this.client.isReady(),
       uptime: this.client.uptime,
@@ -277,37 +287,37 @@ class DiscordService {
     };
   }
 
-  // Event listeners for monitoring
-  setupEventListeners() {
+  setupEventListeners(): void {
     this.client.on('ready', () => {
       console.log(`✅ Discord bot ready as ${this.client.user?.tag}`);
     });
 
-    this.client.on('error', (error) => {
+    this.client.on('error', (error: Error) => {
       console.error('❌ Discord client error:', error);
     });
 
-    this.client.on('warn', (warning) => {
+    this.client.on('warn', (warning: string) => {
       console.warn('⚠️ Discord client warning:', warning);
     });
 
     this.client.on('disconnect', () => {
       console.log('🔌 Discord client disconnected');
+      this.isInitialized = false;
+      this.currentToken = null;
     });
 
     this.client.on('reconnecting', () => {
       console.log('🔄 Discord client reconnecting...');
     });
 
-    this.client.on('guildCreate', (guild) => {
+    this.client.on('guildCreate', (guild: DiscordJSGuild) => {
       console.log(`➕ Bot added to guild: ${guild.name} (${guild.id})`);
     });
 
-    this.client.on('guildDelete', (guild) => {
+    this.client.on('guildDelete', (guild: DiscordJSGuild) => {
       console.log(`➖ Bot removed from guild: ${guild.name} (${guild.id})`);
     });
   }
 }
 
-// Singleton instance
 export const discordService = new DiscordService();

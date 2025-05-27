@@ -109,8 +109,8 @@ export default {
         .setDescription('View Join to Create system information')
     ),
 
-  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const client = interaction.client as ExtendedClient;
+  // Command execution logic
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     const j2cManager = new Join2CreateManager(client, client.db, client.logger);
     
     if (!interaction.guild) {

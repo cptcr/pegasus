@@ -1,65 +1,42 @@
-
-// src/handlers/CommandHandler.ts - Fixed Command Handler
-import { ChatInputCommandInteraction, CacheType, Collection } from 'discord.js';
-import { ExtendedClient } from '..';
-import { Logger } from '@/utils/Logger';
+// src/handlers/CommandHandler.ts
+import { ExtendedClient } from "@/index";
+import { readdirSync } from "fs";
+import { join } from "path";
+import { fileURLToPath } from "url";
+import { Command } from "@/types";
 
 export class CommandHandler {
-  private client: ExtendedClient;
-  private logger: Logger;
+    private client: ExtendedClient;
 
-  constructor(client: ExtendedClient, logger: Logger) {
-    this.client = client;
-    this.logger = logger;
-  }
-
-  async handleInteraction(interaction: ChatInputCommandInteraction<CacheType>): Promise<void> {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = this.client.commands.get(interaction.commandName);
-
-    if (!command) {
-      await interaction.reply({ content: 'Command not found!', ephemeral: true });
-      return;
+    constructor(client: ExtendedClient) {
+        this.client = client;
     }
 
-    // Check cooldowns
-    if (!this.client.cooldowns.has(command.data.name)) {
-      this.client.cooldowns.set(command.data.name, new Collection());
+    public async loadCommands(): Promise<void> {
+        const __dirname = fileURLToPath(new URL('.', import.meta.url));
+        const commandsPath = join(__dirname, '..', 'commands');
+        const commandFolders = readdirSync(commandsPath);
+
+        for (const folder of commandFolders) {
+            const folderPath = join(commandsPath, folder);
+            const commandFiles = readdirSync(folderPath).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
+
+            for (const file of commandFiles) {
+                const filePath = join(folderPath, file);
+                try {
+                    const { default: command } = await import(filePath) as { default: Command };
+                    if ('data' in command && 'execute' in command) {
+                        command.category = folder; // Assign category based on folder
+                        this.client.commands.set(command.data.name, command);
+                        this.client.logger.debug(`Loaded command: /${command.data.name}`);
+                    } else {
+                        this.client.logger.warn(`The command at ${filePath} is missing a required "data" or "execute" property.`);
+                    }
+                } catch (error) {
+                    this.client.logger.error(`Failed to load command at ${filePath}:`, error);
+                }
+            }
+        }
+        this.client.logger.info(`Loaded a total of ${this.client.commands.size} commands.`);
     }
-
-    const now = Date.now();
-    const timestamps = this.client.cooldowns.get(command.data.name)!;
-    const cooldownAmount = (command.cooldown || 3) * 1000;
-
-    if (timestamps.has(interaction.user.id)) {
-      const expirationTime = timestamps.get(interaction.user.id)! + cooldownAmount;
-
-      if (now < expirationTime) {
-        const timeLeft = (expirationTime - now) / 1000;
-        await interaction.reply({
-          content: `Please wait ${timeLeft.toFixed(1)} more seconds before using this command.`,
-          ephemeral: true
-        });
-        return;
-      }
-    }
-
-    timestamps.set(interaction.user.id, now);
-    setTimeout(() => timestamps.delete(interaction.user.id), cooldownAmount);
-
-    try {
-      await command.execute(interaction);
-    } catch (error) {
-      this.logger.error(`Error executing command ${command.data.name}:`, error);
-      
-      const errorMessage = 'There was an error while executing this command!';
-      
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: errorMessage, ephemeral: true });
-      } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
-      }
-    }
-  }
 }

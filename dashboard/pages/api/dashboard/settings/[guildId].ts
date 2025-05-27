@@ -1,90 +1,86 @@
 // dashboard/pages/api/dashboard/settings/[guildId].ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
-import { DatabaseService } from '../../../../lib/database';
-import { discordService } from '../../../../lib/discordService';
+import { requireAuth, AuthenticatedRequest } from '@/lib/auth'; // Use AuthenticatedRequest
+import databaseEvents from '@/lib/database'; // Use the default export
+import { GuildSettings } from '@/types/index'; // Use shared types
 
-const ALLOWED_GUILD_ID = '554266392262737930';
+const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+
+// The handler now correctly uses AuthenticatedRequest
+async function settingsHandler(req: AuthenticatedRequest, res: NextApiResponse<GuildSettings | { error: string }>) {
   const { guildId } = req.query;
 
-  if (!guildId || typeof guildId !== 'string') {
-    return res.status(400).json({ error: 'Guild ID is required' });
+  if (typeof guildId !== 'string') {
+    return res.status(400).json({ error: 'Invalid Guild ID.' });
   }
 
-  // Only allow access to the specific guild
+  // Ensure the dashboard can only modify settings for the TARGET_GUILD_ID
   if (guildId !== ALLOWED_GUILD_ID) {
-    return res.status(403).json({ error: 'Access denied to this guild' });
+      return res.status(403).json({ error: 'Access denied to configure this guild.' });
   }
 
-  if (req.method === 'GET') {
-    try {
-      // Initialize Discord service if needed
-      if (!discordService.isReady()) {
-        await discordService.initialize();
-      }
+  // Optional: Add permission check here to see if user can manage this guild.
+  // This would typically involve checking req.user against roles/permissions for the guild.
 
-      const guild = await DatabaseService.getGuildSettings(guildId);
-
-      if (!guild) {
-        return res.status(404).json({ error: 'Guild not found' });
-      }
-
-      // Get Discord guild info to update name if needed
+  switch (req.method) {
+    case 'GET':
       try {
-        const discordGuild = await discordService.getGuildInfo(guildId);
-        if (discordGuild && discordGuild.name !== guild.name) {
-          await DatabaseService.updateGuildSettings(guildId, { name: discordGuild.name });
-          guild.name = discordGuild.name;
+        const settings = await databaseEvents.getGuildSettings(guildId);
+        if (!settings) {
+          // If no settings, provide default settings or an empty object based on frontend expectation
+          const defaultSettings: GuildSettings = {
+            // Populate with default values from your Config or common defaults
+            prefix: '!',
+            enableLeveling: true,
+            // ... other default fields
+          };
+          return res.status(200).json(defaultSettings);
         }
-      } catch (discordError) {
-        console.warn('Discord API unavailable for guild name update');
+        res.status(200).json(settings);
+      } catch (error: unknown) { // Catch unknown
+        console.error(`Failed to get settings for guild ${guildId}:`, error);
+        res.status(500).json({ error: 'Internal Server Error.' });
       }
+      break;
 
-      res.status(200).json(guild);
-    } catch (error) {
-      console.error('Error fetching guild settings:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  } else if (req.method === 'PUT') {
-    try {
-      const updateData = req.body;
-      
-      // Validate the data
-      const allowedFields = [
-        'name', 'prefix', 'modLogChannelId', 'levelUpChannelId', 'quarantineRoleId',
-        'geizhalsChannelId', 'welcomeChannelId', 'joinToCreateChannelId', 'joinToCreateCategoryId',
-        'enableLeveling', 'enableModeration', 'enableGeizhals', 'enablePolls', 'enableGiveaways',
-        'enableAutomod', 'enableTickets', 'enableMusic', 'enableJoinToCreate',
-        'welcomeMessage', 'leaveMessage'
-      ];
+    case 'PUT': // Changed from POST to PUT for updating existing resource
+      try {
+        const settingsToUpdate = req.body as Partial<GuildSettings>;
+        if (typeof settingsToUpdate !== 'object' || settingsToUpdate === null) {
+          return res.status(400).json({ error: 'Invalid request body.' });
+        }
 
-      const validatedData = Object.keys(updateData)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj, key) => {
-          // Convert empty strings to null for optional fields
-          if (key.endsWith('ChannelId') || key.endsWith('RoleId') || key.endsWith('CategoryId')) {
-            obj[key] = updateData[key] === '' ? null : updateData[key];
-          } else {
-            obj[key] = updateData[key];
-          }
-          return obj;
-        }, {} as any);
+        // Add more specific validation if needed (e.g., using Zod)
+        // Example basic validation:
+        if ('enableLeveling' in settingsToUpdate && typeof settingsToUpdate.enableLeveling !== 'boolean') {
+           return res.status(400).json({ error: 'Invalid type for enableLeveling.' });
+        }
+        if ('prefix' in settingsToUpdate && typeof settingsToUpdate.prefix !== 'string' && settingsToUpdate.prefix !== null) {
+            return res.status(400).json({ error: 'Invalid type for prefix.'});
+        }
+        // ... more validations
 
-      const updatedGuild = await DatabaseService.updateGuildSettings(guildId, validatedData);
+        const updatedGuild = await databaseEvents.updateGuildSettings(guildId, settingsToUpdate);
+        // updateGuildSettings should return the updated Guild object, from which we extract settings
+        if (updatedGuild && updatedGuild.settings) {
+            res.status(200).json(updatedGuild.settings as GuildSettings);
+        } else {
+            throw new Error("Failed to retrieve updated settings after update.");
+        }
+      } catch (error: unknown) { // Catch unknown
+         console.error(`Failed to update settings for guild ${guildId}:`, error);
+         res.status(500).json({ error: 'Internal Server Error.' });
+      }
+      break;
 
-      res.status(200).json(updatedGuild);
-    } catch (error) {
-      console.error('Error updating guild settings:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  } else {
-    res.setHeader('Allow', ['GET', 'PUT']);
-    res.status(405).json({ error: 'Method not allowed' });
+    default:
+      res.setHeader('Allow', ['GET', 'PUT']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
 
-export default function protectedHandler(req: NextApiRequest, res: NextApiResponse) {
-  return requireAuth(req as AuthenticatedRequest, res, handler);
+// Wrap the handler with requireAuth
+export default function protectedSettingsHandler(req: NextApiRequest, res: NextApiResponse) {
+    return requireAuth(req as AuthenticatedRequest, res, settingsHandler);
 }

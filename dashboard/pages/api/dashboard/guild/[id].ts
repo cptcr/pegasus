@@ -1,13 +1,18 @@
-// dashboard/pages/api/dashboard/guild/[id].ts
+// dashboard/pages/api/dashboard/guild/[id].ts - Fixed Guild API
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
-import { DatabaseService } from '../../../../lib/database';
+import { PrismaInstance as prisma, default as databaseEvents } from '../../../../lib/database';
 import { discordService } from '../../../../lib/discordService';
+import { GuildWithFullStats, GuildSettings, DiscordGuildInfo } from '../../../../types';
 
-const ALLOWED_GUILD_ID = '554266392262737930';
+const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+async function handler(
+  req: AuthenticatedRequest, 
+  res: NextApiResponse<GuildWithFullStats | { message: string; error?: string; timestamp?: string }>
+) {
   if (req.method !== 'GET') {
+    res.setHeader('Allow', ['GET']);
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -17,289 +22,116 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     return res.status(400).json({ message: 'Guild ID is required' });
   }
 
-  // Only allow access to the specific guild
   if (id !== ALLOWED_GUILD_ID) {
     return res.status(403).json({ message: 'Access denied to this guild' });
   }
 
   try {
-    // Initialize Discord service if needed (don't throw on failure)
-    try {
-      if (!discordService.isReady()) {
-        await discordService.initialize();
-      }
-    } catch (discordError) {
-      console.warn('Discord service initialization failed, continuing with database-only mode');
+    // Initialize Discord service if needed
+    if (!discordService.isReady()) {
+      await discordService.initialize();
     }
 
-    // Get guild data from database with fallback
-    let guildData;
-    try {
-      // Try the full stats method first
-      if (typeof DatabaseService.getGuildWithFullStats === 'function') {
-        guildData = await DatabaseService.getGuildWithFullStats(id);
-      } else {
-        // Fallback to basic guild settings and manual stats gathering
-        console.log('Using fallback method for guild data');
-        guildData = await getGuildDataFallback(id);
-      }
-    } catch (dbError) {
-      console.error('Database error, creating default guild:', dbError);
-      guildData = await createDefaultGuild(id);
-    }
-    
+    // Get guild data from database
+    let guildData = await databaseEvents.getGuildWithFullData(id);
+
+    // Create guild if it doesn't exist
     if (!guildData) {
-      guildData = await createDefaultGuild(id);
-    }
-
-    // Get live Discord guild info (with fallback)
-    let discordGuild = null;
-    let memberCount = 0;
-    
-    try {
-      const [discordGuildInfo, discordMemberCount] = await Promise.all([
-        discordService.getGuildInfo(id),
-        discordService.getGuildMemberCount(id)
-      ]);
+      const discordGuildInfo = await discordService.getGuildInfo(id);
+      if (discordGuildInfo) {
+        await databaseEvents.createGuild(id, discordGuildInfo.name);
+        guildData = await databaseEvents.getGuildWithFullData(id);
+      }
       
-      discordGuild = discordGuildInfo;
-      memberCount = discordMemberCount || 0;
-
-      // Update guild name if it changed on Discord
-      if (discordGuild && discordGuild.name !== guildData.name) {
-        try {
-          await DatabaseService.updateGuildSettings(id, { name: discordGuild.name });
-          guildData.name = discordGuild.name;
-        } catch (updateError) {
-          console.warn('Failed to update guild name:', updateError);
-        }
+      if (!guildData) {
+        return res.status(404).json({ message: 'Guild not found and could not be created.' });
       }
-    } catch (discordError) {
-      console.warn('Discord API unavailable, using database data only');
-      // Use database user count as fallback
-      memberCount = guildData.userLevels?.length || 0;
     }
 
-    // Calculate real stats from available data
-    const stats = calculateGuildStats(guildData, memberCount);
+    // Get Discord guild info
+    const discordGuildInfo: DiscordGuildInfo | null = await discordService.getGuildInfo(id);
+    const memberCount = discordGuildInfo?.memberCount ?? guildData.members?.length ?? 0;
+    const onlineCount = discordGuildInfo?.onlineCount ?? 0;
 
-    // Prepare response with live data
-    const response = {
-      id: guildData.id,
-      name: guildData.name || 'Unknown Guild',
-      memberCount: memberCount,
-      iconURL: discordGuild?.iconURL || null,
-      stats: {
-        ...stats,
-        lastUpdated: new Date().toISOString()
-      },
-      settings: {
-        enableLeveling: guildData.enableLeveling ?? true,
-        enableModeration: guildData.enableModeration ?? true,
-        enableGeizhals: guildData.enableGeizhals ?? false,
-        enablePolls: guildData.enablePolls ?? true,
-        enableGiveaways: guildData.enableGiveaways ?? true,
-        enableTickets: guildData.enableTickets ?? false,
-        enableAutomod: guildData.enableAutomod ?? false,
-        enableMusic: guildData.enableMusic ?? false,
-        enableJoinToCreate: guildData.enableJoinToCreate ?? false
-      },
-      config: {
-        prefix: guildData.prefix || '!',
-        modLogChannelId: guildData.modLogChannelId,
-        levelUpChannelId: guildData.levelUpChannelId,
-        quarantineRoleId: guildData.quarantineRoleId,
-        geizhalsChannelId: guildData.geizhalsChannelId,
-        welcomeChannelId: guildData.welcomeChannelId,
-        joinToCreateChannelId: guildData.joinToCreateChannelId,
-        joinToCreateCategoryId: guildData.joinToCreateCategoryId,
-        welcomeMessage: guildData.welcomeMessage,
-        leaveMessage: guildData.leaveMessage
-      },
-      // Add real-time status
-      status: {
-        botOnline: discordGuild !== null,
-        databaseConnected: true,
-        lastSync: new Date().toISOString()
+    // Update guild name if changed
+    if (discordGuildInfo && discordGuildInfo.name !== guildData.name) {
+      try {
+        await databaseEvents.updateGuildSettings(id, { name: discordGuildInfo.name });
+        guildData.name = discordGuildInfo.name;
+      } catch (updateError) {
+        console.warn('Failed to update guild name:', updateError);
       }
+    }
+
+    // Calculate stats
+    const stats = {
+      memberCount,
+      onlineCount,
+      ticketCount: guildData.tickets?.length ?? 0,
+      pollCount: guildData.polls?.length ?? 0,
+      giveawayCount: guildData.giveaways?.length ?? 0,
+      warningCount: guildData.warnings?.length ?? 0,
+      totalUsers: guildData.members?.length ?? 0,
+      activeQuarantine: await prisma.quarantine.count({ where: { guildId: id, active: true } }),
+      totalTrackers: 0, // Placeholder for Geizhals
+      activePolls: guildData.polls?.filter(p => p.active).length ?? 0,
+      activeGiveaways: guildData.giveaways?.filter(g => g.active && !g.ended).length ?? 0,
+      openTickets: guildData.tickets?.filter(t => t.status !== 'CLOSED').length ?? 0,
+      customCommands: await prisma.customCommand.count({ where: { guildId: id, enabled: true } }),
+      levelRewards: guildData.levelRewards?.length ?? 0,
+      automodRules: guildData.autoModRules?.filter(r => r.enabled).length ?? 0,
+      levelingEnabled: guildData.enableLeveling ?? true,
+      moderationEnabled: guildData.enableModeration ?? true,
+      geizhalsEnabled: guildData.enableGeizhals ?? false,
+      enableAutomod: guildData.enableAutomod ?? false,
+      enableMusic: guildData.enableMusic ?? false,
+      enableJoinToCreate: guildData.enableJoinToCreate ?? false,
+      engagementRate: memberCount > 0 ? Math.round(((guildData.members?.length ?? 0) / memberCount) * 100) : 0,
+      moderationRate: (guildData.members?.length ?? 0) > 0 ? Math.round(((guildData.warnings?.length ?? 0) / (guildData.members?.length ?? 1)) * 100) : 0,
+      lastUpdated: new Date().toISOString(),
     };
 
-    // Set cache headers for real-time updates
+    const response: GuildWithFullStats = {
+      ...guildData,
+      settings: guildData.settings as GuildSettings,
+      stats,
+      discord: discordGuildInfo || {
+        id: id,
+        name: guildData.name,
+        icon: null,
+        iconURL: null,
+        features: [],
+        memberCount,
+        onlineCount,
+        ownerId: guildData.ownerId || undefined,
+        description: guildData.description || null,
+        createdAt: guildData.createdAt || new Date(),
+      },
+      members: guildData.members,
+      warnings: guildData.warnings,
+      polls: guildData.polls,
+      giveaways: guildData.giveaways,
+      tickets: guildData.tickets,
+      logs: guildData.logs,
+      levelRewards: guildData.levelRewards,
+      autoModRules: guildData.autoModRules,
+    };
+
+    // Set cache headers
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    res.status(200).json(response);
+    return res.status(200).json(response);
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching guild data:', error);
-    res.status(500).json({ 
+    return res.status(500).json({
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
-}
-
-// Fallback function to gather guild data manually
-async function getGuildDataFallback(guildId: string) {
-  try {
-    // Get basic guild settings
-    const guild = await DatabaseService.getGuildSettings(guildId);
-    
-    // Get counts manually
-    const [
-      userLevels,
-      warns,
-      quarantineEntries,
-      geizhalsTrackers,
-      polls,
-      giveaways,
-      tickets,
-      customCommands,
-      levelRewards,
-      automodRules
-    ] = await Promise.all([
-      DatabaseService.prisma.userLevel.findMany({
-        where: { guildId },
-        include: { user: true },
-        take: 100
-      }),
-      DatabaseService.prisma.warn.findMany({
-        where: { guildId, active: true },
-        include: { user: true, moderator: true },
-        take: 50
-      }),
-      DatabaseService.prisma.quarantineEntry.findMany({
-        where: { guildId, active: true },
-        include: { moderator: true, user: true }
-      }),
-      DatabaseService.prisma.geizhalsTracker.findMany({
-        where: { guildId },
-        include: { user: true },
-        take: 50
-      }),
-      DatabaseService.prisma.poll.findMany({
-        where: { guildId, active: true },
-        include: { options: true }
-      }),
-      DatabaseService.prisma.giveaway.findMany({
-        where: { guildId, active: true, ended: false },
-        include: { entries: true }
-      }),
-      DatabaseService.prisma.ticket.findMany({
-        where: { guildId, status: { not: 'CLOSED' } },
-        include: { user: true, moderator: true }
-      }),
-      DatabaseService.prisma.customCommand.findMany({
-        where: { guildId, enabled: true }
-      }),
-      DatabaseService.prisma.levelReward.findMany({
-        where: { guildId }
-      }),
-      DatabaseService.prisma.automodRule.findMany({
-        where: { guildId }
-      })
-    ]);
-
-    return {
-      ...guild,
-      userLevels,
-      warns,
-      quarantineEntries,
-      geizhalsTrackers,
-      polls,
-      giveaways,
-      tickets,
-      customCommands,
-      levelRewards,
-      automodRules
-    };
-  } catch (error) {
-    console.error('Fallback data gathering failed:', error);
-    throw error;
-  }
-}
-
-// Create default guild data
-async function createDefaultGuild(guildId: string) {
-  try {
-    const guild = await DatabaseService.prisma.guild.upsert({
-      where: { id: guildId },
-      update: {},
-      create: {
-        id: guildId,
-        name: 'Unknown Guild',
-        prefix: '!',
-        enableLeveling: true,
-        enableModeration: true,
-        enableGeizhals: false,
-        enablePolls: true,
-        enableGiveaways: true,
-        enableAutomod: false,
-        enableTickets: false,
-        enableMusic: false,
-        enableJoinToCreate: false
-      }
-    });
-
-    return {
-      ...guild,
-      userLevels: [],
-      warns: [],
-      quarantineEntries: [],
-      geizhalsTrackers: [],
-      polls: [],
-      giveaways: [],
-      tickets: [],
-      customCommands: [],
-      levelRewards: [],
-      automodRules: []
-    };
-  } catch (error) {
-    console.error('Failed to create default guild:', error);
-    throw error;
-  }
-}
-
-// Calculate stats from guild data
-function calculateGuildStats(guildData: any, memberCount: number) {
-  const totalUsers = guildData.userLevels?.length || 0;
-  const totalWarns = guildData.warns?.filter((w: any) => w.active).length || 0;
-  const activeQuarantine = guildData.quarantineEntries?.filter((q: any) => q.active).length || 0;
-  const totalTrackers = guildData.geizhalsTrackers?.length || 0;
-  const activePolls = guildData.polls?.filter((p: any) => p.active).length || 0;
-  const activeGiveaways = guildData.giveaways?.filter((g: any) => g.active && !g.ended).length || 0;
-  const openTickets = guildData.tickets?.filter((t: any) => t.status !== 'CLOSED').length || 0;
-  const customCommands = guildData.customCommands?.filter((c: any) => c.enabled).length || 0;
-  const levelRewards = guildData.levelRewards?.length || 0;
-  const automodRules = guildData.automodRules?.filter((r: any) => r.enabled).length || 0;
-
-  return {
-    totalUsers,
-    totalWarns,
-    activeQuarantine,
-    totalTrackers,
-    activePolls,
-    activeGiveaways,
-    openTickets,
-    customCommands,
-    levelRewards,
-    automodRules,
-    levelingEnabled: guildData.enableLeveling ?? true,
-    moderationEnabled: guildData.enableModeration ?? true,
-    geizhalsEnabled: guildData.enableGeizhals ?? false,
-    enablePolls: guildData.enablePolls ?? true,
-    enableGiveaways: guildData.enableGiveaways ?? true,
-    enableTickets: guildData.enableTickets ?? false,
-    enableAutomod: guildData.enableAutomod ?? false,
-    enableMusic: guildData.enableMusic ?? false,
-    enableJoinToCreate: guildData.enableJoinToCreate ?? false,
-    engagementRate: totalUsers > 0 && memberCount > 0 ? 
-      Math.round((totalUsers / memberCount) * 100) : 0,
-    moderationRate: totalWarns > 0 && totalUsers > 0 ? 
-      Math.round((totalWarns / totalUsers) * 100) : 0
-  };
 }
 
 export default function protectedHandler(req: NextApiRequest, res: NextApiResponse) {
