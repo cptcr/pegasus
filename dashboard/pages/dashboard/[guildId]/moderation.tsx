@@ -3,8 +3,31 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ModernProtectedLayout from '@/components/ModernProtectedLayout';
 import { toast } from 'sonner';
-import { Warn, Quarantine } from '@/types/index'; // Fixed import
 import { formatDistanceToNow } from 'date-fns';
+
+// Define proper types from Prisma (or based on database schema)
+interface Warn {
+  id: number;
+  userId: string;
+  moderatorId: string;
+  reason: string;
+  createdAt: string | Date;
+  active: boolean;
+  guildId: string;
+  updatedAt: string | Date;
+}
+
+interface Quarantine {
+  id: number;
+  userId: string;
+  reason: string;
+  quarantinedAt: string | Date;
+  active: boolean;
+  guildId: string;
+  moderatorId: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
 
 // Simple UI Components (instead of shadcn/ui)
 const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (

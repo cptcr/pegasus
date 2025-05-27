@@ -17,11 +17,17 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@/types/*": ["../types/*"] // Add this path alias
+      "@/types/*": ["./types/*"]
     },
-    "noImplicitAny": true, // Enforce no implicit any
+    "noImplicitAny": true,
     "strictNullChecks": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../types/**/*.ts"], // Add types directory
+  "include": [
+    "next-env.d.ts", 
+    "**/*.ts", 
+    "**/*.tsx", 
+    "./types/**/*.ts",
+    "./types/next-auth.d.ts"
+  ],
   "exclude": ["node_modules"]
 }

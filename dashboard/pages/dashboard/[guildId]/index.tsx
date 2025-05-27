@@ -1,4 +1,4 @@
-// dashboard/pages/dashboard/[guildId]/index.tsx - Fixed ESLint Issues
+// dashboard/pages/dashboard/[guildId]/index.tsx - Fixed Import Issue
 import { useState, useEffect, useCallback } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
@@ -81,10 +81,10 @@ interface RecentActivity {
   recentGiveaways: number;
   recentTickets: number;
   today: {
-    recentWarns: number;
-    recentPolls: number;
-    recentGiveaways: number;
-    recentTickets: number;
+    warns: number;
+    polls: number;
+    giveaways: number;
+    tickets: number;
   };
   metrics: {
     activityScore: number;
@@ -380,7 +380,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.totalWarns}
               icon={<ExclamationTriangleIcon className="w-6 h-6" />}
               color="red"
-              change={activity?.today.recentWarns ? `+${activity.today.recentWarns} today` : undefined}
+              change={activity?.today.warns ? `+${activity.today.warns} today` : undefined}
               description="Unresolved user warnings"
             />
             <ModernStatsCard
@@ -388,7 +388,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.openTickets}
               icon={<TicketIcon className="w-6 h-6" />}
               color="purple"
-              change={activity?.today.recentTickets ? `+${activity.today.recentTickets} today` : undefined}
+              change={activity?.today.tickets ? `+${activity.today.tickets} today` : undefined}
               description="Support tickets awaiting response"
             />
             <ModernStatsCard
@@ -417,7 +417,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.activePolls}
               icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
               color="blue"
-              change={activity?.today.recentPolls ? `+${activity.today.recentPolls} today` : undefined}
+              change={activity?.today.polls ? `+${activity.today.polls} today` : undefined}
               description="Running community polls"
               disabled={!guild.stats.enablePolls}
             />
@@ -426,7 +426,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.activeGiveaways}
               icon={<GiftIcon className="w-6 h-6" />}
               color="green"
-              change={activity?.today.recentGiveaways ? `+${activity.today.recentGiveaways} today` : undefined}
+              change={activity?.today.giveaways ? `+${activity.today.giveaways} today` : undefined}
               description="Ongoing giveaways"
               disabled={!guild.stats.enableGiveaways}
             />

@@ -1,30 +1,35 @@
-// dashboard/components/ProtectedLayout.tsx
-import { useSession, signOut, SessionContextValue } from 'next-auth/react';
+// dashboard/components/ProtectedLayout.tsx - Fixed All Issues with Type Assertion
+import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { ShieldCheckIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { DiscordProfile } from '@/types/index'; // Import the defined DiscordProfile
 
 interface ProtectedLayoutProps {
   children: ReactNode;
   requiredGuildId?: string;
 }
 
-// Extend NextAuth SessionUser type
-interface ExtendedSessionUser extends DiscordProfile {
+// Extended user interface for proper typing
+interface ExtendedUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  discriminator?: string;
+  avatar?: string | null;
   hasRequiredAccess?: boolean;
 }
 
 const ALLOWED_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930';
 const REQUIRED_ROLE_ID = process.env.NEXT_PUBLIC_REQUIRED_ROLE_ID || '797927858420187186';
 
-
 export default function ProtectedLayout({
   children,
   requiredGuildId = ALLOWED_GUILD_ID
 }: ProtectedLayoutProps) {
-  const { data: session, status }: SessionContextValue<{ user?: ExtendedSessionUser}> = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,9 +42,11 @@ export default function ProtectedLayout({
       return;
     }
 
+    // Type assertion to access extended properties
+    const extendedUser = session.user as ExtendedUser;
+    
     // Check if user has required access (guild membership + role)
-    // This assumes `hasRequiredAccess` is correctly populated in the session by your auth logic
-    if (session.user?.hasRequiredAccess !== true) {
+    if (extendedUser?.hasRequiredAccess !== true) {
       console.log('Access denied - redirecting to error page (ProtectedLayout)');
       router.push('/auth/error?error=AccessDenied');
       return;
@@ -53,8 +60,8 @@ export default function ProtectedLayout({
     await signOut({ callbackUrl: '/auth/signin' });
   };
 
-  const currentUser = session?.user;
-
+  // Type-safe current user access with assertion
+  const currentUser = session?.user as ExtendedUser | undefined;
 
   if (status === 'loading' || isLoading) {
     return (
@@ -106,7 +113,8 @@ export default function ProtectedLayout({
                     />
                   )}
                   <span className="text-sm text-gray-700">
-                    {currentUser.username}#{currentUser.discriminator}
+                    {currentUser.username || currentUser.name || 'Unknown User'}
+                    {currentUser.discriminator && `#${currentUser.discriminator}`}
                   </span>
                 </div>
 

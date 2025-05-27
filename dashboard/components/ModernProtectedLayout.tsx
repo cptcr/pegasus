@@ -1,5 +1,5 @@
-// dashboard/components/ModernProtectedLayout.tsx
-import { useSession, signOut, SessionContextValue } from 'next-auth/react';
+// dashboard/components/ModernProtectedLayout.tsx - Fixed All Issues with Type Assertion
+import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
@@ -13,28 +13,34 @@ import {
 } from '@heroicons/react/24/outline';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '@/lib/ThemeContext';
-import { DiscordProfile } from '@/types/index'; // Import the defined DiscordProfile
 
 interface ModernProtectedLayoutProps {
   children: ReactNode;
   requiredGuildId?: string;
 }
 
-// Extend NextAuth SessionUser type
-interface ExtendedSessionUser extends DiscordProfile { // Use DiscordProfile for user shape
+// Extended user interface for proper typing
+interface ExtendedUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  discriminator?: string;
+  avatar?: string | null;
   hasRequiredAccess?: boolean;
 }
 
-const ALLOWED_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930'; // Use environment variable
-const REQUIRED_ROLE_ID = process.env.NEXT_PUBLIC_REQUIRED_ROLE_ID || '797927858420187186'; // Use environment variable
+const ALLOWED_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930';
+const REQUIRED_ROLE_ID = process.env.NEXT_PUBLIC_REQUIRED_ROLE_ID || '797927858420187186';
 
 export default function ModernProtectedLayout({
   children,
   requiredGuildId = ALLOWED_GUILD_ID
 }: ModernProtectedLayoutProps) {
-  const { data: session, status }: SessionContextValue<{ user?: ExtendedSessionUser }> = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const { isDark } = useTheme(); // isDark is already boolean from context
+  const { isDark } = useTheme();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -47,8 +53,10 @@ export default function ModernProtectedLayout({
       return;
     }
 
-    // Assuming session.user.hasRequiredAccess is set by the [...nextauth].ts callback
-    if (session.user?.hasRequiredAccess !== true) {
+    // Type assertion to access extended properties
+    const extendedUser = session.user as ExtendedUser;
+    
+    if (extendedUser?.hasRequiredAccess !== true) {
       console.log('Access denied - redirecting to error page (ModernProtectedLayout)');
       router.push('/auth/error?error=AccessDenied');
       return;
@@ -62,7 +70,8 @@ export default function ModernProtectedLayout({
     await signOut({ callbackUrl: '/auth/signin' });
   };
 
-  const currentUser = session?.user;
+  // Type-safe current user access with assertion
+  const currentUser = session?.user as ExtendedUser | undefined;
 
   if (status === 'loading' || isLoading) {
     return (
@@ -156,11 +165,13 @@ export default function ModernProtectedLayout({
                     )}
                     <div className="text-sm">
                       <div className="font-medium text-gray-900 dark:text-gray-100">
-                        {currentUser.username}
+                        {currentUser.username || currentUser.name || 'Unknown User'}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        #{currentUser.discriminator}
-                      </div>
+                      {currentUser.discriminator && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          #{currentUser.discriminator}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -218,7 +229,8 @@ export default function ModernProtectedLayout({
                   )}
                   <div>
                     <div className="font-medium text-gray-900 dark:text-gray-100">
-                      {currentUser.username}#{currentUser.discriminator}
+                      {currentUser.username || currentUser.name || 'Unknown User'}
+                      {currentUser.discriminator && `#${currentUser.discriminator}`}
                     </div>
                     <div className="text-sm text-green-600 dark:text-green-400">
                       Authorized Access

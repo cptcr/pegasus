@@ -1,4 +1,4 @@
-// dashboard/pages/dashboard/[guildId]/levels.tsx
+// dashboard/pages/dashboard/[guildId]/levels.tsx - Fixed Import Issue
 import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
@@ -44,6 +44,16 @@ interface LevelData {
   currentPage: number;
   totalPages: number;
   levelRewards: LevelReward[];
+}
+
+// Define session structure for type safety
+interface AuthenticatedUser {
+  hasRequiredAccess?: boolean;
+}
+
+interface AuthenticatedSession {
+  user: AuthenticatedUser;
+  expires: string;
 }
 
 export default function LevelsPage() {
@@ -143,7 +153,7 @@ export default function LevelsPage() {
     }
 
     try {
-      const response = await fetch(`/api/dashboard/levels/${guildId}/rewards/${rewardId}`, {
+      const response = await fetch(`/api/dashboard/levels/${guildId}/${rewardId}`, {
         method: 'DELETE',
       });
 
@@ -194,7 +204,7 @@ export default function LevelsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>Level System Management | Hinko Bot Dashboard</title>
+        <title>Level System Management | Pegasus Bot Dashboard</title>
       </Head>
 
       {/* Header */}
@@ -601,7 +611,10 @@ export default function LevelsPage() {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
 
-  if (!session?.user?.hasRequiredAccess) {
+  // Type assertion for session
+  const authenticatedSession = session as AuthenticatedSession | null;
+
+  if (!authenticatedSession?.user?.hasRequiredAccess) {
     return {
       redirect: {
         destination: '/auth/signin',

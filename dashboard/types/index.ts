@@ -1,4 +1,4 @@
-// types/index.ts - Fixed All Type Issues
+// dashboard/types/index.ts - Complete Types with All Required Exports
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
@@ -39,10 +39,10 @@ export interface BotEvent<K extends keyof ClientEvents> {
   execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
-// Settings Structures - Fixed to be consistent
+// Settings Structures - FIXED: Consistent property naming and JsonValue compatibility
 export interface GuildSettings {
   prefix?: string | null;
-  modLogChannelId?: string | null; // Fixed: was modLogChannel
+  modLogChannelId?: string | null;
   quarantineRoleId?: string | null;
   staffRoleId?: string | null;
   enableLeveling?: boolean;
@@ -52,7 +52,7 @@ export interface GuildSettings {
   enableTickets?: boolean;
   enableQuarantine?: boolean;
   enableWelcome?: boolean;
-  welcomeChannel?: string | null;
+  welcomeChannelId?: string | null; // FIXED: Use welcomeChannelId for consistency
   autorole?: string | null;
   welcomeMessage?: string | null;
   goodbyeMessage?: string | null;
@@ -64,6 +64,8 @@ export interface GuildSettings {
   enableJoinToCreate?: boolean;
   joinToCreateChannelId?: string | null;
   joinToCreateCategoryId?: string | null;
+  // Add index signature to make it compatible with JsonObject
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 // J2CSettings type from Prisma
@@ -155,7 +157,7 @@ export interface FullGuildData {
   autoModRules: PrismaAutoModRule[];
 }
 
-// Guild with full stats - EXPORTED - Fixed to match Prisma structure
+// Guild with full stats - EXPORTED
 export interface GuildWithFullStats {
   // Base Prisma Guild properties
   id: string;
@@ -205,10 +207,10 @@ export interface GuildWithFullStats {
   // Discord API data
   discord: {
     id: string;
-    name: string;
-    icon: string | null;
+    name: string; // Required, not optional
+    icon: string | null; // Required, can be null but not undefined
     iconURL?: string | null;
-    features: string[];
+    features: string[]; // Required array, not optional
     memberCount?: number;
     onlineCount?: number;
     ownerId?: string;
@@ -245,6 +247,18 @@ export interface DiscordProfile {
   image_url?: string;
   hasRequiredAccess?: boolean;
   targetGuild?: { id: string; name: string; icon: string | null; } | null;
+}
+
+// Extended User interface for NextAuth sessions
+export interface ExtendedUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  discriminator?: string;
+  avatar?: string | null;
+  hasRequiredAccess?: boolean; // FIXED: Add this property
 }
 
 // For Dashboard Activity API

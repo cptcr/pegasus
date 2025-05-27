@@ -1,7 +1,7 @@
-// dashboard/pages/api/dashboard/guild/[id].ts
+// dashboard/pages/api/dashboard/guild/[id].ts - Fixed All Issues
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
-import { default as databaseEvents } from '../../../../lib/database';
+import databaseEvents from '../../../../lib/database';
 import { discordService, DiscordGuildInfo } from '../../../../lib/discordService';
 import { GuildWithFullStats, GuildSettings, FullGuildData } from '@/types/index';
 
@@ -10,10 +10,10 @@ const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 interface DiscordGuildResponse {
   memberCount?: number;
   onlineCount?: number;
-  name?: string;
+  name: string; // Required, not optional
   id: string;
-  icon?: string | null;
-  features?: string[];
+  icon: string | null; // Required, not optional or undefined
+  features: string[]; // Required, not optional
   ownerId?: string;
   description?: string | null;
   createdAt?: Date;
@@ -77,8 +77,8 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse<GuildWith
 
     if (!guildDataFromDb) {
       const discordGuildInfo = await discordService.getGuildInfo(id);
-      guildDataFromDb = await databaseEvents.createGuildWithDefaults(id, discordGuildInfo?.name || 'Unknown Guild');
-      if (!guildDataFromDb) {
+      const createdGuild = await databaseEvents.createGuildWithDefaults(id, discordGuildInfo?.name || 'Unknown Guild');
+      if (!createdGuild) {
           return res.status(404).json({ message: 'Guild not found and could not be created.' });
       }
       guildDataFromDb = await databaseEvents.getGuildWithFullData(id);
@@ -104,11 +104,21 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse<GuildWith
     const calculatedStats = calculateStatsFromFullData(guildDataFromDb, memberCountFromDiscord);
     calculatedStats.onlineCount = onlineCountFromDiscord;
 
-    const discordResponse: DiscordGuildResponse = discordGuildAPIData || {
+    const discordResponse: DiscordGuildResponse = discordGuildAPIData ? {
+      id: discordGuildAPIData.id,
+      name: discordGuildAPIData.name,
+      icon: discordGuildAPIData.iconURL || null, // Ensure it's never undefined
+      features: discordGuildAPIData.features || [], // Ensure it's never undefined
+      memberCount: memberCountFromDiscord,
+      onlineCount: onlineCountFromDiscord,
+      ownerId: discordGuildAPIData.ownerId,
+      description: discordGuildAPIData.description,
+      createdAt: discordGuildAPIData.createdAt,
+    } : {
       id: id,
       name: guildDataFromDb.name,
-      icon: null,
-      features: [],
+      icon: null, // Explicitly null, not undefined
+      features: [], // Explicitly empty array, not undefined
       memberCount: memberCountFromDiscord,
       onlineCount: onlineCountFromDiscord,
       ownerId: guildDataFromDb.ownerId || undefined,

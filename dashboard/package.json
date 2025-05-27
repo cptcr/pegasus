@@ -20,7 +20,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^5.22.0",
-    "@types/date-fns": "^2.5.3",
+    "@types/date-fns": "^2.6.3",
     "date-fns": "^4.1.0",
     "discord.js": "^14.14.1",
     "next": "^14.0.4",

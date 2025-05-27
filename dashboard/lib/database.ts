@@ -1,4 +1,4 @@
-// dashboard/lib/database.ts - Fixed GuildSettings Issues
+// dashboard/lib/database.ts - Fixed All Issues
 import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '@prisma/client';
 import { EventEmitter } from 'events';
 import { discordService } from './discordService';
@@ -190,9 +190,10 @@ class DatabaseService extends EventEmitter {
 
   async createGuildWithDefaults(guildId: string, name: string): Promise<Guild> {
     const defaultSettings: GuildSettings = {
-      modLogChannelId: null, // Fixed: was modLogChannel
-      quarantineRoleId: null,
       prefix: '!',
+      modLogChannelId: null,
+      quarantineRoleId: null,
+      staffRoleId: null,
       enableLeveling: true,
       enableModeration: true,
       enablePolls: true,
@@ -202,6 +203,13 @@ class DatabaseService extends EventEmitter {
       enableAutomod: false,
       enableMusic: false,
       enableJoinToCreate: false,
+      welcomeChannelId: null, // FIXED: Use welcomeChannelId
+      levelUpChannelId: null,
+      geizhalsChannelId: null,
+      joinToCreateChannelId: null,
+      joinToCreateCategoryId: null,
+      welcomeMessage: "Welcome {user} to {server}!",
+      goodbyeMessage: "{user} has left the server.",
     };
     return prisma.guild.create({
       data: {
@@ -214,9 +222,10 @@ class DatabaseService extends EventEmitter {
 
   async syncGuild(guildId: string, name: string): Promise<Guild> {
      const defaultSettings: GuildSettings = {
-      modLogChannelId: null, // Fixed: was modLogChannel
-      quarantineRoleId: null,
       prefix: '!',
+      modLogChannelId: null,
+      quarantineRoleId: null,
+      staffRoleId: null,
       enableLeveling: true,
       enableModeration: true,
       enablePolls: true,
@@ -226,6 +235,13 @@ class DatabaseService extends EventEmitter {
       enableAutomod: false,
       enableMusic: false,
       enableJoinToCreate: false,
+      welcomeChannelId: null, // FIXED: Use welcomeChannelId
+      levelUpChannelId: null,
+      geizhalsChannelId: null,
+      joinToCreateChannelId: null,
+      joinToCreateCategoryId: null,
+      welcomeMessage: "Welcome {user} to {server}!",
+      goodbyeMessage: "{user} has left the server.",
     };
     return prisma.guild.upsert({
       where: { id: guildId },
@@ -317,6 +333,7 @@ class DatabaseService extends EventEmitter {
   async toggleAutomodRule(ruleId: number, enabled: boolean): Promise<AutoModRule | null> {
       return prisma.autoModRule.update({ where: { id: ruleId }, data: { enabled } });
   }
+  
   async deleteAutomodRule(ruleId: number): Promise<AutoModRule | null > {
       return prisma.autoModRule.delete({ where: { id: ruleId } });
   }

@@ -1,11 +1,9 @@
-// dashboard/pages/dashboard/[guildId]/settings.tsx
+// dashboard/pages/dashboard/[guildId]/settings.tsx - Fixed Import Issue
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
-import {
-  CogIcon,
-} from '@heroicons/react/24/outline';
+import { CogIcon } from '@heroicons/react/24/outline';
 import ModernProtectedLayout from '@/components/ModernProtectedLayout';
 import { GuildSettings as SharedGuildSettings, ApiChannel, ApiRole } from '@/types/index';
 import { toast } from 'sonner';
@@ -18,6 +16,16 @@ interface SettingsPageProps {
   channels: ApiChannel[];
   roles: ApiRole[];
   error?: string;
+}
+
+// Define session structure for type safety
+interface AuthenticatedUser {
+  hasRequiredAccess?: boolean;
+}
+
+interface AuthenticatedSession {
+  user: AuthenticatedUser;
+  expires: string;
 }
 
 // Helper function to safely get initial settings or defaults
@@ -34,11 +42,10 @@ const getInitialSettings = (settings: SharedGuildSettings | null): SharedGuildSe
     enableMusic: false,
     enableJoinToCreate: false,
     // Initialize other fields to null or default values
-    modLogChannel: null,
     modLogChannelId: null,
     quarantineRoleId: null,
     staffRoleId: null,
-    welcomeChannel: null,
+    welcomeChannelId: null, // FIXED: Use welcomeChannelId
     levelUpChannelId: null,
     geizhalsChannelId: null,
     joinToCreateChannelId: null,
@@ -194,7 +201,7 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
             <h2 className="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-100">Channel Configuration</h2>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label htmlFor="modLogChannel" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Moderation Log Channel</label>
+                <label htmlFor="modLogChannelId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Moderation Log Channel</label>
                 <select
                   name="modLogChannelId" // Ensure name matches state key
                   id="modLogChannelId"
@@ -256,7 +263,11 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
 
 export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (context) => {
   const session = await getSession(context);
-  if (!session?.user) { // Basic session check
+  
+  // Type assertion for session
+  const authenticatedSession = session as AuthenticatedSession | null;
+  
+  if (!authenticatedSession?.user) { // Basic session check
     return { redirect: { destination: '/auth/signin', permanent: false } };
   }
 
