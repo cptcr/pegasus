@@ -47,9 +47,9 @@ export interface TicketData {
 export class TicketManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;

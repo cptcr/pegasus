@@ -1,4 +1,4 @@
-// src/commands/moderation/kick.ts - Advanced Kick Command
+// src/commands/moderation/kick.ts - Fixed Return Types
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
@@ -46,12 +46,13 @@ const command: Command = {
   category: 'moderation',
   cooldown: 3,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const target = interaction.options.getUser('user', true);
@@ -63,36 +64,40 @@ const command: Command = {
       const member = await interaction.guild.members.fetch(target.id).catch(() => null);
       
       if (!member) {
-        return interaction.reply({
+        await interaction.reply({
           content: '❌ User not found in this server.',
           ephemeral: true
         });
+        return;
       }
 
       // Check hierarchy
       const moderator = interaction.member as GuildMember;
       if (member.roles.highest.position >= moderator.roles.highest.position && 
           interaction.guild.ownerId !== moderator.id) {
-        return interaction.reply({
+        await interaction.reply({
           content: '❌ You cannot kick this user due to role hierarchy.',
           ephemeral: true
         });
+        return;
       }
 
       // Check if target is server owner
       if (member.id === interaction.guild.ownerId) {
-        return interaction.reply({
+        await interaction.reply({
           content: '❌ You cannot kick the server owner.',
           ephemeral: true
         });
+        return;
       }
 
       // Check if target is bot
       if (member.user.bot && member.id === client.user?.id) {
-        return interaction.reply({
+        await interaction.reply({
           content: '❌ I cannot kick myself.',
           ephemeral: true
         });
+        return;
       }
 
       await interaction.deferReply();

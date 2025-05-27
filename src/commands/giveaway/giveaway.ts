@@ -82,12 +82,13 @@ const command: Command = {
     ),
   category: 'giveaway',
   cooldown: 30,
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const subcommand = interaction.options.getSubcommand();

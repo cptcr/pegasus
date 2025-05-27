@@ -1,4 +1,4 @@
-// src/commands/general/help.ts - Enhanced Dynamic Help Command
+// src/commands/general/help.ts - Fixed ActionRowBuilder Issues
 import { 
   SlashCommandBuilder, 
   EmbedBuilder, 
@@ -123,16 +123,18 @@ const command: Command = {
       // Show specific command help
       const command = client.commands.get(commandName);
       if (!command) {
-        return interaction.reply({
+        await interaction.reply({
           content: `❌ Command \`${commandName}\` not found.`,
           ephemeral: true
         });
+        return;
       }
       
       const commandMetadata = (command as any).metadata as CommandMetadata;
       const embed = await createCommandDetailEmbed(command, commandMetadata, client);
       
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
     }
     
     // Show general help with categories
@@ -179,18 +181,18 @@ const command: Command = {
     });
     
     collector.on('end', () => {
-      // Disable components when collector ends
+      // Disable components when collector ends - FIXED TYPE ISSUE
       const disabledComponents = components.map(row => {
-        const newRow = ActionRowBuilder.from(row);
+        const newRow = ActionRowBuilder.from(row as ActionRowBuilder<any>);
         newRow.components.forEach(component => {
           if ('setDisabled' in component) {
-            component.setDisabled(true);
+            (component as any).setDisabled(true);
           }
         });
         return newRow;
       });
       
-      interaction.editReply({ components: disabledComponents }).catch(() => {});
+      interaction.editReply({ components: disabledComponents.map(row => row.toJSON()) }).catch(() => {});
     });
   }
 };
@@ -212,7 +214,7 @@ function createMainHelpEmbed(client: ExtendedClient, categories: Map<string, Com
     • Commands marked with 🔒 require special permissions
     `)
     .setColor(Config.COLORS.PRIMARY)
-    .setThumbnail(client.user?.displayAvatarURL())
+    .setThumbnail(client.user?.displayAvatarURL() || null)
     .setTimestamp();
     
   // Add category overview
@@ -230,13 +232,13 @@ function createMainHelpEmbed(client: ExtendedClient, categories: Map<string, Com
   
   embed.setFooter({ 
     text: `Use the dropdown below to explore commands • Page 1/1`,
-    iconURL: client.user?.displayAvatarURL()
+    iconURL: client.user?.displayAvatarURL() || undefined
   });
   
   return embed;
 }
 
-function createCategorySelectMenu(categories: Map<string, Command[]>): ActionRowBuilder<StringSelectMenuBuilder>[] {
+function createCategorySelectMenu(categories: Map<string, Command[]>): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('help-category')
     .setPlaceholder('🔍 Choose a category to explore...')
@@ -355,7 +357,7 @@ async function handleCategorySelect(
   
   embed.setFooter({
     text: `${categoryCommands.length} commands in ${info.name} • Use /help <command> for details`,
-    iconURL: client.user?.displayAvatarURL()
+    iconURL: client.user?.displayAvatarURL() || undefined
   });
   
   await interaction.update({ embeds: [embed] });
@@ -529,7 +531,7 @@ async function createCommandDetailEmbed(
   
   embed.setFooter({
     text: `Command help • Use /help for more commands`,
-    iconURL: client.user?.displayAvatarURL()
+    iconURL: client.user?.displayAvatarURL() || undefined
   });
   
   return embed;

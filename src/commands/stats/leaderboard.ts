@@ -1,4 +1,4 @@
-// src/commands/stats/leaderboard.ts - Leaderboard Statistics Command
+// src/commands/stats/leaderboard.ts - Fixed Type Issues
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
@@ -55,10 +55,11 @@ const command: Command = {
 
   async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const type = interaction.options.getString('type') || 'xp';
@@ -69,11 +70,11 @@ const command: Command = {
 
     try {
       const leaderboardData = await getLeaderboardData(client, interaction.guild.id, type, page, pageSize);
-      
       if (!leaderboardData || leaderboardData.entries.length === 0) {
-        return interaction.editReply({
+        await interaction.editReply({
           content: '❌ No leaderboard data found. Users need to be active to appear on leaderboards.'
         });
+        return;
       }
 
       const embed = await createLeaderboardEmbed(
@@ -145,16 +146,16 @@ const command: Command = {
       });
 
       collector.on('end', () => {
-        // Disable all buttons when collector ends
+        // Disable all buttons when collector ends - FIXED TYPE ISSUE
         const disabledComponents = components.map(row => {
-          const newRow = ActionRowBuilder.from(row);
+          const newRow = ActionRowBuilder.from(row as ActionRowBuilder<any>);
           newRow.components.forEach(component => {
             if ('setDisabled' in component) {
-              component.setDisabled(true);
+              (component as any).setDisabled(true);
             }
           });
           return newRow;
-        });
+        }).map(row => row.toJSON());
 
         interaction.editReply({ components: disabledComponents }).catch(() => {});
       });
@@ -256,7 +257,8 @@ async function getLeaderboardData(
       })
     ]);
 
-    const entries: LeaderboardEntry[] = userLevels.map((userLevel, index) => {
+    // FIXED: Added proper type annotations for userLevel and index
+    const entries: LeaderboardEntry[] = userLevels.map((userLevel: any, index: number) => {
       let value: number;
       
       switch (type) {

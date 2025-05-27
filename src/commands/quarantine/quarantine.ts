@@ -4,6 +4,18 @@ import { ExtendedClient } from '../../index.js';
 import { QuarantineManager } from '../../modules/quarantine/QuarantineManager.js';
 import { Config } from '../../config/Config.js';
 
+export interface QuarantineEntry {
+  id: number;
+  guildId: string;
+  userId: string; // This should be userId, not targetId
+  moderatorId: string;
+  reason: string;
+  active: boolean;
+  expiresAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export default {
   data: new SlashCommandBuilder()
     .setName('quarantine')
@@ -300,11 +312,11 @@ async function handleQuarantineList(interaction: ChatInputCommandInteraction, qu
 
   for (let i = 0; i < Math.min(activeQuarantines.length, 10); i++) {
     const entry = activeQuarantines[i];
-    const user = await interaction.client.users.fetch(entry.targetId).catch(() => null);
+    const user = await interaction.client.users.fetch(entry.userId).catch(() => null);
     const moderator = await interaction.client.users.fetch(entry.moderatorId).catch(() => null);
     
     embed.addFields({
-      name: `${user?.displayName || entry.targetId}`,
+      name: `${user?.displayName || entry.userId}`,
       value: `**Reason:** ${entry.reason}\n**Moderator:** ${moderator?.displayName || entry.moderatorId}\n**Since:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:R>${entry.expiresAt ? `\n**Expires:** <t:${Math.floor(entry.expiresAt.getTime() / 1000)}:R>` : ''}`,
       inline: true
     });

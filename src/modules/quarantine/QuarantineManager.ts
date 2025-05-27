@@ -43,10 +43,10 @@ export interface QuarantineEntry {
 export class QuarantineManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
   private activeTimers: Map<number, NodeJS.Timeout> = new Map();
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;

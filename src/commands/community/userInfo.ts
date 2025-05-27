@@ -137,7 +137,8 @@ const command: Command = {
         online: '🟢',
         idle: '🟡',
         dnd: '🔴',
-        offline: '⚫'
+        offline: '⚫',
+        invisible: '⚫'
       };
 
       let presenceInfo = `**Status:** ${statusEmojis[status]} ${status.charAt(0).toUpperCase() + status.slice(1)}`;

@@ -50,12 +50,13 @@ const command: Command = {
     ),
   category: 'voice',
   cooldown: 10,
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -69,10 +70,11 @@ const command: Command = {
           const bitrate = interaction.options.getInteger('bitrate') || 64;
 
           if (category.type !== ChannelType.GuildCategory) {
-            return interaction.reply({
+            await interaction.reply({
               content: '❌ Please select a valid category channel.',
               ephemeral: true
             });
+            return;
           }
 
           await interaction.deferReply();
@@ -126,9 +128,10 @@ const command: Command = {
           const settings = await client.j2cManager.getSettings(interaction.guild.id);
 
           if (!settings) {
-            return interaction.editReply({
+            await interaction.editReply({
               content: '❌ Join to Create system is not configured for this server.'
             });
+            return;
           }
 
           const statusEmoji = settings.isEnabled ? '🟢' : '🔴';

@@ -47,14 +47,15 @@ const command: Command = {
   category: 'utility',
   cooldown: 10,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     const location = interaction.options.getString('location', true);
 
     if (!process.env.WEATHER_API_KEY) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ Weather service is not configured. Please contact the bot administrator.',
         ephemeral: true
       });
+      return;
     }
 
     await interaction.deferReply();
@@ -63,9 +64,10 @@ const command: Command = {
       const weatherData = await fetchWeatherData(location);
       
       if (!weatherData) {
-        return interaction.editReply({
+        await interaction.editReply({
           content: `❌ Could not find weather data for "${location}". Please check the spelling and try again.`
         });
+        return;
       }
 
       const embed = new EmbedBuilder()
@@ -206,7 +208,7 @@ function getWeatherColor(condition: string): number {
     return 0xDCDCDC; // Gainsboro
   }
   
-  return Config.COLORS.INFO;
+  return 0x5865F2; // Return number instead of Config.COLORS.INFO
 }
 
 function getUVLevel(uvIndex: number): string {

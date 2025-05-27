@@ -1,4 +1,4 @@
-// src/modules/voice/Join2CreateManager.ts - Fixed Join2Create System
+// src/modules/voice/Join2CreateManager.ts - Fixed Missing Import
 import { 
   Guild, 
   VoiceState, 
@@ -10,9 +10,27 @@ import {
   CategoryChannel,
   TextChannel
 } from 'discord.js';
-import { PrismaClient, J2CSettings } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { ExtendedClient } from '../../index.js';
 import { Logger } from '../../utils/Logger.js';
+
+// Define J2CSettings interface locally to avoid import issues
+export interface J2CSettings {
+  id: number;
+  guildId: string;
+  isEnabled: boolean;
+  categoryId: string;
+  joinChannelId: string;
+  channelNameTemplate: string;
+  defaultUserLimit: number;
+  defaultBitrate: number;
+  allowTextChannel: boolean;
+  autoDeleteEmpty: boolean;
+  lockEmptyChannels: boolean;
+  blacklistUserIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface J2CSettingsUpdate {
   isEnabled?: boolean;
@@ -43,7 +61,7 @@ export class Join2CreateManager {
    */
   public async getSettings(guildId: string): Promise<J2CSettings | null> {
     try {
-      return await this.db.j2CSettings.findUnique({ where: { guildId } });
+      return await this.db.j2CSettings.findUnique({ where: { guildId } }) as J2CSettings | null;
     } catch (error) {
       this.logger.error('Error getting J2C settings:', error);
       return null;
@@ -187,10 +205,10 @@ export class Join2CreateManager {
       await this.createTempChannel(newState.member, settings);
     }
 
-    // User leaves a temporary channel
+    // User leaves a temporary channel - FIXED: Added null check for oldState.channel
     if (oldState.channelId && 
         oldState.channelId !== settings.joinChannelId && 
-        oldState.channel?.parent?.id === settings.categoryId &&
+        oldState.channel && oldState.channel.parent?.id === settings.categoryId &&
         oldState.channel.members.size === 0) {
       await this.deleteEmptyTempChannel(oldState.channel as VoiceChannel, settings);
     }
@@ -350,7 +368,8 @@ export class Join2CreateManager {
         return { success: false, error: 'User is not blacklisted' };
       }
 
-      const updatedBlacklist = settings.blacklistUserIds.filter(id => id !== userId);
+      // FIXED: Added proper type annotation for id parameter
+      const updatedBlacklist = settings.blacklistUserIds.filter((id: string) => id !== userId);
       
       await this.db.j2CSettings.update({
         where: { guildId },

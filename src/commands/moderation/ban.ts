@@ -1,4 +1,4 @@
-// src/commands/moderation/ban.ts - Advanced Ban Command
+// src/commands/moderation/ban.ts - Fixed Return Types
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
@@ -52,12 +52,13 @@ const command: Command = {
   category: 'moderation',
   cooldown: 5,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const target = interaction.options.getUser('user', true);
@@ -74,26 +75,29 @@ const command: Command = {
         const moderator = interaction.member as GuildMember;
         if (member.roles.highest.position >= moderator.roles.highest.position && 
             interaction.guild.ownerId !== moderator.id) {
-          return interaction.reply({
+          await interaction.reply({
             content: '❌ You cannot ban this user due to role hierarchy.',
             ephemeral: true
           });
+          return;
         }
 
         // Check if target is server owner
         if (member.id === interaction.guild.ownerId) {
-          return interaction.reply({
+          await interaction.reply({
             content: '❌ You cannot ban the server owner.',
             ephemeral: true
           });
+          return;
         }
 
         // Check if target is bot
         if (member.user.bot && member.id === client.user?.id) {
-          return interaction.reply({
+          await interaction.reply({
             content: '❌ I cannot ban myself.',
             ephemeral: true
           });
+          return;
         }
       }
 
@@ -103,9 +107,10 @@ const command: Command = {
       try {
         const existingBan = await interaction.guild.bans.fetch(target.id);
         if (existingBan) {
-          return interaction.editReply({
+          await interaction.editReply({
             content: `❌ ${target.tag} is already banned from this server.`
           });
+          return;
         }
       } catch (error) {
         // User is not banned, continue

@@ -12,17 +12,17 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",  // Changed from "./src" to "./"
     "baseUrl": "./src",
     "paths": {
-      "@/*": ["./*"],
-      "@/types": ["./types"],
-      "@/config/*": ["./config/*"],
-      "@/utils/*": ["./utils/*"],
-      "@/handlers/*": ["./handlers/*"],
-      "@/modules/*": ["./modules/*"],
-      "@/commands/*": ["./commands/*"],
-      "@/events/*": ["./events/*"]
+      "@/*": ["./src/*"],  // Updated path
+      "@/types": ["./src/types"],
+      "@/config/*": ["./src/config/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/handlers/*": ["./src/handlers/*"],
+      "@/modules/*": ["./src/modules/*"],
+      "@/commands/*": ["./src/commands/*"],
+      "@/events/*": ["./src/events/*"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "declaration": true,

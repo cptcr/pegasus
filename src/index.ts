@@ -1,7 +1,6 @@
-// src/index.ts - Fixed Main Bot Entry Point
+// src/index.ts - Fixed Main Bot Entry Point with Prisma Fix
 import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
 import { createServer, Server as HTTPServer } from 'http';
-import { PrismaClient } from '@prisma/client';
 import { Command } from './types/index.js';
 import { CommandHandler } from './handlers/CommandHandler.js';
 import { EventHandler } from './handlers/EventHandler.js';
@@ -14,13 +13,14 @@ import { QuarantineManager } from './modules/quarantine/QuarantineManager.js';
 import { WebSocketManager } from './api/WebSocketManager.js';
 import { Logger } from './utils/Logger.js';
 import { Config, validateConfig } from './config/Config.js';
+import { prisma, disconnectPrisma } from './database/PrismaClient.js';
 import 'dotenv/config';
 
 export class ExtendedClient extends Client {
   public readonly commands: Collection<string, Command> = new Collection();
   public readonly cooldowns: Collection<string, Collection<string, number>> = new Collection();
   
-  public readonly db: PrismaClient;
+  public readonly db = prisma;
   public readonly logger: typeof Logger;
   
   public readonly commandHandler: CommandHandler;
@@ -51,7 +51,6 @@ export class ExtendedClient extends Client {
     });
 
     this.logger = Logger;
-    this.db = new PrismaClient();
     
     this.commandHandler = new CommandHandler(this);
     this.eventHandler = new EventHandler(this);
@@ -101,13 +100,18 @@ export class ExtendedClient extends Client {
         process.exit(1);
       }
 
-      // Connect to database
-      await this.db.$connect();
-      this.logger.info('✅ Database connected successfully.');
-      
-      // Test database connection
-      await this.db.$queryRaw`SELECT 1`;
-      this.logger.info('✅ Database connection tested successfully.');
+      // Connect to database with error handling
+      try {
+        await this.db.$connect();
+        this.logger.info('✅ Database connected successfully.');
+        
+        // Test database connection
+        await this.db.$queryRaw`SELECT 1`;
+        this.logger.info('✅ Database connection tested successfully.');
+      } catch (dbError) {
+        this.logger.error('❌ Database connection failed:', dbError);
+        throw dbError;
+      }
 
       // Load commands and events
       await this.commandHandler.loadCommands();
@@ -123,6 +127,7 @@ export class ExtendedClient extends Client {
       
     } catch (error) {
       this.logger.error('❌ Failed to start bot:', error);
+      await this.shutdown();
       process.exit(1);
     }
   }
@@ -221,7 +226,7 @@ export class ExtendedClient extends Client {
       });
       
       // Disconnect from database
-      await this.db.$disconnect();
+      await disconnectPrisma();
       
       // Destroy Discord client
       this.destroy();

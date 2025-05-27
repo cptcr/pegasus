@@ -1,4 +1,4 @@
-// src/types/index.ts - Fixed Types with All Required Exports
+// src/types/index.ts - Complete Types File with All Exports
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
@@ -7,27 +7,6 @@ import {
   SlashCommandOptionsOnlyBuilder,
   SlashCommandSubcommandsOnlyBuilder,
 } from 'discord.js';
-import { 
-  Prisma, 
-  Guild as PrismaGuild, 
-  User as PrismaUser, 
-  Warn as PrismaWarn, 
-  Poll as PrismaPoll, 
-  PollOption as PrismaPollOption, 
-  PollVote as PrismaPollVote, 
-  Giveaway as PrismaGiveaway, 
-  GiveawayEntry as PrismaGiveawayEntry, 
-  Ticket as PrismaTicket, 
-  LevelReward as PrismaLevelReward, 
-  AutoModRule as PrismaAutoModRule, 
-  UserLevel as PrismaUserLevel, 
-  Quarantine as PrismaQuarantine, 
-  J2CSettings as PrismaJ2CSettings,
-  Log as PrismaLog,
-  CustomCommand as PrismaCustomCommand,
-  TicketStatus,
-  TicketPriority
-} from '@prisma/client';
 
 // Bot & Event Structures
 export interface Command {
@@ -41,6 +20,210 @@ export interface BotEvent<K extends keyof ClientEvents> {
   name: K;
   once?: boolean;
   execute: (client: any, ...args: ClientEvents[K]) => Promise<void> | void;
+}
+
+// Define essential types locally to avoid Prisma import issues
+export interface Guild {
+  id: string;
+  name: string;
+  settings?: any;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  discriminator?: string | null;
+  avatar?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserLevel {
+  id: number;
+  userId: string;
+  guildId: string;
+  xp: number;
+  level: number;
+  messages: number;
+  voiceTime: number;
+  createdAt: Date;
+  updatedAt: Date;
+  user?: User;
+}
+
+export interface Warn {
+  id: number;
+  userId: string;
+  guildId: string;
+  moderatorId: string;
+  reason: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Poll {
+  id: number;
+  guildId: string;
+  channelId: string;
+  messageId?: string | null;
+  title: string;
+  description?: string | null;
+  creatorId: string;
+  multiple: boolean;
+  anonymous: boolean;
+  active: boolean;
+  endTime?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  options: PollOption[];
+  votes: PollVote[];
+}
+
+export interface PollOption {
+  id: number;
+  pollId: number;
+  text: string;
+  emoji?: string | null;
+  orderIndex: number;
+}
+
+export interface PollVote {
+  id: number;
+  pollId: number;
+  optionId: number;
+  userId: string;
+}
+
+export interface Giveaway {
+  id: number;
+  guildId: string;
+  channelId: string;
+  messageId?: string | null;
+  title: string;
+  description?: string | null;
+  prize: string;
+  winners: number;
+  creatorId: string;
+  endTime: Date;
+  active: boolean;
+  ended: boolean;
+  winnerUserIds: string[];
+  requiredRole?: string | null;
+  requiredLevel?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  entries: GiveawayEntry[];
+}
+
+export interface GiveawayEntry {
+  id: number;
+  giveawayId: number;
+  userId: string;
+}
+
+export interface Ticket {
+  id: number;
+  guildId: string;
+  userId: string;
+  channelId: string;
+  status: TicketStatus;
+  category: string;
+  subject: string;
+  priority: TicketPriority;
+  moderatorId?: string | null;
+  closedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum TicketStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  WAITING = 'WAITING',
+  CLOSED = 'CLOSED'
+}
+
+export enum TicketPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT'
+}
+
+export interface Quarantine {
+  id: number;
+  guildId: string;
+  userId: string;
+  moderatorId: string;
+  reason: string;
+  active: boolean;
+  expiresAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface LevelReward {
+  id: number;
+  guildId: string;
+  level: number;
+  roleId: string;
+  description?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AutoModRule {
+  id: number;
+  guildId: string;
+  name: string;
+  enabled: boolean;
+  triggerType: string;
+  triggerMetadata: any;
+  actions: any;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomCommand {
+  id: number;
+  guildId: string;
+  name: string;
+  description: string;
+  response: string;
+  enabled: boolean;
+  creatorId: string;
+  usageCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Log {
+  id: number;
+  guildId: string;
+  type: string;
+  content: any;
+  userId?: string | null;
+  createdAt: Date;
+}
+
+export interface J2CSettings {
+  id: number;
+  guildId: string;
+  isEnabled: boolean;
+  categoryId: string;
+  joinChannelId: string;
+  channelNameTemplate: string;
+  defaultUserLimit: number;
+  defaultBitrate: number;
+  allowTextChannel: boolean;
+  autoDeleteEmpty: boolean;
+  lockEmptyChannels: boolean;
+  blacklistUserIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Settings Structures
@@ -71,10 +254,6 @@ export interface GuildSettings {
   [key: string]: string | number | boolean | null | undefined;
 }
 
-// J2CSettings type from Prisma
-export type J2CSettings = PrismaJ2CSettings;
-export type J2CSettingsUpdate = Partial<Omit<J2CSettings, 'id' | 'guildId' | 'createdAt' | 'updatedAt'>>;
-
 // WebSocket Event Structure for communication between bot and dashboard
 export interface RealtimeEvent<T = unknown> {
   type: string;
@@ -89,19 +268,19 @@ export interface GuildStatsUpdateData {
   onlineCount?: number;
 }
 
-export interface WarnCreateData extends PrismaWarn {
+export interface WarnCreateData extends Warn {
   username?: string;
 }
 
-export interface PollCreateData extends PrismaPoll {
+export interface PollCreateData extends Poll {
   title: string;
 }
 
-export interface GiveawayCreateData extends PrismaGiveaway {
+export interface GiveawayCreateData extends Giveaway {
   prize: string;
 }
 
-export interface TicketCreateData extends PrismaTicket {
+export interface TicketCreateData extends Ticket {
   subject: string;
 }
 
@@ -110,7 +289,7 @@ export interface MemberJoinLeaveData {
   userId: string;
 }
 
-export interface LevelUpdateData extends PrismaUserLevel {
+export interface LevelUpdateData extends UserLevel {
    username?: string;
 }
 
@@ -135,7 +314,7 @@ export interface FullGuildData {
   id: string;
   name: string;
   prefix: string;
-  settings: Prisma.JsonValue;
+  settings: any;
   enableLeveling: boolean;
   enableModeration: boolean;
   enableGeizhals: boolean;
@@ -149,14 +328,14 @@ export interface FullGuildData {
   updatedAt: Date;
   ownerId?: string;
   description?: string | null;
-  members: (PrismaUser & { warnings: PrismaWarn[]; userLevels: PrismaUserLevel[] })[];
-  warnings: PrismaWarn[];
-  polls: (PrismaPoll & { options: PrismaPollOption[]; votes: PrismaPollVote[] })[];
-  giveaways: (PrismaGiveaway & { entries: PrismaGiveawayEntry[] })[];
-  tickets: PrismaTicket[];
-  logs: PrismaLog[];
-  levelRewards: PrismaLevelReward[];
-  autoModRules: PrismaAutoModRule[];
+  members: (User & { warnings: Warn[]; userLevels: UserLevel[] })[];
+  warnings: Warn[];
+  polls: (Poll & { options: PollOption[]; votes: PollVote[] })[];
+  giveaways: (Giveaway & { entries: GiveawayEntry[] })[];
+  tickets: Ticket[];
+  logs: Log[];
+  levelRewards: LevelReward[];
+  autoModRules: AutoModRule[];
 }
 
 // Guild with full stats
@@ -164,7 +343,7 @@ export interface GuildWithFullStats {
   id: string;
   name: string;
   prefix: string;
-  settings: Prisma.JsonValue;
+  settings: any;
   enableLeveling: boolean;
   enableModeration: boolean;
   enableGeizhals: boolean;
@@ -217,15 +396,15 @@ export interface GuildWithFullStats {
     createdAt?: Date;
   };
   
-  members?: (PrismaUser & { warnings?: PrismaWarn[]; userLevels?: PrismaUserLevel[] })[];
-  warnings?: PrismaWarn[];
-  polls?: (PrismaPoll & { options?: PrismaPollOption[]; votes?: PrismaPollVote[] })[];
-  giveaways?: (PrismaGiveaway & { entries?: PrismaGiveawayEntry[] })[];
-  tickets?: PrismaTicket[];
-  logs?: PrismaLog[];
-  levelRewards?: PrismaLevelReward[];
-  autoModRules?: PrismaAutoModRule[];
-  userLevels?: PrismaUserLevel[];
+  members?: (User & { warnings?: Warn[]; userLevels?: UserLevel[] })[];
+  warnings?: Warn[];
+  polls?: (Poll & { options?: PollOption[]; votes?: PollVote[] })[];
+  giveaways?: (Giveaway & { entries?: GiveawayEntry[] })[];
+  tickets?: Ticket[];
+  logs?: Log[];
+  levelRewards?: LevelReward[];
+  autoModRules?: AutoModRule[];
+  userLevels?: UserLevel[];
 }
 
 // For DiscordProfile in [...nextauth].ts
@@ -302,14 +481,14 @@ export interface RecentActivityData {
 
 // For Moderation API Data
 export interface ModerationData {
-  warnings: PrismaWarn[];
-  quarantinedUsers: PrismaQuarantine[];
-  autoModRules: PrismaAutoModRule[];
+  warnings: Warn[];
+  quarantinedUsers: Quarantine[];
+  autoModRules: AutoModRule[];
 }
 
 // For Level API Data
-export interface LeaderboardEntry extends PrismaUserLevel {
-  user: Pick<PrismaUser, 'id' | 'username'>;
+export interface LeaderboardEntry extends Omit<UserLevel, 'user'> {
+  user: Pick<User, 'id' | 'username'>;
   rank: number;
 }
 
@@ -318,7 +497,7 @@ export interface LevelDataResponse {
   total: number;
   currentPage: number;
   totalPages: number;
-  levelRewards: PrismaLevelReward[];
+  levelRewards: LevelReward[];
 }
 
 // Additional interfaces
@@ -337,24 +516,6 @@ export interface ApiResponse<T> {
 
 // Shared color type from Discord.js
 export type { DiscordColorResolvable as ColorResolvable };
-
-// Export specific Prisma types we need
-export type { 
-  PrismaWarn as Warn,
-  PrismaQuarantine as Quarantine,
-  PrismaAutoModRule as AutoModRule,
-  PrismaLevelReward as LevelReward,
-  PrismaUserLevel as UserLevel,
-  PrismaUser as User,
-  PrismaPoll as Poll,
-  PrismaGiveaway as Giveaway,
-  PrismaTicket as Ticket,
-  PrismaGuild as Guild,
-  PrismaLog as Log,
-  PrismaCustomCommand as CustomCommand,
-  TicketStatus,
-  TicketPriority
-};
 
 // Default cooldown for commands if not specified
 export const DEFAULT_COOLDOWN: number = 3;

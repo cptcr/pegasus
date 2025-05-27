@@ -19,9 +19,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "@prisma/client": "^5.22.0",
-    "@types/date-fns": "^2.6.3",
-    "date-fns": "^4.1.0",
+    "@prisma/client": "^6.8.2",
     "discord.js": "^14.14.1",
     "next": "^14.0.4",
     "next-auth": "^4.24.5",
@@ -40,6 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
     "autoprefixer": "^10.4.16",
+    "date-fns": "^4.1.0",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
     "postcss": "^8.4.32",

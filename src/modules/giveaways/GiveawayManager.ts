@@ -1,4 +1,4 @@
-// src/modules/giveaways/GiveawayManager.ts - Fixed Giveaway System
+// src/modules/giveaways/GiveawayManager.ts - Fixed Entry Type Issue
 import {
   Guild,
   TextChannel,
@@ -278,7 +278,8 @@ export class GiveawayManager {
         return;
       }
 
-      const existingEntry = giveaway.entries.find(entry => entry.userId === interaction.user.id);
+      // FIXED: Added proper type annotation for entry parameter
+      const existingEntry = giveaway.entries.find((entry: any) => entry.userId === interaction.user.id);
       if (existingEntry) {
         await interaction.reply({ content: 'You have already entered this giveaway!', ephemeral: true });
         return;

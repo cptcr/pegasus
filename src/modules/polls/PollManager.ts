@@ -1,4 +1,4 @@
-// src/modules/polls/PollManager.ts - Fixed Poll System
+// src/modules/polls/PollManager.ts - Fixed Callback Type Issues
 import {
   Guild,
   TextChannel,
@@ -61,10 +61,10 @@ export interface PollVoteData {
 export class PollManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
   private activeTimers: Map<number, NodeJS.Timeout> = new Map();
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;
@@ -273,13 +273,15 @@ export class PollManager {
         return;
       }
 
-      const option = poll.options.find(opt => opt.id === optionId);
+      // FIXED: Added proper type annotation for option parameter
+      const option = poll.options.find((opt: any) => opt.id === optionId);
       if (!option) {
         await interaction.reply({ content: 'Invalid poll option.', ephemeral: true });
         return;
       }
 
-      const existingVotes = poll.votes.filter(vote => vote.userId === interaction.user.id);
+      // FIXED: Added proper type annotation for vote parameter
+      const existingVotes = poll.votes.filter((vote: any) => vote.userId === interaction.user.id);
 
       if (!poll.multiple && existingVotes.length > 0) {
         // Single choice poll - remove existing vote and add new one
@@ -290,7 +292,8 @@ export class PollManager {
           }
         });
       } else if (poll.multiple) {
-        const existingVoteForOption = existingVotes.find(vote => vote.optionId === optionId);
+        // FIXED: Added proper type annotation for vote parameter
+        const existingVoteForOption = existingVotes.find((vote: any) => vote.optionId === optionId);
         if (existingVoteForOption) {
           // Remove vote for this option
           await this.db.pollVote.delete({
