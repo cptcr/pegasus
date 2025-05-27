@@ -160,9 +160,9 @@ export default function LevelsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-500"></div>
+          <div className="w-32 h-32 border-b-2 border-indigo-500 rounded-full animate-spin"></div>
           <p className="mt-4 text-gray-600">Loading level data...</p>
         </div>
       </div>
@@ -171,13 +171,13 @@ export default function LevelsPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600">Error</h1>
           <p className="text-gray-600">{error || 'Level data not found'}</p>
           <button
             onClick={() => router.back()}
-            className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+            className="px-4 py-2 mt-4 text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
           >
             Go Back
           </button>
@@ -198,17 +198,17 @@ export default function LevelsPage() {
       </Head>
 
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
                 onClick={() => router.back()}
-                className="mr-4 p-2 rounded-md text-gray-400 hover:text-gray-500"
+                className="p-2 mr-4 text-gray-400 rounded-md hover:text-gray-500"
               >
-                <ChevronLeftIcon className="h-5 w-5" />
+                <ChevronLeftIcon className="w-5 h-5" />
               </button>
-              <ChartBarIcon className="h-6 w-6 text-gray-400 mr-3" />
+              <ChartBarIcon className="w-6 h-6 mr-3 text-gray-400" />
               <h1 className="text-xl font-semibold text-gray-900">
                 Level System Management
               </h1>
@@ -217,21 +217,21 @@ export default function LevelsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
         {/* Stats Overview */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-3">
+          <div className="p-6 bg-white rounded-lg shadow">
             <div className="flex items-center">
-              <UserIcon className="h-8 w-8 text-blue-500" />
+              <UserIcon className="w-8 h-8 text-blue-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Users</p>
                 <p className="text-2xl font-semibold text-gray-900">{data.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="p-6 bg-white rounded-lg shadow">
             <div className="flex items-center">
-              <TrophyIcon className="h-8 w-8 text-yellow-500" />
+              <TrophyIcon className="w-8 h-8 text-yellow-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Highest Level</p>
                 <p className="text-2xl font-semibold text-gray-900">
@@ -240,9 +240,9 @@ export default function LevelsPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="p-6 bg-white rounded-lg shadow">
             <div className="flex items-center">
-              <GiftIcon className="h-8 w-8 text-green-500" />
+              <GiftIcon className="w-8 h-8 text-green-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Level Rewards</p>
                 <p className="text-2xl font-semibold text-gray-900">{data.levelRewards.length}</p>
@@ -252,8 +252,8 @@ export default function LevelsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
+        <div className="mb-8 border-b border-gray-200">
+          <nav className="flex -mb-px space-x-8">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -266,7 +266,7 @@ export default function LevelsPage() {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
                 >
-                  <Icon className="h-5 w-5 mr-2" />
+                  <Icon className="w-5 h-5 mr-2" />
                   {tab.name}
                 </button>
               );
@@ -278,15 +278,15 @@ export default function LevelsPage() {
         <div className="space-y-6">
           {/* Leaderboard Tab */}
           {activeTab === 'leaderboard' && (
-            <div className="bg-white shadow rounded-lg">
+            <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Server Leaderboard</h3>
                 <p className="text-sm text-gray-600">Top users by level and XP</p>
               </div>
               <div className="overflow-hidden">
                 {data.leaderboard.length === 0 ? (
-                  <div className="text-center py-12">
-                    <TrophyIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="py-12 text-center">
+                    <TrophyIcon className="w-12 h-12 mx-auto text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
                     <p className="mt-1 text-sm text-gray-500">No users with XP found.</p>
                   </div>
@@ -296,22 +296,22 @@ export default function LevelsPage() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Rank
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               User
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Level
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               XP Progress
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Messages
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Voice Time
                             </th>
                           </tr>
@@ -325,9 +325,9 @@ export default function LevelsPage() {
                                   <div className="flex items-center">
                                     {userLevel.rank <= 3 ? (
                                       <div className="flex items-center">
-                                        {userLevel.rank === 1 && <span className="text-yellow-500 text-xl">🥇</span>}
-                                        {userLevel.rank === 2 && <span className="text-gray-400 text-xl">🥈</span>}
-                                        {userLevel.rank === 3 && <span className="text-yellow-600 text-xl">🥉</span>}
+                                        {userLevel.rank === 1 && <span className="text-xl text-yellow-500">🥇</span>}
+                                        {userLevel.rank === 2 && <span className="text-xl text-gray-400">🥈</span>}
+                                        {userLevel.rank === 3 && <span className="text-xl text-yellow-600">🥉</span>}
                                         <span className="ml-2 font-medium text-gray-900">#{userLevel.rank}</span>
                                       </div>
                                     ) : (
@@ -337,7 +337,7 @@ export default function LevelsPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                    <UserIcon className="w-5 h-5 mr-2 text-gray-400" />
                                     <div>
                                       <div className="text-sm font-medium text-gray-900">
                                         {userLevel.user.username}
@@ -350,20 +350,20 @@ export default function LevelsPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <StarIcon className="h-4 w-4 text-yellow-400 mr-1" />
+                                    <StarIcon className="w-4 h-4 mr-1 text-yellow-400" />
                                     <span className="text-lg font-semibold text-gray-900">
                                       {userLevel.level}
                                     </span>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="w-full h-2 bg-gray-200 rounded-full">
                                     <div 
-                                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                      className="h-2 transition-all duration-300 bg-indigo-600 rounded-full"
                                       style={{ width: `${progress.percentage}%` }}
                                     ></div>
                                   </div>
-                                  <div className="text-xs text-gray-500 mt-1">
+                                  <div className="mt-1 text-xs text-gray-500">
                                     {progress.progressXP.toLocaleString()} / {progress.neededXP.toLocaleString()} XP
                                     ({progress.percentage.toFixed(1)}%)
                                   </div>
@@ -378,7 +378,7 @@ export default function LevelsPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center text-sm text-gray-900">
-                                    <ClockIcon className="h-4 w-4 text-gray-400 mr-1" />
+                                    <ClockIcon className="w-4 h-4 mr-1 text-gray-400" />
                                     {formatVoiceTime(userLevel.voiceTime)}
                                   </div>
                                 </td>
@@ -391,20 +391,20 @@ export default function LevelsPage() {
 
                     {/* Pagination */}
                     {data.totalPages > 1 && (
-                      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                      <div className="px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
                         <div className="flex items-center justify-between">
-                          <div className="flex-1 flex justify-between sm:hidden">
+                          <div className="flex justify-between flex-1 sm:hidden">
                             <button
                               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                               disabled={currentPage === 1}
-                              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                              className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                             >
                               Previous
                             </button>
                             <button
                               onClick={() => setCurrentPage(Math.min(data.totalPages, currentPage + 1))}
                               disabled={currentPage === data.totalPages}
-                              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                              className="relative inline-flex items-center px-4 py-2 ml-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                             >
                               Next
                             </button>
@@ -417,20 +417,20 @@ export default function LevelsPage() {
                               </p>
                             </div>
                             <div>
-                              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                              <nav className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm">
                                 <button
                                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                                   disabled={currentPage === 1}
-                                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50"
                                 >
-                                  <ChevronLeftIcon className="h-5 w-5" />
+                                  <ChevronLeftIcon className="w-5 h-5" />
                                 </button>
                                 <button
                                   onClick={() => setCurrentPage(Math.min(data.totalPages, currentPage + 1))}
                                   disabled={currentPage === data.totalPages}
-                                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50"
                                 >
-                                  <ChevronRightIcon className="h-5 w-5" />
+                                  <ChevronRightIcon className="w-5 h-5" />
                                 </button>
                               </nav>
                             </div>
@@ -448,23 +448,23 @@ export default function LevelsPage() {
           {activeTab === 'rewards' && (
             <div className="space-y-6">
               {/* Add Reward Section */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <div className="flex justify-between items-center mb-4">
+              <div className="p-6 bg-white rounded-lg shadow">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Level Rewards</h3>
                   <button
                     onClick={() => setShowAddReward(!showAddReward)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700"
                   >
-                    <PlusIcon className="h-4 w-4 mr-2" />
+                    <PlusIcon className="w-4 h-4 mr-2" />
                     Add Reward
                   </button>
                 </div>
 
                 {showAddReward && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
                           Level
                         </label>
                         <input
@@ -476,7 +476,7 @@ export default function LevelsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
                           Role ID
                         </label>
                         <input
@@ -488,7 +488,7 @@ export default function LevelsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block mb-1 text-sm font-medium text-gray-700">
                           Description
                         </label>
                         <input
@@ -500,10 +500,10 @@ export default function LevelsPage() {
                         />
                       </div>
                     </div>
-                    <div className="mt-4 flex space-x-3">
+                    <div className="flex mt-4 space-x-3">
                       <button
                         onClick={handleAddReward}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700"
                       >
                         Add Reward
                       </button>
@@ -512,7 +512,7 @@ export default function LevelsPage() {
                           setShowAddReward(false);
                           setNewReward({ level: '', roleId: '', description: '' });
                         }}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
                       >
                         Cancel
                       </button>
@@ -522,15 +522,15 @@ export default function LevelsPage() {
               </div>
 
               {/* Rewards List */}
-              <div className="bg-white shadow rounded-lg">
+              <div className="bg-white rounded-lg shadow">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h4 className="text-md font-medium text-gray-900">Current Level Rewards</h4>
+                  <h4 className="font-medium text-gray-900 text-md">Current Level Rewards</h4>
                   <p className="text-sm text-gray-600">Roles automatically assigned when users reach certain levels</p>
                 </div>
                 <div className="overflow-hidden">
                   {data.levelRewards.length === 0 ? (
-                    <div className="text-center py-12">
-                      <GiftIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="py-12 text-center">
+                      <GiftIcon className="w-12 h-12 mx-auto text-gray-400" />
                       <h3 className="mt-2 text-sm font-medium text-gray-900">No level rewards</h3>
                       <p className="mt-1 text-sm text-gray-500">Add rewards to motivate users to level up.</p>
                     </div>
@@ -539,16 +539,16 @@ export default function LevelsPage() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Level
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Role ID
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Description
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                               Actions
                             </th>
                           </tr>
@@ -558,14 +558,14 @@ export default function LevelsPage() {
                             <tr key={reward.id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  <StarIcon className="h-5 w-5 text-yellow-400 mr-2" />
+                                  <StarIcon className="w-5 h-5 mr-2 text-yellow-400" />
                                   <span className="text-lg font-semibold text-gray-900">
                                     {reward.level}
                                   </span>
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-mono text-gray-900">
+                                <div className="font-mono text-sm text-gray-900">
                                   {reward.roleId}
                                 </div>
                               </td>
@@ -574,12 +574,12 @@ export default function LevelsPage() {
                                   {reward.description}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                                 <button
                                   onClick={() => handleDeleteReward(reward.id)}
                                   className="text-red-600 hover:text-red-900"
                                 >
-                                  <TrashIcon className="h-4 w-4" />
+                                  <TrashIcon className="w-4 h-4" />
                                 </button>
                               </td>
                             </tr>

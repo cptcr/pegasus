@@ -1,9 +1,9 @@
 // src/handlers/CommandHandler.ts
-import { ExtendedClient } from "../index.js";
+import { ExtendedClient } from "@/index";
 import { readdirSync } from "fs";
 import { join } from "path";
 import { fileURLToPath } from "url";
-import { Command } from "../types/index.js";
+import { Command } from "@/types";
 
 export class CommandHandler {
     private client: ExtendedClient;
@@ -13,9 +13,7 @@ export class CommandHandler {
     }
 
     public async loadCommands(): Promise<void> {
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = fileURLToPath(new URL('.', import.meta.url));
-        const commandsPath = join(__dirname, '..', 'commands');
+        const commandsPath = join(process.cwd(), 'src', 'commands');
         const commandFolders = readdirSync(commandsPath);
 
         for (const folder of commandFolders) {
@@ -25,10 +23,9 @@ export class CommandHandler {
             for (const file of commandFiles) {
                 const filePath = join(folderPath, file);
                 try {
-                    const fileUrl = `file://${filePath.replace(/\\/g, '/')}`;
-                    const { default: command } = await import(fileUrl) as { default: Command };
+                    const { default: command } = await import(filePath) as { default: Command };
                     if ('data' in command && 'execute' in command) {
-                        command.category = folder; // Assign category based on folder
+                        command.category = folder;
                         this.client.commands.set(command.data.name, command);
                         this.client.logger.debug(`Loaded command: /${command.data.name}`);
                     } else {

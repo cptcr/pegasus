@@ -1,15 +1,15 @@
 // src/events/interactionCreate.ts
-import { Interaction, Collection, BaseInteraction } from 'discord.js';
-import { ExtendedClient } from '../index.js';
-import { BotEvent } from '../types/index.js';
-import { Config } from '../config/Config.js';
+import { Collection, BaseInteraction } from 'discord.js';
+import { ExtendedClient } from '@/index';
+import { BotEvent } from '@/types';
+import { Config } from '@/config/Config';
 
 const event: BotEvent<'interactionCreate'> = {
   name: 'interactionCreate',
-  async execute(client: ExtendedClient, interaction: BaseInteraction) {
+  async execute(client, interaction: BaseInteraction) {
     if (!interaction.isChatInputCommand()) {
         if(interaction.isButton()) {
-            await client.buttonHandler.handle(interaction);
+            client.buttonHandler.handle(interaction);
         }
         return;
     }

@@ -1,94 +1,148 @@
-// dashboard/pages/dashboard/[guildId]/settings.tsx
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { ModernProtectedLayout } from '@/components/ModernProtectedLayout';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { GuildSettings } from '@/types/index'; // Use shared types
+// dashboard/pages/api/dashboard/settings.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAuth, AuthenticatedRequest } from '../../../lib/auth';
+import databaseEvents from '../../../lib/database';
+import { GuildSettings } from '@/types/index';
 
-// Define specific types for channels and roles fetched from the API
-interface ApiChannel { id: string; name: string; type: number; }
-interface ApiRole { id: string; name: string; managed: boolean; }
+interface SettingsUpdateRequest {
+  enableLeveling?: boolean;
+  enableModeration?: boolean;
+  enablePolls?: boolean;
+  enableGiveaways?: boolean;
+  enableTickets?: boolean;
+  enableGeizhals?: boolean;
+  enableAutomod?: boolean;
+  enableMusic?: boolean;
+  enableJoinToCreate?: boolean;
+  prefix?: string;
+  logChannel?: string | null;
+  modLogChannel?: string | null;
+  quarantineRoleId?: string | null;
+  staffRoleId?: string | null;
+  welcomeChannel?: string | null;
+  autorole?: string | null;
+  welcomeMessage?: string | null;
+  goodbyeMessage?: string | null;
+  geizhalsChannelId?: string | null;
+  levelUpChannelId?: string | null;
+  joinToCreateChannelId?: string | null;
+  joinToCreateCategoryId?: string | null;
+}
 
-const SettingsPage = () => {
-  const router = useRouter();
-  const { guildId } = router.query;
-  const [settings, setSettings] = useState<GuildSettings | null>(null);
-  const [channels, setChannels] = useState<ApiChannel[]>([]);
-  const [roles, setRoles] = useState<ApiRole[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+async function handler(req: AuthenticatedRequest, res: NextApiResponse<GuildSettings | { message: string; error?: string }>) {
+  const { guildId } = req.query;
 
-  useEffect(() => {
-    if (typeof guildId !== 'string') return;
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [settingsRes, channelsRes, rolesRes] = await Promise.all([
-          fetch(`/api/dashboard/settings/${guildId}`),
-          fetch(`/api/dashboard/channels/${guildId}`),
-          fetch(`/api/dashboard/roles/${guildId}`),
-        ]);
-
-        if (!settingsRes.ok || !channelsRes.ok || !rolesRes.ok) {
-          throw new Error('Failed to fetch initial data');
-        }
-        
-        const settingsData: GuildSettings = await settingsRes.json();
-        const channelsData: ApiChannel[] = await channelsRes.json();
-        const rolesData: ApiRole[] = await rolesRes.json();
-
-        setSettings(settingsData);
-        setChannels(channelsData);
-        setRoles(rolesData);
-      } catch (error) {
-        toast.error('Failed to load settings data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [guildId]);
-
-  const handleUpdate = async (updatedSetting: Partial<GuildSettings>) => {
-    if (typeof guildId !== 'string') return;
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/dashboard/settings/${guildId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedSetting),
-      });
-
-      if (!response.ok) throw new Error('Failed to save setting');
-      
-      const updatedSettings: GuildSettings = await response.json();
-      setSettings(updatedSettings);
-      toast.success('Setting saved successfully!');
-
-    } catch (error) {
-      toast.error('Failed to save setting.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ... (other handler functions remain the same but now benefit from typed state) ...
-  
-  if (loading) {
-    return <ModernProtectedLayout><div>Loading...</div></ModernProtectedLayout>;
+  if (!guildId || typeof guildId !== 'string') {
+    return res.status(400).json({ message: 'Guild ID is required' });
   }
 
-  return (
-    <ModernProtectedLayout>
-      {/* JSX remains the same, but now `settings` is strongly typed */}
-    </ModernProtectedLayout>
-  );
-};
+  if (req.method === 'GET') {
+    try {
+      const settings = await databaseEvents.getGuildSettings(guildId);
+      
+      if (!settings) {
+        return res.status(404).json({ message: 'Guild settings not found' });
+      }
 
-export default SettingsPage;
+      res.status(200).json(settings);
+    } catch (error: unknown) {
+      console.error('Error fetching guild settings:', error);
+      res.status(500).json({
+        message: 'Failed to fetch guild settings',
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const updateData: SettingsUpdateRequest = req.body;
+
+      // Validate the update data
+      const validatedUpdate: Partial<GuildSettings> = {};
+
+      if (typeof updateData.enableLeveling === 'boolean') {
+        validatedUpdate.enableLeveling = updateData.enableLeveling;
+      }
+      if (typeof updateData.enableModeration === 'boolean') {
+        validatedUpdate.enableModeration = updateData.enableModeration;
+      }
+      if (typeof updateData.enablePolls === 'boolean') {
+        validatedUpdate.enablePolls = updateData.enablePolls;
+      }
+      if (typeof updateData.enableGiveaways === 'boolean') {
+        validatedUpdate.enableGiveaways = updateData.enableGiveaways;
+      }
+      if (typeof updateData.enableTickets === 'boolean') {
+        validatedUpdate.enableTickets = updateData.enableTickets;
+      }
+      if (typeof updateData.enableGeizhals === 'boolean') {
+        validatedUpdate.enableGeizhals = updateData.enableGeizhals;
+      }
+      if (typeof updateData.enableAutomod === 'boolean') {
+        validatedUpdate.enableAutomod = updateData.enableAutomod;
+      }
+      if (typeof updateData.enableMusic === 'boolean') {
+        validatedUpdate.enableMusic = updateData.enableMusic;
+      }
+      if (typeof updateData.enableJoinToCreate === 'boolean') {
+        validatedUpdate.enableJoinToCreate = updateData.enableJoinToCreate;
+      }
+      if (typeof updateData.prefix === 'string') {
+        validatedUpdate.prefix = updateData.prefix;
+      }
+      if (updateData.logChannel !== undefined) {
+        validatedUpdate.logChannel = updateData.logChannel;
+      }
+      if (updateData.modLogChannel !== undefined) {
+        validatedUpdate.modLogChannel = updateData.modLogChannel;
+      }
+      if (updateData.quarantineRoleId !== undefined) {
+        validatedUpdate.quarantineRoleId = updateData.quarantineRoleId;
+      }
+      if (updateData.staffRoleId !== undefined) {
+        validatedUpdate.staffRoleId = updateData.staffRoleId;
+      }
+      if (updateData.welcomeChannel !== undefined) {
+        validatedUpdate.welcomeChannel = updateData.welcomeChannel;
+      }
+      if (updateData.autorole !== undefined) {
+        validatedUpdate.autorole = updateData.autorole;
+      }
+      if (updateData.welcomeMessage !== undefined) {
+        validatedUpdate.welcomeMessage = updateData.welcomeMessage;
+      }
+      if (updateData.goodbyeMessage !== undefined) {
+        validatedUpdate.goodbyeMessage = updateData.goodbyeMessage;
+      }
+      if (updateData.geizhalsChannelId !== undefined) {
+        validatedUpdate.geizhalsChannelId = updateData.geizhalsChannelId;
+      }
+      if (updateData.levelUpChannelId !== undefined) {
+        validatedUpdate.levelUpChannelId = updateData.levelUpChannelId;
+      }
+      if (updateData.joinToCreateChannelId !== undefined) {
+        validatedUpdate.joinToCreateChannelId = updateData.joinToCreateChannelId;
+      }
+      if (updateData.joinToCreateCategoryId !== undefined) {
+        validatedUpdate.joinToCreateCategoryId = updateData.joinToCreateCategoryId;
+      }
+
+      const updatedGuild = await databaseEvents.updateGuildSettings(guildId, validatedUpdate);
+      const updatedSettings = updatedGuild.settings as GuildSettings;
+
+      res.status(200).json(updatedSettings);
+    } catch (error: unknown) {
+      console.error('Error updating guild settings:', error);
+      res.status(500).json({
+        message: 'Failed to update guild settings',
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      });
+    }
+  } else {
+    res.setHeader('Allow', ['GET', 'PUT']);
+    res.status(405).json({ message: 'Method not allowed' });
+  }
+}
+
+export default function protectedHandler(req: NextApiRequest, res: NextApiResponse) {
+  return requireAuth(req as AuthenticatedRequest, res, handler);
+}

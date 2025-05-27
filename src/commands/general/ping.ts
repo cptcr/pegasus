@@ -1,99 +1,87 @@
-// src/commands/general/ping.ts - Ping Command
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
-import { ExtendedClient } from '../../index.js';
-import { Config } from '../../config/Config.js';
+// src/commands/general/ping.ts
+import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { ExtendedClient } from '@/index';
+import { Config } from '@/config/Config';
+
+interface PingData {
+  latency: number;
+  apiLatency: number;
+  uptime: number;
+}
 
 export default {
   data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Check the bot\'s latency and response time'),
-
-  async execute(interaction: ChatInputCommandInteraction) {
-    const client = interaction.client as ExtendedClient;
+    .setDescription('Check the bot\'s latency and status'),
+  category: 'general',
+  cooldown: 5,
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+    const startTime = Date.now();
     
-    // Record the time before sending the reply
-    const sent = await interaction.reply({ 
-      content: '🏓 Pinging...', 
-      fetchReply: true 
+    await interaction.reply({
+      content: '🏓 Pinging...',
+      ephemeral: true
     });
 
-    // Calculate latencies
-    const roundTripLatency = sent.createdTimestamp - interaction.createdTimestamp;
-    const websocketLatency = client.ws.ping;
+    const endTime = Date.now();
+    
+    const pingData: PingData = {
+      latency: endTime - interaction.createdTimestamp,
+      apiLatency: Math.round(client.ws.ping),
+      uptime: Math.floor((client.uptime || 0) / 1000)
+    };
 
-    // Determine latency status and color
-    let status = '';
-    let color = Config.COLORS.SUCCESS;
-
-    if (roundTripLatency < 100 && websocketLatency < 100) {
-      status = '🟢 Excellent';
-      color = Config.COLORS.SUCCESS;
-    } else if (roundTripLatency < 200 && websocketLatency < 200) {
-      status = '🟡 Good';
-      color = Config.COLORS.WARNING;
-    } else if (roundTripLatency < 500 && websocketLatency < 500) {
-      status = '🟠 Fair';
-      color = '#FFA500' as any;
-    } else {
-      status = '🔴 Poor';
-      color = Config.COLORS.ERROR;
-    }
-
-    // Create detailed embed
     const embed = new EmbedBuilder()
       .setTitle('🏓 Pong!')
-      .setDescription(`Bot latency and connection information`)
-      .setColor(color)
+      .setColor(Config.COLORS.SUCCESS)
       .addFields(
-        { 
-          name: '📡 Round Trip Latency', 
-          value: `\`${roundTripLatency}ms\``, 
-          inline: true 
+        {
+          name: '📡 Bot Latency',
+          value: `${pingData.latency}ms`,
+          inline: true
         },
-        { 
-          name: '💓 WebSocket Latency', 
-          value: `\`${websocketLatency}ms\``, 
-          inline: true 
-        },
-        { 
-          name: '📊 Status', 
-          value: status, 
-          inline: true 
+        {
+          name: '🌐 API Latency',
+          value: `${pingData.apiLatency}ms`,
+          inline: true
         },
         {
           name: '⏱️ Uptime',
-          value: client.uptime ? `<t:${Math.floor((Date.now() - client.uptime) / 1000)}:R>` : 'Unknown',
-          inline: true
-        },
-        {
-          name: '💾 Memory Usage',
-          value: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
-          inline: true
-        },
-        {
-          name: '📈 Process ID',
-          value: `\`${process.pid}\``,
+          value: formatUptime(pingData.uptime),
           inline: true
         }
       )
-      .setFooter({ 
-        text: `Requested by ${interaction.user.tag}`, 
-        iconURL: interaction.user.displayAvatarURL() 
-      })
-      .setTimestamp();
+      .setTimestamp()
+      .setFooter({ text: 'Bot Status' });
 
-    // Add shard information if applicable
-    if (client.shard) {
-      embed.addFields({
-        name: '🔀 Shard',
-        value: `${client.shard.ids[0]}/${client.shard.count - 1}`,
-        inline: true
-      });
+    // Add status indicator based on latency
+    if (pingData.apiLatency < 100) {
+      embed.setDescription('🟢 Excellent connection');
+    } else if (pingData.apiLatency < 200) {
+      embed.setDescription('🟡 Good connection');
+    } else {
+      embed.setDescription('🔴 Poor connection');
+      embed.setColor(Config.COLORS.WARNING);
     }
 
-    await interaction.editReply({ 
-      content: '', 
-      embeds: [embed] 
+    await interaction.editReply({
+      content: null,
+      embeds: [embed]
     });
-  }
+  },
 };
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (remainingSeconds > 0 || parts.length === 0) parts.push(`${remainingSeconds}s`);
+
+  return parts.join(' ');
+}

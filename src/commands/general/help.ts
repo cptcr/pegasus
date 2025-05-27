@@ -2,74 +2,94 @@
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { ExtendedClient } from '@/index';
 import { Config } from '@/config/Config';
-import { Command } from '@/types';
+
+interface CommandData {
+  name: string;
+  description: string;
+  category?: string;
+}
 
 export default {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Lists all available commands or info about a specific command.')
+    .setDescription('Show all available commands')
     .addStringOption(option =>
       option.setName('command')
-        .setDescription('The command you want help with')
-        .setRequired(false)),
-  
+        .setDescription('Get detailed information about a specific command')
+        .setRequired(false)
+    ),
+  category: 'general',
+  cooldown: 3,
   async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
     const commandName = interaction.options.getString('command');
 
-    if (!commandName) {
-      // Display all commands
-      const embed = new EmbedBuilder()
-        .setColor(Config.COLORS.INFO)
-        .setTitle('Pegasus Bot Commands')
-        .setDescription('Here is a list of all available commands. For more details on a specific command, use `/help [command_name]`.')
-        .setTimestamp();
-
-      // Group commands by category (inferred from file path)
-      const commandsByCategory: Map<string, Command[]> = new Map();
-      client.commands.forEach(cmd => {
-        // This assumes your command loader stores the category on the command object
-        // If not, you'd need to adjust how the category is determined.
-        // Let's assume the CommandHandler sets a `category` property.
-        const category = (cmd as any).category || 'General';
-        const categoryCommands = commandsByCategory.get(category) || [];
-        categoryCommands.push(cmd);
-        commandsByCategory.set(category, categoryCommands);
-      });
-
-      commandsByCategory.forEach((cmds, category) => {
-        const commandList = cmds.map(c => `\`${c.data.name}\``).join(', ');
-        embed.addFields({ name: `🔹 ${category.charAt(0).toUpperCase() + category.slice(1)}`, value: commandList });
-      });
+    if (commandName) {
+      // Show detailed info for specific command
+      const command = client.commands.get(commandName);
       
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-
-    } else {
-      // Display details for a specific command
-      const command = client.commands.get(commandName.toLowerCase());
       if (!command) {
-        return interaction.reply({ content: `Sorry, I couldn't find a command called \`${commandName}\`.`, ephemeral: true });
+        return interaction.reply({
+          content: `❌ Command \`${commandName}\` not found.`,
+          ephemeral: true
+        });
       }
+
+      const commandData: CommandData = {
+        name: command.data.name,
+        description: command.data.description,
+        category: command.category
+      };
 
       const embed = new EmbedBuilder()
+        .setTitle(`Command: /${commandData.name}`)
+        .setDescription(commandData.description)
         .setColor(Config.COLORS.INFO)
-        .setTitle(`Help: \`/${command.data.name}\``)
-        .setDescription(command.data.description)
+        .addFields(
+          { name: 'Category', value: commandData.category || 'Unknown', inline: true },
+          { name: 'Cooldown', value: `${command.cooldown || Config.COOLDOWNS.GLOBAL} seconds`, inline: true }
+        )
         .setTimestamp();
 
-      if (command.data.options.length > 0) {
-        const optionsString = command.data.options.map(opt => {
-          const option = opt.toJSON();
-          const required = 'required' in option && option.required ? ' (Required)' : '';
-          return `\`${option.name}\`: ${option.description}${required}`;
-        }).join('\n');
-        embed.addFields({ name: 'Options', value: optionsString });
-      }
-
-      if (command.cooldown) {
-        embed.addFields({ name: 'Cooldown', value: `${command.cooldown} second(s)` });
-      }
-
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed] });
     }
+
+    // Show all commands grouped by category
+    const categories = new Map<string, CommandData[]>();
+
+    client.commands.forEach((command: { category: string; data: { name: any; description: any; }; }) => {
+      const category = command.category || 'Other';
+      if (!categories.has(category)) {
+        categories.set(category, []);
+      }
+      
+      const commandData: CommandData = {
+        name: command.data.name,
+        description: command.data.description,
+        category: command.category
+      };
+      
+      categories.get(category)!.push(commandData);
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${Config.EMOJIS.INFO} Pegasus Bot Commands`)
+      .setDescription('Here are all available commands. Use `/help <command>` for detailed information.')
+      .setColor(Config.COLORS.PRIMARY)
+      .setTimestamp()
+      .setFooter({ text: `Total Commands: ${client.commands.size}` });
+
+    categories.forEach((commands, categoryName) => {
+      const commandList = commands
+        .map(cmd => `\`/${cmd.name}\` - ${cmd.description}`)
+        .join('\n');
+      
+      embed.addFields({
+        name: `📁 ${categoryName} (${commands.length})`,
+        value: commandList || 'No commands',
+        inline: false
+      });
+    });
+
+    await interaction.reply({ embeds: [embed] });
   },
-} as Command;
+};
