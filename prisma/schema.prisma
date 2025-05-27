@@ -1,6 +1,7 @@
-// prisma/schema.prisma - Fixed Schema to match dashboard
+// prisma/schema.prisma - Root schema with custom output
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {

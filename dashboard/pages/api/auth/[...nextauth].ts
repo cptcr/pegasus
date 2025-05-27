@@ -1,5 +1,5 @@
 // dashboard/pages/api/auth/[...nextauth].ts
-import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Profile as NextAuthProfile } from 'next-auth';
+import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Profile as NextAuthProfile, Session } from 'next-auth';
 import { AdapterUser } from 'next-auth/adapters';
 import DiscordProvider, { DiscordProfile as DiscordOAuthProfile } from 'next-auth/providers/discord';
 import { discordService } from '@/lib/discordService';
@@ -129,7 +129,7 @@ export const authOptions: NextAuthOptions = {
       return tokenUser;
     },
 
-    async session({ session, token }: { session: Record<string, unknown>; token: JWT }): Promise<Record<string, unknown>> {
+    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
       const sessionUser = session.user as SessionUser;
       const tokenData = token as TokenUser;
 

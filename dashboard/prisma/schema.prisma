@@ -1,6 +1,7 @@
-// dashboard/prisma/schema.prisma
+// dashboard/prisma/schema.prisma - Dashboard schema with separate output
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/dashboard-client"
 }
 
 datasource db {
@@ -249,6 +250,20 @@ model GiveawayEntry {
   @@map("giveaway_entries")
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model Ticket {
   id          Int       @id @default(autoincrement())
   guildId     String
@@ -257,8 +272,8 @@ model Ticket {
   moderatorId String?
   category    String
   subject     String
-  status      String    @default("OPEN") // OPEN, IN_PROGRESS, WAITING, CLOSED
-  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      TicketStatus @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
   closedAt    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

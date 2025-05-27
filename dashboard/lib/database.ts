@@ -1,5 +1,5 @@
-// dashboard/lib/database.ts - Fixed All Issues
-import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '@prisma/client';
+// dashboard/lib/database.ts - Fixed to use dashboard client
+import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '.prisma/dashboard-client';
 import { EventEmitter } from 'events';
 import { discordService } from './discordService';
 import { GuildSettings, GuildWithFullStats, FullGuildData } from '@/types/index';
@@ -15,6 +15,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 class DatabaseService extends EventEmitter {
+  user: any;
   constructor() {
     super();
   }

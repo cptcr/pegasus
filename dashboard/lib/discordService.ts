@@ -36,7 +36,7 @@ class DiscordService {
     if (this.isInitialized && !token && this.currentToken === process.env.DISCORD_BOT_TOKEN) return;
 
     const loginToken = token || process.env.DISCORD_BOT_TOKEN;
-    this.currentToken = loginToken;
+    this.currentToken = loginToken || null;
 
     try {
       if (!loginToken) {
@@ -183,7 +183,7 @@ class DiscordService {
       if (!guild) return null;
       return await guild.members.fetch(userId);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('Unknown Member') || (error as Record<string, unknown>).code === 10007) ) {
+      if (error instanceof Error && (error.message.includes('Unknown Member') || ((error as unknown) as Record<string, unknown>).code === 10007) ) {
         // console.debug(`Member ${userId} not found in guild ${guildId}.`);
       } else {
         console.error(`Error fetching member ${userId} in guild ${guildId}:`, error);
