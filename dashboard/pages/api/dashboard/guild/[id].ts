@@ -7,6 +7,18 @@ import { GuildWithFullStats, GuildSettings, FullGuildData } from '@/types/index'
 
 const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 
+interface DiscordGuildResponse {
+  memberCount?: number;
+  onlineCount?: number;
+  name?: string;
+  id: string;
+  icon?: string | null;
+  features?: string[];
+  ownerId?: string;
+  description?: string | null;
+  createdAt?: Date;
+}
+
 function calculateStatsFromFullData(guildData: FullGuildData, memberCountFromDiscord: number): GuildWithFullStats['stats'] {
   const totalUsers = guildData.members?.length ?? 0;
   const engagementRate = memberCountFromDiscord > 0 && totalUsers > 0 ? Math.round((totalUsers / memberCountFromDiscord) * 100) : 0;
@@ -20,14 +32,14 @@ function calculateStatsFromFullData(guildData: FullGuildData, memberCountFromDis
     giveawayCount: guildData.giveaways?.length ?? 0,
     warningCount: guildData.warnings?.length ?? 0,
     totalUsers,
-    activeQuarantine: guildData.warnings?.filter((w: { active: any; }) => w.active).length ?? 0,
+    activeQuarantine: guildData.warnings?.filter((w: { active: boolean }) => w.active).length ?? 0,
     totalTrackers: 0,
-    activePolls: guildData.polls?.filter((p: { active: any; }) => p.active).length ?? 0,
-    activeGiveaways: guildData.giveaways?.filter((g: { active: any; ended: any; }) => g.active && !g.ended).length ?? 0,
-    openTickets: guildData.tickets?.filter((t: { status: string; }) => t.status !== 'CLOSED').length ?? 0,
+    activePolls: guildData.polls?.filter((p: { active: boolean }) => p.active).length ?? 0,
+    activeGiveaways: guildData.giveaways?.filter((g: { active: boolean; ended: boolean }) => g.active && !g.ended).length ?? 0,
+    openTickets: guildData.tickets?.filter((t: { status: string }) => t.status !== 'CLOSED').length ?? 0,
     customCommands: 0,
     levelRewards: guildData.levelRewards?.length ?? 0,
-    automodRules: guildData.autoModRules?.filter((r: { enabled: any; }) => r.enabled).length ?? 0,
+    automodRules: guildData.autoModRules?.filter((r: { enabled: boolean }) => r.enabled).length ?? 0,
     levelingEnabled: guildData.enableLeveling ?? true,
     moderationEnabled: guildData.enableModeration ?? true,
     geizhalsEnabled: guildData.enableGeizhals ?? false,
@@ -92,22 +104,23 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse<GuildWith
     const calculatedStats = calculateStatsFromFullData(guildDataFromDb, memberCountFromDiscord);
     calculatedStats.onlineCount = onlineCountFromDiscord;
 
+    const discordResponse: DiscordGuildResponse = discordGuildAPIData || {
+      id: id,
+      name: guildDataFromDb.name,
+      icon: null,
+      features: [],
+      memberCount: memberCountFromDiscord,
+      onlineCount: onlineCountFromDiscord,
+      ownerId: guildDataFromDb.ownerId || undefined,
+      description: guildDataFromDb.description || null,
+      createdAt: guildDataFromDb.createdAt || new Date(),
+    };
+
     const response: GuildWithFullStats = {
       ...guildDataFromDb,
       settings: guildDataFromDb.settings as GuildSettings,
       stats: calculatedStats,
-      discord: discordGuildAPIData || {
-        id: id,
-        name: guildDataFromDb.name,
-        icon: null,
-        iconURL: null,
-        features: [],
-        memberCount: memberCountFromDiscord,
-        onlineCount: onlineCountFromDiscord,
-        ownerId: guildDataFromDb.ownerId || undefined,
-        description: guildDataFromDb.description || null,
-        createdAt: guildDataFromDb.createdAt || new Date(),
-      },
+      discord: discordResponse,
       members: guildDataFromDb.members,
       warnings: guildDataFromDb.warnings,
       polls: guildDataFromDb.polls,

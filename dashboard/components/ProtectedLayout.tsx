@@ -2,6 +2,7 @@
 import { useSession, signOut, SessionContextValue } from 'next-auth/react';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import { ShieldCheckIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { DiscordProfile } from '@/types/index'; // Import the defined DiscordProfile
 
@@ -88,7 +89,7 @@ export default function ProtectedLayout({
             <div className="flex items-center">
               <ShieldCheckIcon className="w-8 h-8 text-indigo-600" />
               <span className="ml-2 text-xl font-semibold text-gray-900">
-                Hinko Dashboard {/* Consider making this dynamic or Pegasus */}
+                Pegasus Dashboard
               </span>
             </div>
 
@@ -96,10 +97,12 @@ export default function ProtectedLayout({
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   {currentUser.avatar && (
-                    <img
+                    <Image
                       src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
-                      alt="Avatar"
-                      className="w-8 h-8 rounded-full"
+                      alt="User Avatar"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
                     />
                   )}
                   <span className="text-sm text-gray-700">
@@ -135,7 +138,7 @@ export default function ProtectedLayout({
         <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              Hinko Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}  {/* Consider making Hinko dynamic */}
+              Pegasus Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}
             </div>
             <div className="text-sm text-gray-500">
               Authorized access only

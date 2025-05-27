@@ -2,6 +2,7 @@
 import { useSession, signOut, SessionContextValue } from 'next-auth/react';
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import {
   ShieldCheckIcon,
   ArrowRightOnRectangleIcon,
@@ -143,10 +144,12 @@ export default function ModernProtectedLayout({
                 <div className="items-center hidden space-x-3 md:flex">
                   <div className="flex items-center px-3 py-2 space-x-3 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700/50 dark:border-gray-600">
                     {currentUser.avatar ? (
-                      <img
+                      <Image
                         src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
-                        alt="Avatar"
-                        className="w-8 h-8 rounded-full ring-2 ring-indigo-500/20"
+                        alt="User Avatar"
+                        width={32}
+                        height={32}
+                        className="rounded-full ring-2 ring-indigo-500/20"
                       />
                     ) : (
                       <UserCircleIcon className="w-8 h-8 text-gray-400" />
@@ -203,10 +206,12 @@ export default function ModernProtectedLayout({
               {currentUser && (
                 <div className="flex items-center p-3 space-x-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                   {currentUser.avatar ? (
-                    <img
+                    <Image
                       src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
-                      alt="Avatar"
-                      className="w-10 h-10 rounded-full ring-2 ring-indigo-500/20"
+                      alt="User Avatar"
+                      width={40}
+                      height={40}
+                      className="rounded-full ring-2 ring-indigo-500/20"
                     />
                   ) : (
                     <UserCircleIcon className="w-10 h-10 text-gray-400" />

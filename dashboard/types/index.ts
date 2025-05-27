@@ -4,6 +4,7 @@ import {
   ChatInputCommandInteraction,
   ClientEvents,
   ColorResolvable as DiscordColorResolvable,
+  Client,
 } from 'discord.js';
 import { 
   Prisma, 
@@ -24,18 +25,18 @@ import {
   Log as PrismaLog
 } from '@prisma/client';
 
-// Bot & Event Structures (removed ExtendedClient reference)
+// Bot & Event Structures
 export interface Command {
   data: Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">;
   category: string;
   cooldown?: number;
-  execute: (interaction: ChatInputCommandInteraction, client: any) => Promise<void>;
+  execute: (interaction: ChatInputCommandInteraction, client: Client) => Promise<void>;
 }
 
 export interface BotEvent<K extends keyof ClientEvents> {
   name: K;
   once?: boolean;
-  execute: (client: any, ...args: ClientEvents[K]) => Promise<void> | void;
+  execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
 // Settings Structures

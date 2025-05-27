@@ -1,5 +1,5 @@
 // dashboard/lib/database.ts
-import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel, PollOption, PollVote, GiveawayEntry } from '@prisma/client';
+import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '@prisma/client';
 import { EventEmitter } from 'events';
 import { discordService } from './discordService';
 import { GuildSettings, GuildWithFullStats, FullGuildData } from '@/types/index';
@@ -100,15 +100,16 @@ class DatabaseService extends EventEmitter {
   }
 
   async getGuildWithFullStats(guildId: string): Promise<GuildWithFullStats | null> {
-    const [guildData, discordGuildData]: [FullGuildData | null, any] = await Promise.all([
+    const [guildData, discordGuildData]: [FullGuildData | null, unknown] = await Promise.all([
       this.getGuildWithFullData(guildId),
       discordService.getGuildInfo(guildId)
     ]);
 
     if (!guildData) return null;
 
-    const memberCount: number = discordGuildData?.memberCount ?? guildData.members?.length ?? 0;
-    const onlineCount: number = discordGuildData?.onlineCount ?? 0;
+    const discordData = discordGuildData as { memberCount?: number; onlineCount?: number } | null;
+    const memberCount: number = discordData?.memberCount ?? guildData.members?.length ?? 0;
+    const onlineCount: number = discordData?.onlineCount ?? 0;
 
     const stats: GuildWithFullStats['stats'] = {
       memberCount,
@@ -140,7 +141,7 @@ class DatabaseService extends EventEmitter {
     return {
       ...guildData,
       stats,
-      discord: discordGuildData || { id: guildId, name: guildData.name, icon: null, features: [], memberCount, onlineCount },
+      discord: discordData || { id: guildId, name: guildData.name, icon: null, features: [], memberCount, onlineCount },
     } as GuildWithFullStats;
   }
 

@@ -67,21 +67,18 @@ const updateMockGuildSettings = (guildId: string, data: Record<string, unknown>)
   return mockGuildSettings[guildId];
 };
 
-// Zugriffsschutz Middleware
-const ALLOWED_USER_ID = '797927858420187186';
-const TARGET_GUILD_ID = '554266392262737930';
-
+// Access control
 async function checkAccess(): Promise<boolean> {
-  // Hier würde normalerweise die Session/Token-Validierung stattfinden
-  // Für Demo-Zwecke nehmen wir an, dass der User autorisiert ist
+  // In a real implementation, this would validate session/token
+  // For demo purposes, we assume the user is authorized
   return true;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Zugriffsschutz
+  // Access control
   const hasAccess = await checkAccess();
   if (!hasAccess) {
-    return res.status(403).json({ error: 'Zugriff verweigert' });
+    return res.status(403).json({ error: 'Access denied' });
   }
 
   if (req.method === 'GET') {
@@ -90,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handlePost(req, res);
   } else {
     res.setHeader('Allow', ['GET', 'POST']);
-    return res.status(405).json({ error: 'Methode nicht erlaubt' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 }
 
@@ -98,15 +95,15 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   const { guildId } = req.query;
 
   if (!guildId || typeof guildId !== 'string') {
-    return res.status(400).json({ error: 'Guild-ID erforderlich' });
+    return res.status(400).json({ error: 'Guild ID required' });
   }
 
   try {
     const guildSettings = getMockGuildSettings(guildId);
     return res.status(200).json(guildSettings);
   } catch (error) {
-    console.error('Fehler beim Laden der Guild-Einstellungen:', error);
-    return res.status(500).json({ error: 'Serverfehler beim Laden der Einstellungen' });
+    console.error('Error loading guild settings:', error);
+    return res.status(500).json({ error: 'Server error loading settings' });
   }
 }
 
@@ -114,24 +111,24 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   const { guildId, ...updateData } = req.body;
 
   if (!guildId) {
-    return res.status(400).json({ error: 'Guild-ID erforderlich' });
+    return res.status(400).json({ error: 'Guild ID required' });
   }
 
   try {
-    // Validierung der Eingabedaten
+    // Validate input data
     const validatedData = validateSettingsData(updateData);
     
-    // Einstellungen aktualisieren
+    // Update settings
     const updatedSettings = updateMockGuildSettings(guildId, validatedData);
     
     return res.status(200).json({ 
       success: true, 
-      message: 'Einstellungen erfolgreich aktualisiert',
+      message: 'Settings updated successfully',
       data: updatedSettings 
     });
   } catch (error) {
-    console.error('Fehler beim Aktualisieren der Einstellungen:', error);
-    return res.status(500).json({ error: 'Serverfehler beim Speichern der Einstellungen' });
+    console.error('Error updating settings:', error);
+    return res.status(500).json({ error: 'Server error saving settings' });
   }
 }
 
@@ -159,15 +156,15 @@ function validateSettingsData(data: Record<string, unknown>): Record<string, unk
 
   for (const [key, value] of Object.entries(data)) {
     if (allowedFields.includes(key)) {
-      // Typ-spezifische Validierung
+      // Type-specific validation
       if (key === 'prefix' && typeof value === 'string') {
-        validatedData[key] = value.slice(0, 5); // Max 5 Zeichen
+        validatedData[key] = value.slice(0, 5); // Max 5 characters
       } else if (key.startsWith('enable') && typeof value === 'boolean') {
         validatedData[key] = value;
       } else if (key.endsWith('ChannelId') || key.endsWith('RoleId')) {
         validatedData[key] = value === '' ? null : value;
       } else if ((key === 'welcomeMessage' || key === 'leaveMessage') && typeof value === 'string') {
-        validatedData[key] = value.slice(0, 2000); // Max 2000 Zeichen
+        validatedData[key] = value.slice(0, 2000); // Max 2000 characters
       }
     }
   }

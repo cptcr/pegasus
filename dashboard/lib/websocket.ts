@@ -1,5 +1,5 @@
 // dashboard/lib/websocket.ts (Real-time Updates)
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { RealtimeEvent as SharedRealtimeEvent } from '@/types/index';
 
@@ -171,6 +171,9 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
   const [events, setEvents] = useState<RealtimeEvent<unknown>[]>([]);
   const unsubscribeFunctionsRef = useRef<(() => void)[]>([]);
 
+  // Memoize eventTypes string to prevent unnecessary re-renders
+  const eventTypesKey = useMemo(() => eventTypes.join(','), [eventTypes]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -219,7 +222,7 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
       unsubscribeFunctionsRef.current.forEach(unsubscribe => unsubscribe());
       unsubscribeFunctionsRef.current = [];
     };
-  }, [guildId, eventTypes.join(',')]);
+  }, [guildId, eventTypesKey]);
 
   const emitToServer = useCallback((event: string, data: { [key: string]: unknown }) => {
       realtimeService.emit(event, { guildId, ...data});
@@ -241,6 +244,10 @@ export function useRealtimeData<T extends object>(
 ) {
   const [data, setData] = useState<T>(initialData);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Memoize eventTypesToUpdateOn string to prevent unnecessary re-renders
+  const eventTypesToUpdateOnKey = useMemo(() => eventTypesToUpdateOn.join(','), [eventTypesToUpdateOn]);
+
   const { isConnected, subscribe } = useRealtime(guildId, eventTypesToUpdateOn);
 
   useEffect(() => {
@@ -265,7 +272,7 @@ export function useRealtimeData<T extends object>(
     return () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, [guildId, eventTypesToUpdateOn.join(','), subscribe, isConnected]);
+  }, [guildId, eventTypesToUpdateOnKey, subscribe, isConnected]);
 
   const refresh = useCallback(() => {
     setLastUpdated(new Date());
