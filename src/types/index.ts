@@ -4,7 +4,8 @@ import {
   ChatInputCommandInteraction,
   ClientEvents,
   ColorResolvable as DiscordColorResolvable,
-  Client,
+  SlashCommandOptionsOnlyBuilder,
+  SlashCommandSubcommandsOnlyBuilder,
 } from 'discord.js';
 import { 
   Prisma, 
@@ -30,7 +31,7 @@ import {
 
 // Bot & Event Structures
 export interface Command {
-  data: Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">;
+  data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
   category: string;
   cooldown?: number;
   execute: (interaction: ChatInputCommandInteraction, client: any) => Promise<void>;

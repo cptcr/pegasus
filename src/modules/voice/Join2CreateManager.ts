@@ -30,9 +30,9 @@ export interface J2CSettingsUpdate {
 export class Join2CreateManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;
@@ -396,8 +396,7 @@ export class Join2CreateManager {
           channel.type === ChannelType.GuildVoice && 
           channel.id !== settings.joinChannelId
         )
-        .map(channel => channel as VoiceChannel)
-        .toArray();
+        .map(channel => channel as VoiceChannel);
     } catch (error) {
       this.logger.error('Error getting active channels:', error);
       return [];

@@ -1,4 +1,4 @@
-// src/commands/fun/meme.ts - Meme Generator Fun Command
+// src/commands/fun/meme.ts - Fixed Meme Generator Fun Command
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { Command } from '../../types/index.js';
 import { CommandMetadata } from '../../types/CommandMetadata.js';
@@ -65,7 +65,7 @@ const command: Command = {
   category: 'fun',
   cooldown: 5,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     const template = interaction.options.getString('template');
     const topText = interaction.options.getString('top_text');
     const bottomText = interaction.options.getString('bottom_text');
@@ -78,9 +78,10 @@ const command: Command = {
         const randomMeme = await getRandomMeme();
         
         if (!randomMeme) {
-          return interaction.editReply({
+          await interaction.editReply({
             content: '❌ Failed to fetch a random meme. Please try again later.'
           });
+          return;
         }
 
         const embed = new EmbedBuilder()
@@ -106,17 +107,19 @@ const command: Command = {
       } else {
         // Create custom meme
         if (!template) {
-          return interaction.editReply({
+          await interaction.editReply({
             content: '❌ Please specify a meme template when adding custom text.'
           });
+          return;
         }
 
         const customMeme = await createCustomMeme(template, topText || '', bottomText || '');
         
         if (!customMeme) {
-          return interaction.editReply({
+          await interaction.editReply({
             content: '❌ Failed to create custom meme. Please try again later or check if the template is valid.'
           });
+          return;
         }
 
         const templateInfo = memeTemplates.find(t => t.value === template);

@@ -8,7 +8,7 @@ import { RealtimeEvent } from '../types/index.js';
 export class WebSocketManager {
   private io: SocketIOServer;
   private client: ExtendedClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
   constructor(httpServer: HTTPServer, client: ExtendedClient) {
     this.client = client;

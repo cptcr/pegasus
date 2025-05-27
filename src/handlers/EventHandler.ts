@@ -7,7 +7,7 @@ import { pathToFileURL } from 'url';
 
 export class EventHandler {
   private client: ExtendedClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
   constructor(client: ExtendedClient) {
     this.client = client;

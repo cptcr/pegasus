@@ -1,4 +1,4 @@
-// prisma/seed.ts - Database Seed File
+// prisma/seed.ts - Fixed Database Seed File
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -83,33 +83,6 @@ async function main() {
     }
 
     console.log('✅ Created level rewards');
-
-    // Create ticket categories
-    const ticketCategories = [
-      { name: 'general', description: 'General support and questions', emoji: '❓' },
-      { name: 'technical', description: 'Technical issues and bugs', emoji: '🔧' },
-      { name: 'bug', description: 'Bug reports', emoji: '🐛' },
-      { name: 'feature', description: 'Feature requests', emoji: '💡' },
-      { name: 'account', description: 'Account related issues', emoji: '👤' }
-    ];
-
-    for (const category of ticketCategories) {
-      await prisma.ticketCategory.upsert({
-        where: {
-          guildId_name: {
-            guildId: exampleGuild.id,
-            name: category.name
-          }
-        },
-        update: {},
-        create: {
-          guildId: exampleGuild.id,
-          ...category
-        }
-      });
-    }
-
-    console.log('✅ Created ticket categories');
 
     // Create example custom commands
     const customCommands = [

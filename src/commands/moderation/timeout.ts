@@ -1,5 +1,4 @@
-
-// src/commands/moderation/timeout.ts - Timeout/Mute Command
+// src/commands/moderation/timeout.ts - Fixed Timeout/Mute Command
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
@@ -65,12 +64,13 @@ const command: Command = {
   category: 'moderation',
   cooldown: 3,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const subcommand = interaction.options.getSubcommand();
@@ -101,53 +101,59 @@ async function handleAddTimeout(interaction: ChatInputCommandInteraction, client
     // Parse duration
     const duration = parseDuration(durationStr);
     if (!duration) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ Invalid duration format. Use formats like: 10m, 1h, 2d (max 28 days)',
         ephemeral: true
       });
+      return;
     }
 
     if (duration > 28 * 24 * 60 * 60 * 1000) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ Timeout duration cannot exceed 28 days.',
         ephemeral: true
       });
+      return;
     }
 
     // Get the member object
     const member = await interaction.guild!.members.fetch(target.id).catch(() => null);
     
     if (!member) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ User not found in this server.',
         ephemeral: true
       });
+      return;
     }
 
     // Check hierarchy
     const moderator = interaction.member as GuildMember;
     if (member.roles.highest.position >= moderator.roles.highest.position && 
         interaction.guild!.ownerId !== moderator.id) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ You cannot timeout this user due to role hierarchy.',
         ephemeral: true
       });
+      return;
     }
 
     // Check if target is server owner
     if (member.id === interaction.guild!.ownerId) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ You cannot timeout the server owner.',
         ephemeral: true
       });
+      return;
     }
 
     // Check if user is already timed out
     if (member.communicationDisabledUntil && member.communicationDisabledUntil > new Date()) {
-      return interaction.reply({
+      await interaction.reply({
         content: `❌ ${target.tag} is already timed out until <t:${Math.floor(member.communicationDisabledUntil.getTime() / 1000)}:F>.`,
         ephemeral: true
       });
+      return;
     }
 
     await interaction.deferReply();
@@ -265,18 +271,20 @@ async function handleRemoveTimeout(interaction: ChatInputCommandInteraction, cli
     const member = await interaction.guild!.members.fetch(target.id).catch(() => null);
     
     if (!member) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ User not found in this server.',
         ephemeral: true
       });
+      return;
     }
 
     // Check if user is actually timed out
     if (!member.communicationDisabledUntil || member.communicationDisabledUntil <= new Date()) {
-      return interaction.reply({
+      await interaction.reply({
         content: `❌ ${target.tag} is not currently timed out.`,
         ephemeral: true
       });
+      return;
     }
 
     await interaction.deferReply();
@@ -364,7 +372,7 @@ function parseDuration(duration: string): number | null {
 function formatDuration(ms: number): string {
   const seconds = Math.floor((ms / 1000) % 60);
   const minutes = Math.floor((ms / (1000 * 60)) % 60);
-  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);  
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
   
   const parts: string[] = [];

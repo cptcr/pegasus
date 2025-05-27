@@ -1,4 +1,4 @@
-// src/commands/moderation/clear.ts - Message Clear/Purge Moderation Command
+// src/commands/moderation/clear.ts - Fixed Message Clear/Purge Moderation Command
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
@@ -64,12 +64,13 @@ const command: Command = {
   category: 'moderation',
   cooldown: 5,
 
-  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in a server.',
         ephemeral: true
       });
+      return;
     }
 
     const amount = interaction.options.getInteger('amount', true);
@@ -81,18 +82,20 @@ const command: Command = {
 
     const channel = interaction.channel as TextChannel;
     if (!channel.isTextBased()) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ This command can only be used in text channels.',
         ephemeral: true
       });
+      return;
     }
 
     // Check bot permissions
     if (!channel.permissionsFor(interaction.guild.members.me!)?.has(PermissionFlagsBits.ManageMessages)) {
-      return interaction.reply({
+      await interaction.reply({
         content: '❌ I don\'t have permission to manage messages in this channel.',
         ephemeral: true
       });
+      return;
     }
 
     await interaction.deferReply({ ephemeral: true });
@@ -132,9 +135,10 @@ const command: Command = {
       messagesToDelete = messagesToDelete.slice(0, amount);
 
       if (messagesToDelete.length === 0) {
-        return interaction.editReply({
+        await interaction.editReply({
           content: '❌ No messages found matching the specified criteria that can be deleted.'
         });
+        return;
       }
 
       // Store message info for logging before deletion
@@ -183,7 +187,8 @@ const command: Command = {
             },
             messages: messageInfo
           })
-        });
+        }
+      });
 
       // Create success embed
       const embed = new EmbedBuilder()
@@ -267,5 +272,4 @@ const command: Command = {
     }
   }
 };
-
 export default command;
