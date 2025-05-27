@@ -3,18 +3,20 @@ import { ExtendedClient } from '../index.js';
 import { Logger } from '../utils/Logger.js';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 export class EventHandler {
   private client: ExtendedClient;
   private logger: Logger;
 
-  constructor(client: ExtendedClient, logger: Logger) {
+  constructor(client: ExtendedClient) {
     this.client = client;
-    this.logger = logger;
+    this.logger = client.logger;
   }
 
   async loadEvents(): Promise<void> {
-    const eventsPath = path.join(process.cwd(), 'src', 'events');
+    const __dirname = fileURLToPath(new URL('.', import.meta.url));
+    const eventsPath = path.join(__dirname, '..', 'events');
     
     if (!fs.existsSync(eventsPath)) {
       this.logger.warn('⚠️ Events directory not found');
@@ -34,9 +36,9 @@ export class EventHandler {
 
         if (eventData.name && eventData.execute) {
           if (eventData.once) {
-            this.client.once(eventData.name, (...args) => eventData.execute(...args, this.client));
+            this.client.once(eventData.name, (...args) => eventData.execute(this.client, ...args));
           } else {
-            this.client.on(eventData.name, (...args) => eventData.execute(...args, this.client));
+            this.client.on(eventData.name, (...args) => eventData.execute(this.client, ...args));
           }
           this.logger.debug(`📅 Loaded event: ${eventData.name}`);
         }

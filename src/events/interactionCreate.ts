@@ -1,18 +1,18 @@
 // src/events/interactionCreate.ts
 import { Interaction, Collection, BaseInteraction } from 'discord.js';
-import { ExtendedClient } from '@/index';
-import { BotEvent } from '@/types';
-import { Config } from '@/config/Config';
+import { ExtendedClient } from '../index.js';
+import { BotEvent } from '../types/index.js';
+import { Config } from '../config/Config.js';
 
 const event: BotEvent<'interactionCreate'> = {
   name: 'interactionCreate',
-  async execute(client, interaction: BaseInteraction) {
+  async execute(client: ExtendedClient, interaction: BaseInteraction) {
     if (!interaction.isChatInputCommand()) {
         if(interaction.isButton()) {
-            client.buttonHandler.handle(interaction);
+            await client.buttonHandler.handle(interaction);
         }
         return;
-    };
+    }
 
     const command = client.commands.get(interaction.commandName);
     if (!command) {
@@ -28,7 +28,7 @@ const event: BotEvent<'interactionCreate'> = {
     
     const now = Date.now();
     const timestamps = cooldowns.get(command.data.name)!;
-    const cooldownAmount = (command.cooldown ?? Config.DEFAULT_COOLDOWN) * 1000;
+    const cooldownAmount = (command.cooldown ?? Config.COOLDOWNS.GLOBAL) * 1000;
 
     if (timestamps.has(interaction.user.id)) {
       const expirationTime = timestamps.get(interaction.user.id)! + cooldownAmount;

@@ -11,8 +11,7 @@ export default {
     client.user?.setActivity('over the server', { type: ActivityType.Watching });
 
     // Initialize all managers on ready
-    client.giveawayManager.init();
-    client.pollManager.init();
+    await client.init();
     
     // Initial fetch and periodic update for guild stats
     const updateGuildStats = async () => {

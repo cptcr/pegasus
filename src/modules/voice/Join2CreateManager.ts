@@ -1,315 +1,425 @@
 // src/modules/voice/Join2CreateManager.ts
-<<<<<<< HEAD
-import { ChannelType, Guild, GuildMember, PermissionsBitField, VoiceChannel, VoiceState } from 'discord.js';
-=======
-import { Guild, VoiceState, ChannelType, VoiceChannel, PermissionsBitField } from 'discord.js';
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
-import { ExtendedClient } from '@/index';
-import { J2CSettings, J2CSettingsUpdate } from '@/types';
+import { 
+  Guild, 
+  VoiceState, 
+  ChannelType, 
+  VoiceChannel, 
+  PermissionsBitField, 
+  GuildMember,
+  ButtonInteraction,
+  CategoryChannel,
+  TextChannel
+} from 'discord.js';
+import { PrismaClient, J2CSettings } from '@prisma/client';
+import { ExtendedClient } from '../../index.js';
+import { Logger } from '../../utils/Logger.js';
+
+export interface J2CSettingsUpdate {
+  isEnabled?: boolean;
+  categoryId?: string;
+  joinChannelId?: string;
+  channelNameTemplate?: string;
+  defaultUserLimit?: number;
+  defaultBitrate?: number;
+  allowTextChannel?: boolean;
+  autoDeleteEmpty?: boolean;
+  lockEmptyChannels?: boolean;
+  blacklistUserIds?: string[];
+}
 
 export class Join2CreateManager {
   private client: ExtendedClient;
+  private db: PrismaClient;
+  private logger: Logger;
 
-  constructor(client: ExtendedClient) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
     this.client = client;
+    this.db = db;
+    this.logger = logger;
   }
 
+  /**
+   * Get J2C settings for a guild
+   */
   public async getSettings(guildId: string): Promise<J2CSettings | null> {
-    return this.client.db.j2CSettings.findUnique({ where: { guildId } });
+    try {
+      return await this.db.j2CSettings.findUnique({ where: { guildId } });
+    } catch (error) {
+      this.logger.error('Error getting J2C settings:', error);
+      return null;
+    }
   }
 
-<<<<<<< HEAD
-  public async setupJoin2Create(guild: Guild, options: {
-    categoryId: string;
-    channelName: string;
-    userLimit: number;
-    bitrate: number;
-  }): Promise<{ success: true; channel: VoiceChannel } | { success: false; error: string }> {
+  /**
+   * Setup Join to Create system
+   */
+  public async setupJoin2Create(
+    guild: Guild, 
+    options: {
+      categoryId: string;
+      channelName: string;
+      userLimit: number;
+      bitrate: number;
+    }
+  ): Promise<{ success: true; channel: VoiceChannel } | { success: false; error: string }> {
     try {
+      const category = guild.channels.cache.get(options.categoryId) as CategoryChannel;
+      if (!category || category.type !== ChannelType.GuildCategory) {
+        return { success: false, error: 'Invalid category provided' };
+      }
+
       const j2cChannel = await guild.channels.create({
         name: options.channelName,
         type: ChannelType.GuildVoice,
         parent: options.categoryId,
         userLimit: 1,
-      });
-
-      const settings: J2CSettings = {
-        isEnabled: true,
-        categoryId: options.categoryId,
-        joinChannelId: j2cChannel.id,
-        channelNameTemplate: "{user}'s Channel",
-        defaultUserLimit: options.userLimit,
-        defaultBitrate: options.bitrate,
-        allowTextChannel: false,
-        autoDeleteEmpty: true,
-        lockEmptyChannels: false
-      };
-
-      await this.client.db.j2CSettings.upsert({
-        where: { guildId: guild.id },
-        update: settings,
-        create: { guildId: guild.id, ...settings }
-      });
-
-      return { success: true, channel: j2cChannel };
-    } catch (error) {
-      this.client.logger.error("Failed to setup J2C:", error);
-      return { success: false, error: "Could not create channel or save settings." };
-    }
-  }
-
-  public async updateSettings(guildId: string, data: J2CSettingsUpdate): Promise<{ success: boolean; error?: string }> {
-      try {
-          await this.client.db.j2CSettings.update({ where: { guildId }, data });
-          this.client.wsManager.emitRealtimeEvent(guildId, 'j2c:settings:updated', data);
-          return { success: true };
-      } catch (error) {
-          this.client.logger.error(`Failed to update J2C settings for guild ${guildId}:`, error);
-          return { success: false, error: "Database update failed." };
-      }
-  }
-
-  public async handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState): Promise<void> {
-    const { guild } = newState;
-    const settings = await this.getSettings(guild.id);
-    if (!settings?.isEnabled || !settings.joinChannelId) return;
-
-    // User joins the "Join to Create" channel
-    if (newState.channelId === settings.joinChannelId) {
-      if (!newState.member) return;
-      this.createTempChannel(newState.member, settings);
-    }
-
-    // User leaves a temporary channel
-    if (oldState.channelId && oldState.channelId !== settings.joinChannelId && oldState.channel.parent?.id === settings.categoryId) {
-        if (oldState.channel.members.size === 0) {
-            // This is a temp channel, check if it should be deleted
-            const isTempChannel = await this.client.db.j2CSettings.findFirst({ where: { categoryId: oldState.channel.parent.id }});
-            if (isTempChannel) {
-                this.deleteEmptyTempChannel(oldState.channel as VoiceChannel, settings);
-            }
-        }
-    }
-  }
-  
-  private async createTempChannel(member: GuildMember, settings: J2CSettings): Promise<void> {
-    if (!settings.categoryId) {
-      this.client.logger.error(`No category set for J2C in guild ${member.guild.id}`);
-      return;
-    }
-
-    try {
-      const channelName = settings.channelNameTemplate
-        .replace('{user}', member.displayName)
-        .replace('{count}', (await this.getChannelCount(settings.categoryId) + 1).toString());
-
-      const tempChannel = await member.guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildVoice,
-=======
-  public async setup(guild: Guild, categoryId: string, channelName: string, userLimit: number, bitrate: number): Promise<{ success: true; channel: VoiceChannel } | { success: false; error: string }> {
-    try {
-      const j2cChannel = await guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildVoice,
-        parent: categoryId,
-        userLimit: 1,
+        bitrate: options.bitrate,
       });
 
       const settings = {
         isEnabled: true,
-        categoryId,
+        categoryId: options.categoryId,
         joinChannelId: j2cChannel.id,
-        defaultUserLimit: userLimit,
-        defaultBitrate: bitrate,
+        channelNameTemplate: '{user}\'s Channel',
+        defaultUserLimit: options.userLimit,
+        defaultBitrate: options.bitrate,
+        autoDeleteEmpty: true,
+        lockEmptyChannels: false,
+        allowTextChannel: false,
+        blacklistUserIds: [],
       };
 
-      await this.client.db.j2CSettings.upsert({
+      await this.db.j2CSettings.upsert({
         where: { guildId: guild.id },
         update: settings,
         create: { guildId: guild.id, ...settings },
       });
 
+      this.logger.info(`J2C system setup for guild ${guild.name}`);
       return { success: true, channel: j2cChannel };
     } catch (error) {
-      this.client.logger.error("Failed to setup J2C:", error);
+      this.logger.error("Failed to setup J2C:", error);
       return { success: false, error: "Could not create channel or save settings. Please check permissions." };
     }
   }
 
-  public async updateSettings(guildId: string, data: J2CSettingsUpdate): Promise<{ success: boolean; error?: string }> {
-      try {
-          await this.client.db.j2CSettings.update({ where: { guildId }, data });
-          this.client.wsManager.emitRealtimeEvent(guildId, 'j2c:settings:updated', data);
-          return { success: true };
-      } catch (error) {
-          this.client.logger.error(`Failed to update J2C settings for guild ${guildId}:`, error);
-          return { success: false, error: "Database update failed." };
+  /**
+   * Disable Join to Create system
+   */
+  public async disableJoin2Create(guildId: string): Promise<{ success: boolean; error?: string; cleanedChannels?: number }> {
+    try {
+      const settings = await this.getSettings(guildId);
+      if (!settings) {
+        return { success: false, error: 'J2C not configured for this guild' };
       }
+
+      // Clean up temporary channels
+      const cleanedChannels = await this.cleanupChannels(guildId);
+
+      // Delete join channel if it exists
+      const guild = this.client.guilds.cache.get(guildId);
+      if (guild && settings.joinChannelId) {
+        const joinChannel = guild.channels.cache.get(settings.joinChannelId);
+        if (joinChannel) {
+          await joinChannel.delete('J2C system disabled');
+        }
+      }
+
+      // Disable in database
+      await this.db.j2CSettings.update({
+        where: { guildId },
+        data: { isEnabled: false }
+      });
+
+      this.logger.info(`J2C system disabled for guild ${guildId}`);
+      return { success: true, cleanedChannels: cleanedChannels.cleanedChannels };
+    } catch (error) {
+      this.logger.error('Error disabling J2C:', error);
+      return { success: false, error: 'Internal error occurred' };
+    }
   }
 
+  /**
+   * Update J2C settings
+   */
+  public async updateSettings(guildId: string, data: J2CSettingsUpdate): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.db.j2CSettings.update({ 
+        where: { guildId }, 
+        data: {
+          ...data,
+          updatedAt: new Date()
+        }
+      });
+      
+      this.client.wsManager.emitRealtimeEvent(guildId, 'j2c:settings:updated', data);
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Failed to update J2C settings for guild ${guildId}:`, error);
+      return { success: false, error: "Database update failed." };
+    }
+  }
+
+  /**
+   * Handle voice state updates
+   */
   public async handleVoiceStateUpdate(oldState: VoiceState, newState: VoiceState): Promise<void> {
     const { guild } = newState;
+    if (!guild) return;
+
     const settings = await this.getSettings(guild.id);
     if (!settings?.isEnabled || !settings.joinChannelId) return;
 
     // User joins the "Join to Create" channel
-    if (newState.channelId === settings.joinChannelId) {
-      if (!newState.member) return;
-      this.createTempChannel(newState.member, settings);
+    if (newState.channelId === settings.joinChannelId && newState.member) {
+      await this.createTempChannel(newState.member, settings);
     }
 
     // User leaves a temporary channel
-    if (oldState.channelId && oldState.channelId !== settings.joinChannelId && oldState.channel.parent?.id === settings.categoryId) {
-        if (oldState.channel.members.size === 0) {
-            // This is a temp channel, check if it should be deleted
-            const isTempChannel = await this.client.db.j2CSettings.findFirst({ where: { categoryId: oldState.channel.parent.id }});
-            if (isTempChannel) {
-                this.deleteEmptyTempChannel(oldState.channel as VoiceChannel, settings);
-            }
-        }
+    if (oldState.channelId && 
+        oldState.channelId !== settings.joinChannelId && 
+        oldState.channel?.parent?.id === settings.categoryId &&
+        oldState.channel.members.size === 0) {
+      await this.deleteEmptyTempChannel(oldState.channel as VoiceChannel, settings);
     }
   }
-  
+
+  /**
+   * Create temporary voice channel
+   */
   private async createTempChannel(member: GuildMember, settings: J2CSettings): Promise<void> {
-    const channelName = settings.channelNameTemplate.replace('{user}', member.displayName);
     try {
+      // Check if user is blacklisted
+      if (settings.blacklistUserIds.includes(member.id)) {
+        return;
+      }
+
+      const channelName = settings.channelNameTemplate.replace('{user}', member.displayName);
+      
       const tempChannel = await member.guild.channels.create({
         name: channelName,
         type: ChannelType.GuildVoice,
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
         parent: settings.categoryId,
         userLimit: settings.defaultUserLimit,
         bitrate: settings.defaultBitrate,
         permissionOverwrites: [
           {
             id: member.id,
-            allow: [PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.MoveMembers],
+            allow: [
+              PermissionsBitField.Flags.ManageChannels, 
+              PermissionsBitField.Flags.MoveMembers,
+              PermissionsBitField.Flags.Connect,
+              PermissionsBitField.Flags.Speak
+            ],
           },
-<<<<<<< HEAD
-          {
-            id: member.guild.id,
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.Connect],
-          }
         ],
       });
 
-      await this.client.db.j2CChannel.create({
-        data: {
-          id: tempChannel.id,
-          guildId: member.guild.id,
-          ownerId: member.id,
-          parentId: settings.categoryId
-        }
-      });
+      // Create text channel if enabled
+      let textChannel: TextChannel | undefined;
+      if (settings.allowTextChannel) {
+        textChannel = await member.guild.channels.create({
+          name: `${channelName}-chat`,
+          type: ChannelType.GuildText,
+          parent: settings.categoryId,
+          permissionOverwrites: [
+            {
+              id: member.guild.roles.everyone,
+              deny: [PermissionsBitField.Flags.ViewChannel]
+            },
+            {
+              id: member.id,
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.ReadMessageHistory
+              ]
+            }
+          ]
+        });
+      }
 
-      await member.voice.setChannel(tempChannel).catch(error => {
-        this.client.logger.error(`Failed to move member to temp channel:`, error);
-      });
-
-      this.client.wsManager.emitRealtimeEvent(member.guild.id, 'j2c:channel:created', {
-        channelId: tempChannel.id,
-        ownerId: member.id,
-        name: channelName
-      });
-=======
-        ],
-      });
       await member.voice.setChannel(tempChannel);
-      this.client.wsManager.emitRealtimeEvent(member.guild.id, 'j2c:channel:created', { userId: member.id, channelId: tempChannel.id });
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
+      
+      this.client.wsManager.emitRealtimeEvent(
+        member.guild.id, 
+        'j2c:channel:created', 
+        { 
+          userId: member.id, 
+          channelId: tempChannel.id,
+          textChannelId: textChannel?.id 
+        }
+      );
+
+      this.logger.debug(`Created temp channel for ${member.user.tag}: ${tempChannel.name}`);
     } catch (error) {
-      this.client.logger.error(`Failed to create temp channel for ${member.user.tag}:`, error);
+      this.logger.error(`Failed to create temp channel for ${member.user.tag}:`, error);
     }
   }
-<<<<<<< HEAD
 
+  /**
+   * Delete empty temporary channel
+   */
   private async deleteEmptyTempChannel(channel: VoiceChannel, settings: J2CSettings): Promise<void> {
     if (!settings.autoDeleteEmpty) return;
-
+    
     try {
-      const isTempChannel = await this.client.db.j2CChannel.findUnique({
-        where: { id: channel.id }
-      });
-
-      if (!isTempChannel) return;
-
-      await channel.delete('Empty temporary channel');
-      
-      await this.client.db.j2CChannel.delete({
-        where: { id: channel.id }
-      });
-
-      this.client.wsManager.emitRealtimeEvent(channel.guild.id, 'j2c:channel:deleted', {
-        channelId: channel.id,
-        reason: 'empty'
-      });
-
-      this.client.logger.debug(`Deleted empty temp channel ${channel.id}`);
-    } catch (error) {
-      this.client.logger.error(`Failed to delete temp channel ${channel.id}:`, error);
-    }
-=======
-  
-  private async deleteEmptyTempChannel(channel: VoiceChannel, settings: J2CSettings): Promise<void> {
-      if (!settings.autoDeleteEmpty) return;
-      
-      try {
-          await channel.delete('Temporary channel empty');
-          this.client.wsManager.emitRealtimeEvent(channel.guild.id, 'j2c:channel:deleted', { channelId: channel.id });
-      } catch (error) {
-          this.client.logger.error(`Failed to delete empty temp channel ${channel.id}:`, error);
+      // Find and delete associated text channel if it exists
+      if (settings.allowTextChannel) {
+        const textChannelName = `${channel.name}-chat`;
+        const textChannel = channel.guild.channels.cache.find(
+          c => c.name === textChannelName && c.parent?.id === settings.categoryId
+        );
+        if (textChannel) {
+          await textChannel.delete('Associated temp channel deleted');
+        }
       }
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
+
+      await channel.delete('Temporary channel empty');
+      
+      this.client.wsManager.emitRealtimeEvent(
+        channel.guild.id, 
+        'j2c:channel:deleted', 
+        { channelId: channel.id }
+      );
+
+      this.logger.debug(`Deleted empty temp channel: ${channel.name}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete empty temp channel ${channel.id}:`, error);
+    }
   }
 
-  private async getChannelCount(categoryId: string): Promise<number> {
-    return this.client.db.j2CChannel.count({
-      where: { parentId: categoryId }
-    });
-  }
-
-  // Add missing methods for blacklist functionality
-  public async getBlacklist(guildId: string): Promise<string[]> {
-    const settings = await this.getSettings(guildId);
-    return settings?.blacklistedUsers || [];
-  }
-
+  /**
+   * Add user to blacklist
+   */
   public async addToBlacklist(guildId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const settings = await this.getSettings(guildId);
-      if (!settings) return { success: false, error: "J2C not configured" };
+      if (!settings) {
+        return { success: false, error: 'J2C not configured for this guild' };
+      }
 
-      const blacklist = new Set(settings.blacklistedUsers || []);
-      blacklist.add(userId);
+      if (settings.blacklistUserIds.includes(userId)) {
+        return { success: false, error: 'User is already blacklisted' };
+      }
 
-      await this.updateSettings(guildId, { blacklistedUsers: Array.from(blacklist) });
+      const updatedBlacklist = [...settings.blacklistUserIds, userId];
+      
+      await this.db.j2CSettings.update({
+        where: { guildId },
+        data: { blacklistUserIds: updatedBlacklist }
+      });
+
       return { success: true };
     } catch (error) {
-      return { success: false, error: "Failed to update blacklist" };
+      this.logger.error('Error adding user to blacklist:', error);
+      return { success: false, error: 'Internal error occurred' };
     }
   }
 
+  /**
+   * Remove user from blacklist
+   */
   public async removeFromBlacklist(guildId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const settings = await this.getSettings(guildId);
-      if (!settings) return { success: false, error: "J2C not configured" };
+      if (!settings) {
+        return { success: false, error: 'J2C not configured for this guild' };
+      }
 
-      const blacklist = new Set(settings.blacklistedUsers || []);
-      blacklist.delete(userId);
+      if (!settings.blacklistUserIds.includes(userId)) {
+        return { success: false, error: 'User is not blacklisted' };
+      }
 
-      await this.updateSettings(guildId, { blacklistedUsers: Array.from(blacklist) });
+      const updatedBlacklist = settings.blacklistUserIds.filter(id => id !== userId);
+      
+      await this.db.j2CSettings.update({
+        where: { guildId },
+        data: { blacklistUserIds: updatedBlacklist }
+      });
+
       return { success: true };
     } catch (error) {
-      return { success: false, error: "Failed to update blacklist" };
+      this.logger.error('Error removing user from blacklist:', error);
+      return { success: false, error: 'Internal error occurred' };
     }
   }
 
-  // Add method to get active channels
-  public async getActiveChannels(guildId: string): Promise<string[]> {
-    const channels = await this.client.db.j2CChannel.findMany({
-      where: { guildId }
+  /**
+   * Get blacklisted users
+   */
+  public async getBlacklist(guildId: string): Promise<string[]> {
+    try {
+      const settings = await this.getSettings(guildId);
+      return settings?.blacklistUserIds || [];
+    } catch (error) {
+      this.logger.error('Error getting blacklist:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get active temporary channels
+   */
+  public async getActiveChannels(guildId: string): Promise<VoiceChannel[]> {
+    try {
+      const settings = await this.getSettings(guildId);
+      if (!settings?.categoryId) return [];
+
+      const guild = this.client.guilds.cache.get(guildId);
+      if (!guild) return [];
+
+      const category = guild.channels.cache.get(settings.categoryId) as CategoryChannel;
+      if (!category) return [];
+
+      return category.children.cache
+        .filter(channel => 
+          channel.type === ChannelType.GuildVoice && 
+          channel.id !== settings.joinChannelId
+        )
+        .map(channel => channel as VoiceChannel)
+        .toArray();
+    } catch (error) {
+      this.logger.error('Error getting active channels:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Cleanup temporary channels
+   */
+  public async cleanupChannels(guildId: string): Promise<{ success: boolean; error?: string; cleanedChannels?: number }> {
+    try {
+      const activeChannels = await this.getActiveChannels(guildId);
+      let cleanedCount = 0;
+
+      for (const channel of activeChannels) {
+        if (channel.members.size === 0) {
+          try {
+            await channel.delete('J2C cleanup');
+            cleanedCount++;
+          } catch (error) {
+            this.logger.warn(`Failed to delete channel ${channel.id}:`, error);
+          }
+        }
+      }
+
+      return { success: true, cleanedChannels: cleanedCount };
+    } catch (error) {
+      this.logger.error('Error cleaning up channels:', error);
+      return { success: false, error: 'Internal error occurred' };
+    }
+  }
+
+  /**
+   * Handle button interactions for J2C controls
+   */
+  public async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+    // This can be implemented for channel owner controls
+    // like rename, limit, lock, etc.
+    await interaction.reply({ 
+      content: 'J2C button interactions not yet implemented.', 
+      ephemeral: true 
     });
-    return channels.map(c => c.id);
   }
 }
