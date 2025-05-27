@@ -102,6 +102,11 @@ interface RecentActivity {
 export default function ModernGuildDashboard() {
   const router = useRouter();
   const { guildId } = router.query;
+  const isValidGuildId = (id: string | string[] | undefined): id is string => {
+    const allowedGuildIds = ['554266392262737930', '123456789012345678']; // Example whitelist
+    return typeof id === 'string' && allowedGuildIds.includes(id);
+  };
+  const validatedGuildId = isValidGuildId(guildId) ? guildId : null;
   const [guild, setGuild] = useState<Guild | null>(null);
   const [activity, setActivity] = useState<RecentActivity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,8 +120,8 @@ export default function ModernGuildDashboard() {
       setError(null);
       
       const [guildResponse, activityResponse] = await Promise.all([
-        fetch(`/api/dashboard/guild/${guildId}`),
-        fetch(`/api/dashboard/activity?guildId=${guildId}`)
+        validatedGuildId ? fetch(`/api/dashboard/guild/${validatedGuildId}`) : Promise.reject(new Error('Invalid guildId')),
+        validatedGuildId ? fetch(`/api/dashboard/activity?guildId=${validatedGuildId}`) : Promise.reject(new Error('Invalid guildId'))
       ]);
       
       if (!guildResponse.ok) {
