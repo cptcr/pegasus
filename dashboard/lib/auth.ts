@@ -1,12 +1,12 @@
-// dashboard/lib/auth.ts
+// dashboard/lib/auth.ts - Fixed Database Access
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession, User as NextAuthUser } from 'next-auth/next';
+import { getServerSession } from 'next-auth/next';
+import { User as NextAuthUser } from 'next-auth';
 import { authOptions } from '../pages/api/auth/[...nextauth]';
-import { DiscordProfile, GuildMemberWithRoles } from '@/types/index';
+import { DiscordProfile, GuildMemberWithRoles as ImportedGuildMemberWithRoles } from '@/types/index';
 
 // These should be environment variables
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID;
-// Removed unused REQUIRED_ROLE_ID
 
 // Define the shape of the user object within the session
 interface SessionUser extends NextAuthUser, Partial<DiscordProfile> {
@@ -23,13 +23,16 @@ interface SessionUser extends NextAuthUser, Partial<DiscordProfile> {
     features: string[];
   }>;
   hasRequiredAccess?: boolean;
-  member?: GuildMemberWithRoles | null;
+  member?: ImportedGuildMemberWithRoles | null;
 }
 
 export interface AuthenticatedRequest extends NextApiRequest {
   user?: SessionUser;
 }
 
+/**
+ * Middleware to require authentication for API routes
+ */
 export async function requireAuth(
   req: AuthenticatedRequest,
   res: NextApiResponse,
@@ -38,8 +41,8 @@ export async function requireAuth(
   if (!TARGET_GUILD_ID) {
     console.error("FATAL: TARGET_GUILD_ID environment variable is not set in requireAuth.");
     return res.status(500).json({
-        error: 'Configuration Error',
-        message: 'Server is not configured correctly. TARGET_GUILD_ID is missing.'
+      error: 'Configuration Error',
+      message: 'Server is not configured correctly. TARGET_GUILD_ID is missing.'
     });
   }
 
@@ -55,6 +58,7 @@ export async function requireAuth(
 
     const userSession = session.user as SessionUser;
 
+    // Check if user has required access
     if (userSession.hasRequiredAccess !== true) {
       return res.status(403).json({
         error: 'Forbidden',
@@ -62,7 +66,10 @@ export async function requireAuth(
       });
     }
 
+    // Attach user to request
     req.user = userSession;
+    
+    // Call the actual handler
     return await handler(req, res);
   } catch (error: unknown) {
     console.error('Auth middleware error:', error);
@@ -74,24 +81,75 @@ export async function requireAuth(
   }
 }
 
+/**
+ * Validate session without throwing errors
+ */
 export async function validateSession(req: NextApiRequest, res: NextApiResponse): Promise<SessionUser | null> {
-  const session = await getServerSession(req, res, authOptions);
+  try {
+    const session = await getServerSession(req, res, authOptions);
 
-  if (!session?.user) {
+    if (!session?.user) {
+      return null;
+    }
+
+    const userSession = session.user as SessionUser;
+
+    if (userSession.hasRequiredAccess !== true) {
+      return null;
+    }
+
+    return userSession;
+  } catch (error) {
+    console.error('Session validation error:', error);
     return null;
   }
-  const userSession = session.user as SessionUser;
-
-  if (userSession.hasRequiredAccess !== true) {
-    return null;
-  }
-
-  return userSession;
 }
 
-export interface GuildMemberWithRoles {
-  roles: string[];
-  nick?: string | null;
-  avatar?: string | null;
-  joined_at: string;
+/**
+ * Check if user has specific permissions
+ */
+export function hasPermission(user: SessionUser, permission: string): boolean {
+  // Add permission checking logic here based on your needs
+  // For now, just check if user has required access
+  return user.hasRequiredAccess === true;
+}
+
+/**
+ * Check if user has specific role
+ */
+export function hasRole(user: SessionUser, roleId: string): boolean {
+  return user.member?.roles.includes(roleId) || false;
+}
+
+/**
+ * Get user's highest role position (for hierarchy checks)
+ */
+export function getUserRolePosition(user: SessionUser): number {
+  // This would need to be implemented based on your role hierarchy
+  // For now, return a basic value
+  return user.hasRequiredAccess ? 100 : 0;
+}
+
+/**
+ * Middleware for admin-only routes
+ */
+export async function requireAdmin(
+  req: AuthenticatedRequest,
+  res: NextApiResponse,
+  handler: (req: AuthenticatedRequest, res: NextApiResponse) => Promise<void | NextApiResponse<unknown>>
+): Promise<void | NextApiResponse<unknown>> {
+  return requireAuth(req, res, async (authReq, authRes) => {
+    const user = authReq.user!;
+    
+    // Add admin check logic here
+    // For now, all authenticated users with hasRequiredAccess are considered admins
+    if (!hasPermission(user, 'admin')) {
+      return authRes.status(403).json({
+        error: 'Forbidden',
+        message: 'Admin access required.'
+      });
+    }
+
+    return handler(authReq, authRes);
+  });
 }

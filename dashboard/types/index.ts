@@ -1,4 +1,4 @@
-// dashboard/types/index.ts - Complete Types with All Required Exports
+// dashboard/types/index.ts - Complete Types with All Required Exports (Fixed Conflicts)
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
@@ -125,6 +125,14 @@ export interface ApiChannel {
   name: string;
   type: number;
   parentId?: string | null;
+}
+
+// Guild Member interface for auth contexts - NO CONFLICT
+export interface GuildMemberWithRoles {
+  roles: string[];
+  nick?: string | null;
+  avatar?: string | null;
+  joined_at: string;
 }
 
 // Extended Guild type with additional properties - EXPORTED
@@ -324,13 +332,6 @@ export interface LevelDataResponse {
 }
 
 // Additional interfaces
-export interface GuildMemberWithRoles {
-  roles: string[];
-  nick?: string | null;
-  avatar?: string | null;
-  joined_at: string;
-}
-
 export interface ApiResponse<T> {
   data: T;
   success: boolean;

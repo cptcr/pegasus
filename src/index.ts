@@ -1,4 +1,4 @@
-// src/index.ts - Fixed Main Bot Entry Point with Prisma Fix
+// src/index.ts - Fixed Main Bot Entry Point with Proper Startup Flow
 import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
 import { createServer, Server as HTTPServer } from 'http';
 import { Command } from './types/index.js';
@@ -14,7 +14,18 @@ import { WebSocketManager } from './api/WebSocketManager.js';
 import { Logger } from './utils/Logger.js';
 import { Config, validateConfig } from './config/Config.js';
 import { prisma, disconnectPrisma } from './database/PrismaClient.js';
-import 'dotenv/config';
+// Load environment variables FIRST before anything else
+import { config } from 'dotenv';
+config();
+
+console.log('🔧 Dotenv loaded, checking key variables:');
+console.log(`   DISCORD_CLIENT_ID: ${process.env.DISCORD_CLIENT_ID ? '✓' : '❌'}`);
+console.log(`   DISCORD_BOT_TOKEN: ${process.env.DISCORD_BOT_TOKEN ? '✓' : '❌'}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓' : '❌'}`);
+console.log(`   TARGET_GUILD_ID: ${process.env.TARGET_GUILD_ID || 'NOT SET'}`);
+console.log('');
+
+// Now import everything else
 
 export class ExtendedClient extends Client {
   public readonly commands: Collection<string, Command> = new Collection();
@@ -36,6 +47,8 @@ export class ExtendedClient extends Client {
   public readonly httpServer: HTTPServer;
   public readonly wsManager: WebSocketManager;
 
+  private systemIntervals: Map<string, NodeJS.Timeout> = new Map();
+
   constructor() {
     super({
       intents: [
@@ -52,11 +65,12 @@ export class ExtendedClient extends Client {
 
     this.logger = Logger;
     
+    // Initialize handlers
     this.commandHandler = new CommandHandler(this);
     this.eventHandler = new EventHandler(this);
     this.buttonHandler = new ButtonHandler(this);
 
-    // Initialize modules with proper dependencies
+    // Initialize modules
     this.giveawayManager = new GiveawayManager(this, this.db, this.logger);
     this.pollManager = new PollManager(this, this.db, this.logger);
     this.ticketManager = new TicketManager(this, this.db, this.logger);
@@ -89,43 +103,64 @@ export class ExtendedClient extends Client {
   }
 
   public async start(): Promise<void> {
+    console.log('🚀 Starting Pegasus Bot...');
     this.logger.info('🚀 Starting Pegasus Bot...');
     
     try {
-      // Validate configuration
+      // Step 1: Validate configuration
+      console.log('⚙️ Validating configuration...');
       const configValidation = validateConfig();
       if (!configValidation.valid) {
+        console.error('❌ Configuration validation failed:');
         this.logger.error('❌ Configuration validation failed:');
-        configValidation.errors.forEach(error => this.logger.error(`   - ${error}`));
+        configValidation.errors.forEach(error => {
+          console.error(`   - ${error}`);
+          this.logger.error(`   - ${error}`);
+        });
         process.exit(1);
       }
+      console.log('✅ Configuration validated');
 
-      // Connect to database with error handling
+      // Step 2: Connect to database
+      console.log('🔌 Connecting to database...');
       try {
         await this.db.$connect();
+        console.log('✅ Database connected successfully');
         this.logger.info('✅ Database connected successfully.');
         
         // Test database connection
         await this.db.$queryRaw`SELECT 1`;
+        console.log('✅ Database connection tested');
         this.logger.info('✅ Database connection tested successfully.');
       } catch (dbError) {
+        console.error('❌ Database connection failed:', dbError);
         this.logger.error('❌ Database connection failed:', dbError);
         throw dbError;
       }
 
-      // Load commands and events
+      // Step 3: Load commands and events
+      console.log('📋 Loading commands...');
       await this.commandHandler.loadCommands();
-      await this.eventHandler.loadEvents();
+      console.log(`✅ Loaded ${this.commands.size} commands`);
 
-      // Start HTTP server for WebSocket
+      console.log('📅 Loading events...');
+      await this.eventHandler.loadEvents();
+      console.log('✅ Events loaded');
+
+      // Step 4: Start HTTP server for WebSocket
+      console.log('🌐 Starting WebSocket server...');
       this.httpServer.listen(Config.API.WEBSOCKET_PORT, () => {
+        console.log(`✅ Bot WebSocket Server listening on port ${Config.API.WEBSOCKET_PORT}`);
         this.logger.info(`🌐 Bot WebSocket Server listening on port ${Config.API.WEBSOCKET_PORT}`);
       });
 
-      // Login to Discord
+      // Step 5: Login to Discord
+      console.log('🔐 Logging in to Discord...');
       await this.login(Config.BOT_TOKEN);
+      console.log('✅ Logged in to Discord successfully');
       
     } catch (error) {
+      console.error('❌ Failed to start bot:', error);
       this.logger.error('❌ Failed to start bot:', error);
       await this.shutdown();
       process.exit(1);
@@ -133,12 +168,16 @@ export class ExtendedClient extends Client {
   }
 
   public async init(): Promise<void> {
+    console.log('🔧 Initializing bot systems...');
     this.logger.info('🔧 Initializing bot systems...');
     
     try {
-      // Ensure target guild exists in database
+      // Get target guild
       const targetGuild = this.guilds.cache.get(Config.TARGET_GUILD_ID);
       if (targetGuild) {
+        console.log(`📍 Found target guild: ${targetGuild.name}`);
+        
+        // Ensure guild exists in database
         await this.db.guild.upsert({
           where: { id: targetGuild.id },
           update: { 
@@ -151,7 +190,8 @@ export class ExtendedClient extends Client {
           }
         });
 
-        // Initialize all managers
+        // Initialize managers
+        console.log('🛠️ Initializing managers...');
         await Promise.all([
           this.giveawayManager.initializeGuild(targetGuild),
           this.pollManager.initializeGuild(targetGuild),
@@ -159,54 +199,74 @@ export class ExtendedClient extends Client {
           this.ticketManager.initializeGuild(targetGuild)
         ]);
 
+        console.log(`✅ Initialized all systems for guild: ${targetGuild.name}`);
         this.logger.info(`✅ Initialized all systems for guild: ${targetGuild.name}`);
 
-        // Start periodic stats updates
-        this.startStatsUpdates(targetGuild.id);
+        // Start optimized stats updates (every 5 minutes instead of constant)
+        this.startOptimizedIntervals(targetGuild.id);
+
       } else {
+        console.warn(`⚠️ Target guild ${Config.TARGET_GUILD_ID} not found`);
         this.logger.warn(`⚠️ Target guild ${Config.TARGET_GUILD_ID} not found`);
       }
+
+      console.log('🎉 Bot initialization completed!');
+      this.logger.info('🎉 Pegasus Bot is fully initialized and ready!');
+      
     } catch (error) {
+      console.error('❌ Error during initialization:', error);
       this.logger.error('❌ Error during initialization:', error);
     }
   }
 
-  private startStatsUpdates(guildId: string): void {
-    const updateStats = async () => {
-      try {
+  private startOptimizedIntervals(guildId: string): void {
+    // Stats update every 5 minutes (only if dashboard clients connected)
+    const statsInterval = setInterval(async () => {
+      const roomInfo = this.wsManager.getGuildRoomInfo(guildId);
+      if (roomInfo.clientCount > 0) {
         const guild = this.guilds.cache.get(guildId);
-        if (!guild) return;
-
-        // Fetch fresh member data
-        await guild.members.fetch();
-        
-        const memberCount = guild.memberCount;
-        const onlineCount = guild.presences.cache.filter(p => p.status !== 'offline').size;
-
-        const stats = {
-          memberCount,
-          onlineCount
-        };
-
-        // Emit to dashboard
-        this.wsManager.emitGuildStatsUpdate(guildId, stats);
-        
-        this.logger.debug(`📊 Updated guild stats: ${memberCount} members, ${onlineCount} online`);
-      } catch (error) {
-        this.logger.error('❌ Failed to update guild stats:', error);
+        if (guild) {
+          const memberCount = guild.memberCount;
+          const onlineCount = guild.presences.cache.filter(p => p.status !== 'offline').size;
+          this.wsManager.emitGuildStatsUpdate(guildId, { memberCount, onlineCount });
+          this.logger.debug(`📊 Updated stats: ${memberCount} members, ${onlineCount} online`);
+        }
       }
-    };
-    
-    // Update immediately, then every 5 minutes
-    updateStats();
-    setInterval(updateStats, 5 * 60 * 1000);
+    }, 300000); // 5 minutes
+
+    this.systemIntervals.set('stats', statsInterval);
+
+    // System health check every 10 minutes
+    const healthInterval = setInterval(async () => {
+      try {
+        await this.db.$queryRaw`SELECT 1`;
+        const memUsage = process.memoryUsage();
+        this.logger.debug(`💚 System healthy - Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+      } catch (error) {
+        this.logger.error('💔 Health check failed:', error);
+      }
+    }, 600000); // 10 minutes
+
+    this.systemIntervals.set('health', healthInterval);
+
+    console.log('✅ Started optimized intervals');
+    this.logger.info('✅ Started optimized system intervals');
   }
 
   public async shutdown(): Promise<void> {
+    console.log('🛑 Shutting down Pegasus Bot...');
     this.logger.info('🛑 Shutting down Pegasus Bot...');
     
     try {
+      // Clear intervals
+      for (const [name, interval] of this.systemIntervals) {
+        clearInterval(interval);
+        console.log(`⏹️ Stopped ${name} interval`);
+      }
+      this.systemIntervals.clear();
+
       // Cleanup managers
+      console.log('🧹 Cleaning up managers...');
       await Promise.all([
         this.giveawayManager.cleanup(),
         this.pollManager.cleanup(),
@@ -215,9 +275,11 @@ export class ExtendedClient extends Client {
       ]);
       
       // Close WebSocket server
+      console.log('🔌 Closing WebSocket server...');
       this.wsManager.close();
       
       // Close HTTP server
+      console.log('🌐 Closing HTTP server...');
       await new Promise<void>((resolve, reject) => {
         this.httpServer.close((err) => {
           if (err) reject(err);
@@ -226,13 +288,17 @@ export class ExtendedClient extends Client {
       });
       
       // Disconnect from database
+      console.log('💾 Disconnecting from database...');
       await disconnectPrisma();
       
       // Destroy Discord client
+      console.log('👋 Destroying Discord client...');
       this.destroy();
       
+      console.log('✅ Bot shutdown complete');
       this.logger.info('✅ Bot shutdown complete.');
     } catch (error) {
+      console.error('❌ Error during shutdown:', error);
       this.logger.error('❌ Error during shutdown:', error);
     }
   }
@@ -241,9 +307,9 @@ export class ExtendedClient extends Client {
 // Create bot instance
 const client = new ExtendedClient();
 
-// Graceful shutdown handlers
+// Enhanced error handling
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Received SIGINT. Graceful shutdown...');
+  console.log('\n🛑 Received SIGINT (Ctrl+C). Graceful shutdown...');
   await client.shutdown();
   process.exit(0);
 });
@@ -256,24 +322,21 @@ process.on('SIGTERM', async () => {
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  // Log but don't exit in production
-  if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
-  }
+  Logger.error('❌ Unhandled Rejection:', { reason, promise });
 });
 
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
-  // Exit on uncaught exceptions
+  Logger.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
 
-// Start the bot if this file is run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  client.start().catch(error => {
-    console.error('❌ Failed to start bot:', error);
-    process.exit(1);
-  });
-}
+// Start the bot
+console.log('🎯 Starting Pegasus Bot...');
+client.start().catch(error => {
+  console.error('❌ Failed to start bot:', error);
+  Logger.error('❌ Failed to start bot:', error);
+  process.exit(1);
+});
 
 export default client;

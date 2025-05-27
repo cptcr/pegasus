@@ -1,5 +1,16 @@
-// src/config/Config.ts - Pegasus Bot Configuration
+// src/config/Config.ts - Fixed with Proper Environment Loading
+import { config } from 'dotenv';
 import { ColorResolvable } from 'discord.js';
+
+// Ensure dotenv is loaded before anything else
+config();
+
+// Debug logging to see what's actually loaded
+console.log('🔍 Environment Debug:');
+console.log(`   DISCORD_CLIENT_ID: ${process.env.DISCORD_CLIENT_ID ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   DISCORD_BOT_TOKEN: ${process.env.DISCORD_BOT_TOKEN ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   TARGET_GUILD_ID: ${process.env.TARGET_GUILD_ID ? '✓ SET' : '❌ NOT SET'}`);
 
 export const Config = {
   // Bot Configuration
@@ -15,7 +26,7 @@ export const Config = {
   
   // Bot Settings
   PREFIX: process.env.PREFIX || '!',
-  OWNER_ID: process.env.OWNER_ID || '797927858420187186',
+  OWNER_ID: process.env.OWNER_ID || process.env.ADMIN_USER_ID || '931870926797160538',
   
   // Colors for embeds
   COLORS: {
@@ -182,9 +193,15 @@ export const Config = {
   } as const
 } as const;
 
-// Validation function
+// Validation function with better debugging
 export function validateConfig(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
+  
+  console.log('🔍 Config Validation Debug:');
+  console.log(`   Config.CLIENT_ID: "${Config.CLIENT_ID}"`);
+  console.log(`   Config.BOT_TOKEN: "${Config.BOT_TOKEN ? Config.BOT_TOKEN.substring(0, 10) + '...' : 'EMPTY'}"`);
+  console.log(`   Config.DATABASE_URL: "${Config.DATABASE_URL ? Config.DATABASE_URL.substring(0, 20) + '...' : 'EMPTY'}"`);
+  console.log(`   Config.TARGET_GUILD_ID: "${Config.TARGET_GUILD_ID}"`);
   
   if (!Config.CLIENT_ID) {
     errors.push('DISCORD_CLIENT_ID is required');
