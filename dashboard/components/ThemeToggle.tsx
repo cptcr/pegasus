@@ -9,7 +9,7 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ className = '', size = 'md' }: ThemeToggleProps) {
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Prevent hydration mismatch

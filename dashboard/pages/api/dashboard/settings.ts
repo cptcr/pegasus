@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 // Mock data for guild settings
-const mockGuildSettings: Record<string, any> = {
+const mockGuildSettings: Record<string, Record<string, unknown>> = {
   '111222333': {
     id: '111222333',
     name: 'Test Server 1',
@@ -61,7 +61,7 @@ const getMockGuildSettings = (guildId: string) => {
   };
 };
 
-const updateMockGuildSettings = (guildId: string, data: any) => {
+const updateMockGuildSettings = (guildId: string, data: Record<string, unknown>) => {
   const currentSettings = getMockGuildSettings(guildId);
   mockGuildSettings[guildId] = { ...currentSettings, ...data };
   return mockGuildSettings[guildId];
@@ -71,7 +71,7 @@ const updateMockGuildSettings = (guildId: string, data: any) => {
 const ALLOWED_USER_ID = '797927858420187186';
 const TARGET_GUILD_ID = '554266392262737930';
 
-async function checkAccess(req: NextApiRequest): Promise<boolean> {
+async function checkAccess(): Promise<boolean> {
   // Hier würde normalerweise die Session/Token-Validierung stattfinden
   // Für Demo-Zwecke nehmen wir an, dass der User autorisiert ist
   return true;
@@ -79,7 +79,7 @@ async function checkAccess(req: NextApiRequest): Promise<boolean> {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Zugriffsschutz
-  const hasAccess = await checkAccess(req);
+  const hasAccess = await checkAccess();
   if (!hasAccess) {
     return res.status(403).json({ error: 'Zugriff verweigert' });
   }
@@ -135,7 +135,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-function validateSettingsData(data: any): any {
+function validateSettingsData(data: Record<string, unknown>): Record<string, unknown> {
   const allowedFields = [
     'prefix',
     'modLogChannelId',
@@ -155,7 +155,7 @@ function validateSettingsData(data: any): any {
     'leaveMessage'
   ];
 
-  const validatedData: any = {};
+  const validatedData: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(data)) {
     if (allowedFields.includes(key)) {

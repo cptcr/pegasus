@@ -1,55 +1,22 @@
-PS C:\Users\toowa\OneDrive\Desktop\Hinko> npx eslint . --ext .ts,.tsx
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\components\EventNotifications.tsx
-   80:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   83:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   86:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   89:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   92:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   95:9  error  Unexpected lexical declaration in case block  no-case-declarations
-   98:9  error  Unexpected lexical declaration in case block  no-case-declarations
-  101:9  error  Unexpected lexical declaration in case block  no-case-declarations
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\components\ThemeToggle.tsx
-  12:11  error  'theme' is assigned a value but never used  @typescript-eslint/no-unused-vars
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\lib\database.ts
-  29:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\lib\discordService.ts
-  2:68  error  'GuildChannel' is defined but never used        @typescript-eslint/no-unused-vars
-  3:31  error  'GuildWithFullStats' is defined but never used  @typescript-eslint/no-unused-vars
 
 C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\lib\websocket.ts
-    7:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
-  254:17  error  'typedData' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  7:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
 
 C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\pages\api\dashboard\guild\[id].ts
-  4:28  error  'prisma' is defined but never used  @typescript-eslint/no-unused-vars
+  4:28  error  '_' is defined but never used  @typescript-eslint/no-unused-vars
 
 C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\pages\api\dashboard\settings.ts
-    4:41  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
-   64:57  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
-   71:7   error  'ALLOWED_USER_ID' is assigned a value but never used  @typescript-eslint/no-unused-vars
-   72:7   error  'TARGET_GUILD_ID' is assigned a value but never used  @typescript-eslint/no-unused-vars
-   74:28  error  'req' is defined but never used                       @typescript-eslint/no-unused-vars
-  138:37  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
-  138:43  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
-  158:24  error  Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  71:7  error  'ALLOWED_USER_ID' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  72:7  error  'TARGET_GUILD_ID' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\pages\dashboard\[guildId]\settings.tsx
+  59:9   error  'router' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  63:12  error  'setPageError' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
 C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\pages\settings.tsx
   12:3   error  'ShieldCheckIcon' is defined but never used        @typescript-eslint/no-unused-vars
   61:9   error  'router' is assigned a value but never used        @typescript-eslint/no-unused-vars
   65:21  error  'setPageError' is assigned a value but never used  @typescript-eslint/no-unused-vars
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\dashboard\types\index.ts
-   5:3    error  'Collection' is defined but never used            @typescript-eslint/no-unused-vars
-  10:302  error  'PrismaTicketCategory' is defined but never used  @typescript-eslint/no-unused-vars
-  10:481  error  'PrismaCustomCommand' is defined but never used   @typescript-eslint/no-unused-vars
-
-C:\Users\toowa\OneDrive\Desktop\Hinko\src\commands\general\help.ts
-  59:73  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  59:91  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\toowa\OneDrive\Desktop\Hinko\src\commands\general\ping.ts
   19:11  error  'startTime' is assigned a value but never used  @typescript-eslint/no-unused-vars
@@ -85,4 +52,4 @@ C:\Users\toowa\OneDrive\Desktop\Hinko\src\modules\tickets\TicketManager.ts
 C:\Users\toowa\OneDrive\Desktop\Hinko\types\index.ts
   7:0  error  Parsing error: Merge conflict marker encountered
 
-✖ 47 problems (47 errors, 0 warnings)
+✖ 25 problems (25 errors, 0 warnings)

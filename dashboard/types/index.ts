@@ -2,12 +2,11 @@
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
-  Collection,
   ClientEvents,
   ColorResolvable as DiscordColorResolvable,
 } from 'discord.js';
 import { ExtendedClient } from '@/index';
-import { J2CSettings as PrismaJ2CSettings, Prisma, Guild as PrismaGuild, User as PrismaUser, Warn as PrismaWarn, Poll as PrismaPoll, PollOption as PrismaPollOption, PollVote as PrismaPollVote, Giveaway as PrismaGiveaway, GiveawayEntry as PrismaGiveawayEntry, Ticket as PrismaTicket, TicketCategory as PrismaTicketCategory, LevelReward as PrismaLevelReward, AutoModRule as PrismaAutoModRule, UserLevel as PrismaUserLevel, QuarantineEntry as PrismaQuarantineEntry, CustomCommand as PrismaCustomCommand } from '@prisma/client';
+import { J2CSettings as PrismaJ2CSettings, Prisma, Guild as PrismaGuild, User as PrismaUser, Warn as PrismaWarn, Poll as PrismaPoll, PollOption as PrismaPollOption, PollVote as PrismaPollVote, Giveaway as PrismaGiveaway, GiveawayEntry as PrismaGiveawayEntry, Ticket as PrismaTicket, LevelReward as PrismaLevelReward, AutoModRule as PrismaAutoModRule, UserLevel as PrismaUserLevel, QuarantineEntry as PrismaQuarantineEntry } from '@prisma/client';
 
 // Bot & Event Structures
 export interface Command {

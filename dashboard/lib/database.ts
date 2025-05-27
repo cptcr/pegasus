@@ -26,7 +26,6 @@ export interface FullGuildData extends Guild {
 }
 
 class DatabaseService extends EventEmitter {
-  prisma: any;
   constructor() {
     super();
   }

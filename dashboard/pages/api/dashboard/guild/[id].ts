@@ -1,7 +1,7 @@
 // dashboard/pages/api/dashboard/guild/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
-import { PrismaInstance as prisma, default as databaseEvents } from '../../../../lib/database';
+import { PrismaInstance as _, default as databaseEvents } from '../../../../lib/database';
 import { discordService, DiscordGuildInfo } from '../../../../lib/discordService';
 import { GuildWithFullStats, GuildSettings } from '@/types/index';
 

@@ -76,30 +76,38 @@ export function RealtimeNotifications({ guildId }: { guildId: string }) {
   function getEventDescription(event: RealtimeEvent<unknown>): string {
     // Type guards or casting for event.data based on event.type
     switch (event.type) {
-      case 'warn:created':
+      case 'warn:created': {
         const warnData = event.data as WarnCreateData;
         return `Warning issued to ${warnData.username || `user ID ${warnData.userId}`}`;
-      case 'poll:created':
+      }
+      case 'poll:created': {
         const pollData = event.data as PollCreateData;
         return `New poll: ${pollData.title || 'Untitled'}`;
-      case 'giveaway:created':
+      }
+      case 'giveaway:created': {
         const giveawayData = event.data as GiveawayCreateData;
         return `New giveaway: ${giveawayData.prize || 'Prize'}`;
-      case 'ticket:created':
+      }
+      case 'ticket:created': {
         const ticketData = event.data as TicketCreateData;
         return `New ticket: #${ticketData.id} - ${ticketData.subject || 'Support Request'}`;
-      case 'member:joined':
+      }
+      case 'member:joined': {
         const memberJoinedData = event.data as MemberJoinLeaveData;
         return `${memberJoinedData.username || `User ID ${memberJoinedData.userId}`} joined the server`;
-       case 'member:left':
+      }
+      case 'member:left': {
         const memberLeftData = event.data as MemberJoinLeaveData;
         return `${memberLeftData.username || `User ID ${memberLeftData.userId}`} left the server`;
-      case 'level:updated':
+      }
+      case 'level:updated': {
         const levelData = event.data as LevelUpdateData;
         return `${levelData.username || `User ID ${levelData.userId}`} reached level ${levelData.level || '?'}`;
-      case 'guild:stats:updated':
+      }
+      case 'guild:stats:updated': {
         const guildStats = event.data as GuildStatsUpdateData;
         return `Member count: ${guildStats.memberCount}, Online: ${guildStats.onlineCount}`;
+      }
       default:
         // Try to serialize generic data, or provide a default message
         try {

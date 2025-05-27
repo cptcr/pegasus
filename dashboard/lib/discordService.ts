@@ -1,6 +1,6 @@
 // dashboard/lib/discordService.ts
-import { Client, GatewayIntentBits, Guild as DiscordJSEntityGuild, GuildChannel, Role as DiscordJSRole, GuildMember, NonThreadGuildBasedChannel, OAuth2Guild } from 'discord.js';
-import { ApiChannel, ApiRole, GuildWithFullStats } from '@/types/index';
+import { Client, GatewayIntentBits, Guild as DiscordJSEntityGuild, Role as DiscordJSRole, GuildMember, NonThreadGuildBasedChannel, OAuth2Guild } from 'discord.js';
+import { ApiChannel, ApiRole } from '@/types/index';
 
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || '554266392262737930';
 

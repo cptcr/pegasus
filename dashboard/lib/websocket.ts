@@ -251,7 +251,6 @@ export function useRealtimeData<T extends object>(
     const unsubscribes = eventTypesToUpdateOn.map(eventType =>
       subscribe(eventType, (event: RealtimeEvent<unknown>) => {
         if (event.guildId === guildId && event.data) {
-          const typedData = event.data as Partial<T>;
           setData(prev => ({
             ...prev,
             ...(event.data as object)
