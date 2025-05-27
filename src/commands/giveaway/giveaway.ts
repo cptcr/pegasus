@@ -1,23 +1,10 @@
-// src/commands/giveaway/giveaway.ts
+// src/commands/giveaway/giveaway.ts - Fixed Giveaway Command
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits } from 'discord.js';
-import { ExtendedClient } from '@/index';
-import { Config } from '@/config/Config';
+import { ExtendedClient } from '../../index.js';
+import { Config } from '../../config/Config.js';
+import { Command } from '../../types/index.js';
 
-interface GiveawayOptions {
-  title: string;
-  description?: string;
-  prize: string;
-  duration: number;
-  winners: number;
-  creatorId: string;
-  channelId: string;
-  requirements?: {
-    roleRequired?: string;
-    levelRequired?: number;
-  };
-}
-
-export default {
+const command: Command = {
   data: new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Create and manage giveaways')
@@ -126,7 +113,7 @@ export default {
           });
       }
     } catch (error) {
-      client.logger.error('Error in giveaway command:', error);
+      client.logger.error('❌ Error in giveaway command:', error);
       
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
@@ -161,23 +148,24 @@ async function handleCreateGiveaway(interaction: ChatInputCommandInteraction, cl
     });
   }
 
-  const options: GiveawayOptions = {
-    title,
-    description: description || undefined,
-    prize,
-    duration: duration * 60000, // Convert minutes to milliseconds
-    winners,
-    creatorId: interaction.user.id,
-    channelId: interaction.channelId,
-    requirements: {
-      roleRequired: requiredRole?.id,
-      levelRequired: requiredLevel || undefined,
-    }
-  };
-
   await interaction.deferReply();
 
-  const result = await client.giveawayManager.createGiveaway(interaction.guild!, options);
+  const result = await client.giveawayManager.createGiveaway(
+    interaction.guild!, 
+    {
+      title,
+      description: description || undefined,
+      prize,
+      duration: duration * 60000, // Convert minutes to milliseconds
+      winners,
+      creatorId: interaction.user.id,
+      channelId: interaction.channelId,
+      requirements: {
+        roleRequired: requiredRole?.id,
+        levelRequired: requiredLevel || undefined,
+      }
+    }
+  );
 
   if (result.success) {
     await interaction.editReply({
@@ -199,7 +187,7 @@ async function handleEndGiveaway(interaction: ChatInputCommandInteraction, clien
 
   if (result.success) {
     const winnerText = result.winners && result.winners.length > 0
-      ? `🎉 Winners: ${result.winners.map((w: { tag: any; }) => w.tag).join(', ')}`
+      ? `🎉 Winners: ${result.winners.map((w: any) => w.tag).join(', ')}`
       : '😔 No valid entries found.';
 
     await interaction.editReply({
@@ -221,7 +209,7 @@ async function handleRerollGiveaway(interaction: ChatInputCommandInteraction, cl
 
   if (result.success) {
     const winnerText = result.winners && result.winners.length > 0
-      ? `🎉 New Winners: ${result.winners.map((w: { tag: any; }) => w.tag).join(', ')}`
+      ? `🎉 New Winners: ${result.winners.map((w: any) => w.tag).join(', ')}`
       : '😔 No valid entries found for reroll.';
 
     await interaction.editReply({
@@ -257,3 +245,5 @@ async function handleListGiveaways(interaction: ChatInputCommandInteraction, cli
     content: `📋 **Active Giveaways (${activeGiveaways.length})**\n\n${giveawayList}`
   });
 }
+
+export default command;

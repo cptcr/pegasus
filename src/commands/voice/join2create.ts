@@ -1,17 +1,9 @@
-// src/commands/voice/join2create.ts
+// src/commands/voice/join2create.ts - Fixed Join2Create Command
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, ChannelType } from 'discord.js';
-import { ExtendedClient } from '@/index';
+import { ExtendedClient } from '../../index.js';
+import { Command } from '../../types/index.js';
 
-interface SetupData {
-  categoryId: string;
-  channelName: string;
-}
-
-interface DisableResult {
-  success: boolean;
-}
-
-export default {
+const command: Command = {
   data: new SlashCommandBuilder()
     .setName('join2create')
     .setDescription('Manage Join to Create voice channels')
@@ -85,15 +77,10 @@ export default {
 
           await interaction.deferReply();
 
-          const setupData: SetupData = {
-            categoryId: category.id,
-            channelName: channelName
-          };
-
           const result = await client.j2cManager.setup(
             interaction.guild,
-            setupData.categoryId,
-            setupData.channelName,
+            category.id,
+            channelName,
             userLimit,
             bitrate * 1000 // Convert to bps
           );
@@ -117,7 +104,7 @@ export default {
         case 'disable': {
           await interaction.deferReply();
 
-          const disableResult: DisableResult = await client.j2cManager.updateSettings(interaction.guild.id, { 
+          const disableResult = await client.j2cManager.updateSettings(interaction.guild.id, { 
             isEnabled: false 
           });
 
@@ -172,7 +159,7 @@ export default {
           });
       }
     } catch (error) {
-      client.logger.error('Error in join2create command:', error);
+      client.logger.error('❌ Error in join2create command:', error);
       
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
@@ -187,3 +174,5 @@ export default {
     }
   },
 };
+
+export default command;

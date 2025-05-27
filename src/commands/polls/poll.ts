@@ -1,10 +1,10 @@
 // src/commands/polls/poll.ts - Fixed Poll Commands
-import { ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder as PollEmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { PollManager } from '../../modules/polls/PollManager.js';
+import { ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { ExtendedClient } from '../../index.js';
 import { Config } from '../../config/Config.js';
+import { Command } from '../../types/index.js';
 
-export default {
+const command: Command = {
   data: new SlashCommandBuilder()
     .setName('poll')
     .setDescription('Poll system commands')
@@ -80,11 +80,10 @@ export default {
             .setRequired(true)
         )
     ),
+  category: 'polls',
+  cooldown: 30,
 
-  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const client = interaction.client as ExtendedClient;
-    const pollManager = new PollManager(client, client.db, client.logger);
-    
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
       await interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
       return;
@@ -94,16 +93,16 @@ export default {
 
     switch (subcommand) {
       case 'create':
-        await handlePollCreate(interaction, pollManager);
+        await handlePollCreate(interaction, client);
         break;
       case 'end':
-        await handlePollEnd(interaction, pollManager);
+        await handlePollEnd(interaction, client);
         break;
       case 'list':
-        await handlePollList(interaction, pollManager);
+        await handlePollList(interaction, client);
         break;
       case 'participants':
-        await handlePollParticipants(interaction, pollManager);
+        await handlePollParticipants(interaction, client);
         break;
       default:
         await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
@@ -112,7 +111,7 @@ export default {
   }
 };
 
-async function handlePollCreate(interaction: ChatInputCommandInteraction, pollManager: PollManager): Promise<void> {
+async function handlePollCreate(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const title = interaction.options.getString('title', true);
@@ -148,7 +147,7 @@ async function handlePollCreate(interaction: ChatInputCommandInteraction, pollMa
 
   const channelId = targetChannel?.id || interaction.channelId;
 
-  const result = await pollManager.createPoll(interaction.guild!, {
+  const result = await client.pollManager.createPoll(interaction.guild!, {
     title,
     description: description || undefined,
     options,
@@ -164,7 +163,7 @@ async function handlePollCreate(interaction: ChatInputCommandInteraction, pollMa
     return;
   }
 
-  const embed = new PollEmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} Poll Created`)
     .setDescription(`Successfully created poll: **${title}**`)
     .addFields(
@@ -186,12 +185,12 @@ async function handlePollCreate(interaction: ChatInputCommandInteraction, pollMa
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handlePollEnd(interaction: ChatInputCommandInteraction, pollManager: PollManager): Promise<void> {
+async function handlePollEnd(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const pollId = interaction.options.getInteger('poll_id', true);
 
-  const poll = await pollManager.getPoll(pollId);
+  const poll = await client.pollManager.getPoll(pollId);
   if (!poll) {
     await interaction.editReply('Poll not found.');
     return;
@@ -214,14 +213,14 @@ async function handlePollEnd(interaction: ChatInputCommandInteraction, pollManag
     return;
   }
 
-  const result = await pollManager.endPoll(pollId, interaction.user.id);
+  const result = await client.pollManager.endPoll(pollId, interaction.user.id);
 
   if (!result.success) {
     await interaction.editReply(`Failed to end poll: ${result.error}`);
     return;
   }
 
-  const embed = new PollEmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.SUCCESS} Poll Ended`)
     .setDescription(`Successfully ended poll: **${poll.title}**`)
     .addFields(
@@ -234,17 +233,17 @@ async function handlePollEnd(interaction: ChatInputCommandInteraction, pollManag
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handlePollList(interaction: ChatInputCommandInteraction, pollManager: PollManager): Promise<void> {
+async function handlePollList(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
-  const activePolls = await pollManager.getActivePolls(interaction.guild!.id);
+  const activePolls = await client.pollManager.getActivePolls(interaction.guild!.id);
 
   if (activePolls.length === 0) {
     await interaction.editReply('No active polls in this guild.');
     return;
   }
 
-  const embed = new PollEmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.POLL} Active Polls`)
     .setDescription(`${activePolls.length} active poll(s)`)
     .setColor(Config.COLORS.INFO)
@@ -269,12 +268,12 @@ async function handlePollList(interaction: ChatInputCommandInteraction, pollMana
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handlePollParticipants(interaction: ChatInputCommandInteraction, pollManager: PollManager): Promise<void> {
+async function handlePollParticipants(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const pollId = interaction.options.getInteger('poll_id', true);
 
-  const poll = await pollManager.getPoll(pollId);
+  const poll = await client.pollManager.getPoll(pollId);
   if (!poll) {
     await interaction.editReply('Poll not found.');
     return;
@@ -291,14 +290,14 @@ async function handlePollParticipants(interaction: ChatInputCommandInteraction, 
     return;
   }
 
-  const participants = await pollManager.getPollParticipants(pollId);
+  const participants = await client.pollManager.getPollParticipants(pollId);
 
   if (participants.length === 0) {
     await interaction.editReply('No participants in this poll yet.');
     return;
   }
 
-  const embed = new PollEmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`${Config.EMOJIS.POLL} Poll Participants`)
     .setDescription(`**${poll.title}**\n\n${participants.length} participant(s)`)
     .setColor(Config.COLORS.INFO)
@@ -331,3 +330,5 @@ function parsePollDuration(duration: string): number | undefined {
     default: return undefined;
   }
 }
+
+export default command;

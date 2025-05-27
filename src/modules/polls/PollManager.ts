@@ -1,4 +1,4 @@
-// src/modules/polls/PollManager.ts - Final Fixed Poll System
+// src/modules/polls/PollManager.ts - Fixed Poll System
 import {
   Guild,
   TextChannel,
@@ -109,7 +109,7 @@ export class PollManager {
           guildId: guild.id,
           channelId: options.channelId,
           title: options.title,
-          description: options.description,
+          description: options.description || null,
           creatorId: options.creatorId,
           multiple: options.allowMultiple || false,
           anonymous: options.anonymous || false,
@@ -146,8 +146,14 @@ export class PollManager {
         this.setExpirationTimer(poll.id, endTime);
       }
 
-      // Log the action
-      await this.logPollAction(guild.id, 'POLL_CREATED', poll as PollData);
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(guild.id, 'poll:created', {
+        id: poll.id,
+        title: poll.title,
+        options: poll.options.length,
+        endTime: endTime?.toISOString(),
+        creatorId: poll.creatorId
+      });
 
       this.logger.info(`Poll created in ${guild.name} by ${options.creatorId}: ${options.title}`);
 
@@ -192,8 +198,12 @@ export class PollManager {
       // Update poll message
       await this.updatePollMessage(poll as PollData);
 
-      // Log the action
-      await this.logPollAction(poll.guildId, 'POLL_ENDED', poll as PollData, moderatorId);
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(poll.guildId, 'poll:ended', {
+        id: pollId,
+        title: poll.title,
+        totalVotes: poll.votes.length
+      });
 
       this.logger.info(`Poll ${pollId} ended in guild ${poll.guildId}`);
 
@@ -206,29 +216,57 @@ export class PollManager {
   }
 
   /**
-   * Handle poll vote
+   * Handle button interactions for poll voting
    */
-  async handleVote(interaction: ButtonInteraction): Promise<void> {
+  async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
     try {
       if (!interaction.guild) return;
 
-      const customId = interaction.customId;
-      const [, pollIdStr, optionIdStr] = customId.split('_');
+      // Parse custom ID: format is "poll:vote:pollId:optionId"
+      const [prefix, action, pollIdStr, optionIdStr] = interaction.customId.split(':');
+      
+      if (prefix !== 'poll' || action !== 'vote') {
+        return;
+      }
+
       const pollId = parseInt(pollIdStr);
       const optionId = parseInt(optionIdStr);
+
+      if (isNaN(pollId) || isNaN(optionId)) {
+        await interaction.reply({ content: 'Invalid poll or option ID.', ephemeral: true });
+        return;
+      }
+
+      await this.handleVote(interaction, pollId, optionId);
+
+    } catch (error) {
+      this.logger.error('Error handling poll button interaction:', error);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: 'An error occurred while processing your vote.', 
+          ephemeral: true 
+        });
+      }
+    }
+  }
+
+  /**
+   * Handle poll vote
+   */
+  async handleVote(interaction: ButtonInteraction, pollId: number, optionId: number): Promise<void> {
+    try {
+      if (!interaction.guild) return;
 
       const poll = await this.db.poll.findUnique({
         where: { id: pollId },
         include: { options: true, votes: true }
       });
 
-      // ERROR 1 FIXED: Proper null check and early return
       if (!poll || !poll.active) {
         await interaction.reply({ content: 'This poll is no longer active.', ephemeral: true });
         return;
       }
 
-      // ERROR 2 FIXED: Check poll exists before accessing endTime
       if (poll.endTime && poll.endTime < new Date()) {
         await this.endPoll(pollId);
         await interaction.reply({ content: 'This poll has expired.', ephemeral: true });
@@ -236,13 +274,11 @@ export class PollManager {
       }
 
       const option = poll.options.find(opt => opt.id === optionId);
-      // ERROR 3 FIXED: Remove duplicate option check
       if (!option) {
         await interaction.reply({ content: 'Invalid poll option.', ephemeral: true });
         return;
       }
 
-      // ERROR 4 FIXED: Remove optional chaining since we know poll exists
       const existingVotes = poll.votes.filter(vote => vote.userId === interaction.user.id);
 
       if (!poll.multiple && existingVotes.length > 0) {
@@ -254,7 +290,6 @@ export class PollManager {
           }
         });
       } else if (poll.multiple) {
-        // ERROR 5 FIXED: Remove optional chaining since existingVotes is guaranteed to exist
         const existingVoteForOption = existingVotes.find(vote => vote.optionId === optionId);
         if (existingVoteForOption) {
           // Remove vote for this option
@@ -274,6 +309,14 @@ export class PollManager {
           });
           if (updatedPoll) {
             await this.updatePollMessage(updatedPoll as PollData);
+
+            // Emit to dashboard
+            this.client.wsManager.emitRealtimeEvent(interaction.guild.id, 'poll:voted', {
+              id: pollId,
+              userId: interaction.user.id,
+              optionId,
+              action: 'removed'
+            });
           }
           return;
         }
@@ -301,6 +344,14 @@ export class PollManager {
       
       if (updatedPoll) {
         await this.updatePollMessage(updatedPoll as PollData);
+
+        // Emit to dashboard
+        this.client.wsManager.emitRealtimeEvent(interaction.guild.id, 'poll:voted', {
+          id: pollId,
+          userId: interaction.user.id,
+          optionId,
+          action: 'added'
+        });
       }
 
     } catch (error) {
@@ -474,8 +525,9 @@ export class PollManager {
     const sortedOptions = poll.options.sort((a, b) => a.orderIndex - b.orderIndex);
 
     for (const option of sortedOptions) {
+      // Updated custom ID format to match button handler
       const button = new ButtonBuilder()
-        .setCustomId(`poll_${poll.id}_${option.id}`)
+        .setCustomId(`poll:vote:${poll.id}:${option.id}`)
         .setLabel(option.text)
         .setStyle(ButtonStyle.Primary);
 
@@ -578,62 +630,6 @@ export class PollManager {
         this.logger.error('Error checking expired polls:', error);
       }
     }, 60000); // Check every minute
-  }
-
-  /**
-   * Log poll action
-   */
-  private async logPollAction(
-    guildId: string,
-    action: 'POLL_CREATED' | 'POLL_ENDED',
-    poll: PollData,
-    moderatorId?: string
-  ): Promise<void> {
-    try {
-      const guildSettings = await this.db.guild.findUnique({
-        where: { id: guildId }
-      });
-
-      if (!guildSettings?.modLogChannelId) {
-        return;
-      }
-
-      const guild = this.client.guilds.cache.get(guildId);
-      if (!guild) return;
-
-      const logChannel = guild.channels.cache.get(guildSettings.modLogChannelId) as TextChannel;
-      if (!logChannel) return;
-
-      const creator = await this.client.users.fetch(poll.creatorId).catch(() => null);
-      const moderator = moderatorId ? await this.client.users.fetch(moderatorId).catch(() => null) : null;
-
-      const embed = new EmbedBuilder()
-        .setTitle(`${Config.EMOJIS.POLL} Poll ${action === 'POLL_CREATED' ? 'Created' : 'Ended'}`)
-        .addFields(
-          { name: 'Poll', value: poll.title, inline: true },
-          { name: 'Creator', value: creator ? `${creator.tag} (${creator.id})` : poll.creatorId, inline: true },
-          { name: 'Channel', value: `<#${poll.channelId}>`, inline: true }
-        )
-        .setColor(action === 'POLL_CREATED' ? Config.COLORS.SUCCESS : Config.COLORS.INFO)
-        .setTimestamp();
-
-      if (moderator && action === 'POLL_ENDED') {
-        embed.addFields({ name: 'Ended by', value: `${moderator.tag} (${moderator.id})`, inline: true });
-      }
-
-      if (poll.endTime) {
-        embed.addFields({ 
-          name: action === 'POLL_CREATED' ? 'Ends' : 'Was scheduled to end', 
-          value: `<t:${Math.floor(poll.endTime.getTime() / 1000)}:F>`, 
-          inline: true 
-        });
-      }
-
-      await logChannel.send({ embeds: [embed] });
-
-    } catch (error) {
-      this.logger.error('Error logging poll action:', error);
-    }
   }
 
   /**

@@ -1,328 +1,326 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-<<<<<<< HEAD
-
+// prisma/schema.prisma - Fixed Schema to match dashboard
 generator client {
   provider = "prisma-client-js"
 }
-=======
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< HEAD
-model Guild {
-  id                    String           @id
-  name                  String
-  prefix                String           @default("!")
-  settings             Json?            @default("{}")
-  enableLeveling       Boolean          @default(false)
-  enableModeration     Boolean          @default(false)
-  enableGeizhals       Boolean          @default(false)
-  enablePolls          Boolean          @default(false)
-  enableGiveaways      Boolean          @default(false)
-  enableAutomod        Boolean          @default(false)
-  enableTickets        Boolean          @default(false)
-  enableMusic          Boolean          @default(false)
-  enableJoinToCreate   Boolean          @default(false)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+model User {
+  id          String @id
+  username    String
+  discriminator String?
+  avatar      String?
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastLogin   DateTime?
 
   // Relations
-  warns                 Warn[]
-  tickets              Ticket[]
-  polls                Poll[]
-  giveaways           Giveaway[]
-  levelRewards         LevelReward[]
-  userLevels          UserLevel[]
-  customCommands      CustomCommand[]
-  geizhalsProducts    GeizhalsProduct[]
-  j2cSettings         J2CSettings?
-  j2cChannels         J2CChannel[]
-  ticketCategories    TicketCategory[]
-  quarantineEntries   QuarantineEntry[]
-  modLogs             ModLog[]
+  userLevels     UserLevel[]
+  warnings       Warn[]
+  moderatedWarns Warn[] @relation("ModeratorWarns")
+  polls          Poll[]
+  giveaways      Giveaway[]
+  tickets        Ticket[]
+  customCommands CustomCommand[]
+  quarantineEntries Quarantine[]
+  moderatedQuarantine Quarantine[] @relation("ModeratorQuarantine")
+
+  @@map("users")
 }
 
-model User {
-  id        String     @id
-  username  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  warns     Warn[]
-  tickets   Ticket[]
-  levels    UserLevel[]
+model Guild {
+  id                     String  @id
+  name                   String
+  prefix                 String  @default("!")
+  settings               Json?   @default("{}")
+  
+  // Feature Toggles
+  enableLeveling         Boolean @default(true)
+  enableModeration       Boolean @default(true)
+  enableGeizhals         Boolean @default(false)
+  enablePolls            Boolean @default(true)
+  enableGiveaways        Boolean @default(true)
+  enableAutomod          Boolean @default(false)
+  enableTickets          Boolean @default(false)
+  enableMusic            Boolean @default(false)
+  enableJoinToCreate     Boolean @default(false)
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  userLevels       UserLevel[]
+  warnings         Warn[]
+  levelRewards     LevelReward[]
+  polls            Poll[]
+  giveaways        Giveaway[]
+  tickets          Ticket[]
+  logs             Log[]
+  customCommands   CustomCommand[]
+  quarantines      Quarantine[]
+  autoModRules     AutoModRule[]
+  j2cSettings      J2CSettings?
+
+  @@map("guilds")
+}
+
+model UserLevel {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  guildId   String
+  xp        Int      @default(0)
+  level     Int      @default(0)
+  messages  Int      @default(0)
+  voiceTime Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guildId])
+  @@map("user_levels")
+}
+
+model LevelReward {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  level       Int
+  roleId      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, level])
+  @@map("level_rewards")
 }
 
 model Warn {
   id          Int      @id @default(autoincrement())
-  guildId     String
-  userId      String
-=======
-generator client {
-  provider = "prisma-client-js"
-}
-
-model Guild {
-  id           String    @id
-  name         String
-  settings     Json      @default("{}")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  j2cSettings  J2CSettings?
-  users        User[]
-  warnings     Warning[]
-  polls        Poll[]
-  giveaways    Giveaway[]
-  tickets      Ticket[]
-  logs         Log[]
-  levelRewards LevelReward[]
-  autoModRules AutoModRule[]
-  quarantines  Quarantine[]
-}
-
-model User {
-  id         String      @id // Discord User ID
-  guildId    String
-  guild      Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  username   String
-  avatar     String?
-  warnings   Warning[]
-  userLevels UserLevel[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-
-  @@unique([id, guildId])
-}
-
-model UserLevel {
-  id        String   @id @default(cuid())
-  userId    String
-  guildId   String
-  user      User     @relation(fields: [userId, guildId], references: [id, guildId], onDelete: Cascade)
-  level     Int      @default(0)
-  xp        Int      @default(0)
-  updatedAt DateTime @updatedAt
-}
-
-model Warning {
-  id          String   @id @default(cuid())
   userId      String
   guildId     String
-  user        User     @relation(fields: [userId, guildId], references: [id, guildId], onDelete: Cascade)
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
   moderatorId String
   reason      String
-  createdAt   DateTime @default(now())
-  guild       Guild    @relation(fields: [guildId], references: [id])
-<<<<<<< HEAD
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([guildId])
-  @@index([userId])
-}
-
-model ModLog {
-  id          Int      @id @default(autoincrement())
-  guildId     String
-  type        String
-  targetId    String
-  moderatorId String
-  reason      String?
-  duration    Int?     // Duration in milliseconds
-  createdAt   DateTime @default(now())
-  guild       Guild    @relation(fields: [guildId], references: [id])
-
-  @@index([guildId])
-}
-
-model GeizhalsProduct {
-  id           Int      @id @default(autoincrement())
-  guildId      String
-  url          String
-  name         String
-  currentPrice Float
-  lastPrice    Float
-  lowestPrice  Float
-  highestPrice Float
-  channelId    String
-  threshold    Float    @default(0)
-  lastChecked  DateTime @default(now())
-  enabled      Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  guild        Guild    @relation(fields: [guildId], references: [id])
-
-  @@index([guildId])
-}
-
-model J2CChannel {
-  id          String   @id
-  guildId     String
-  ownerId     String
-  parentId    String
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  guild       Guild    @relation(fields: [guildId], references: [id])
 
-  @@index([guildId])
-}
+  // Relations
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  moderator User  @relation("ModeratorWarns", fields: [moderatorId], references: [id], onDelete: Cascade)
 
-model J2CSettings {
-  id                  Int       @id @default(autoincrement())
-  guildId             String    @unique
-  categoryId          String?
-  channelNameTemplate String?   @default("{user}'s Channel")
-  defaultUserLimit    Int       @default(0)
-  defaultBitrate     Int       @default(64000)
-  allowTextChannel   Boolean   @default(false)
-  autoDeleteEmpty    Boolean   @default(true)
-  lockEmptyChannels  Boolean   @default(false)
-  blacklistedUsers   String[]  @default([])
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  guild              Guild     @relation(fields: [guildId], references: [id])
-}
-
-// Add any other missing models...
-=======
-}
-
-model Poll {
-  id          String      @id @default(cuid())
-  guildId     String
-  guild       Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  creatorId   String
-  question    String
-  options     PollOption[]
-  votes       PollVote[]
-  messageId   String
-  channelId   String
-  endsAt      DateTime
-  isAnonymous Boolean     @default(false)
-  isMultiVote Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-}
-
-model PollOption {
-  id       String     @id @default(cuid())
-  pollId   String
-  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  text     String
-  votes    PollVote[]
-}
-
-model PollVote {
-  id         String     @id @default(cuid())
-  pollId     String
-  poll       Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  optionId   String
-  option     PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  userId     String
-}
-
-model Giveaway {
-  id           String           @id @default(cuid())
-  guildId      String
-  guild        Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  title        String
-  description  String?
-  prize        String
-  winnersCount Int
-  duration     Int // in milliseconds
-  creatorId    String
-  channelId    String
-  messageId    String?
-  startTime    DateTime
-  endTime      DateTime
-  active       Boolean          @default(true)
-  ended        Boolean          @default(false)
-  requirements Json?
-  entries      GiveawayEntry[]
-  winners      GiveawayWinner[]
-}
-
-model GiveawayEntry {
-  id          String   @id @default(cuid())
-  giveawayId  String
-  giveaway    Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
-  userId      String
-  enteredAt   DateTime @default(now())
-
-  @@unique([giveawayId, userId])
-}
-
-model GiveawayWinner {
-  id          String   @id @default(cuid())
-  giveawayId  String
-  giveaway    Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
-  userId      String
-  claimed     Boolean  @default(false)
-  wonAt       DateTime @default(now())
-}
-
-model Ticket {
-  id          String    @id @default(cuid())
-  guildId     String
-  guild       Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  creatorId   String
-  channelId   String    @unique
-  status      String // open, closed, claimed
-  claimedById String?
-  priority    String? // low, medium, high
-  topic       String
-  createdAt   DateTime  @default(now())
-  closedAt    DateTime?
-}
-
-model Log {
-  id        String   @id @default(cuid())
-  guildId   String
-  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  type      String // message, member, mod, etc.
-  content   String
-  userId    String?
-  createdAt DateTime @default(now())
-}
-
-model LevelReward {
-  id      String @id @default(cuid())
-  guildId String
-  guild   Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  level   Int
-  roleId  String
-
-  @@unique([guildId, level])
-}
-
-model AutoModRule {
-  id        String   @id @default(cuid())
-  guildId   String
-  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  type      String // e.g., banned_word, spam, mass_mention
-  config    Json
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
+  @@map("warns")
 }
 
 model Quarantine {
-  id            String   @id @default(cuid())
+  id            Int      @id @default(autoincrement())
   guildId       String
-  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
   userId        String
+  moderatorId   String
+  reason        String
   active        Boolean  @default(true)
   quarantinedAt DateTime @default(now())
-  reason        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderator User  @relation("ModeratorQuarantine", fields: [moderatorId], references: [id], onDelete: Cascade)
+
+  @@map("quarantines")
 }
 
-// Dedicated model for Join to Create Settings
+model AutoModRule {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  name           String
+  type           String
+  enabled        Boolean  @default(true)
+  trigger        Json
+  action         Json
+  exemptRoles    String[]
+  exemptChannels String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("automod_rules")
+}
+
+model Poll {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  channelId   String
+  messageId   String?
+  title       String
+  description String?
+  creatorId   String
+  multiple    Boolean  @default(false)
+  anonymous   Boolean  @default(false)
+  active      Boolean  @default(true)
+  endTime     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  guild   Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id         Int    @id @default(autoincrement())
+  pollId     Int
+  text       String
+  emoji      String?
+  orderIndex Int    @default(0)
+
+  // Relations
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id       Int    @id @default(autoincrement())
+  pollId   Int
+  optionId Int
+  userId   String
+
+  // Relations
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, optionId, userId])
+  @@map("poll_votes")
+}
+
+model Giveaway {
+  id              Int      @id @default(autoincrement())
+  guildId         String
+  channelId       String
+  messageId       String?
+  title           String
+  description     String?
+  prize           String
+  winners         Int      @default(1)
+  creatorId       String
+  endTime         DateTime
+  active          Boolean  @default(true)
+  ended           Boolean  @default(false)
+  winnerUserIds   String[]
+  requiredRole    String?
+  requiredLevel   Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  guild   Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User              @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  entries GiveawayEntry[]
+
+  @@map("giveaways")
+}
+
+model GiveawayEntry {
+  id         Int @id @default(autoincrement())
+  giveawayId Int
+  userId     String
+
+  // Relations
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, userId])
+  @@map("giveaway_entries")
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id          Int       @id @default(autoincrement())
+  guildId     String
+  channelId   String
+  userId      String
+  moderatorId String?
+  category    String
+  subject     String
+  status      TicketStatus @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  closedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  type      String   // message, member, mod, etc.
+  content   String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("logs")
+}
+
+model CustomCommand {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  name        String
+  response    String
+  description String?
+  enabled     Boolean  @default(true)
+  creatorId   String
+  uses        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@map("custom_commands")
+}
+
 model J2CSettings {
-  id                  String   @id @default(cuid())
+  id                  Int      @id @default(autoincrement())
   guildId             String   @unique
-  guild               Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
   isEnabled           Boolean  @default(false)
   categoryId          String?
   joinChannelId       String?
@@ -335,5 +333,9 @@ model J2CSettings {
   blacklistUserIds    String[] @default([])
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("j2c_settings")
 }
->>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0

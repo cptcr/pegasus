@@ -1,7 +1,8 @@
-// src/commands/general/ping.ts
+// src/commands/general/ping.ts - Fixed Ping Command
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { ExtendedClient } from '@/index';
-import { Config } from '@/config/Config';
+import { ExtendedClient } from '../../index.js';
+import { Config } from '../../config/Config.js';
+import { Command } from '../../types/index.js';
 
 interface PingData {
   latency: number;
@@ -9,7 +10,7 @@ interface PingData {
   uptime: number;
 }
 
-export default {
+const command: Command = {
   data: new SlashCommandBuilder()
     .setName('ping')
     .setDescription('Check the bot\'s latency and status'),
@@ -85,3 +86,5 @@ function formatUptime(seconds: number): string {
 
   return parts.join(' ');
 }
+
+export default command;

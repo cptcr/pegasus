@@ -1,6 +1,7 @@
+// src/commands/general/help.ts - Fixed Help Command
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType } from 'discord.js';
-import { Command } from '@/types/index';
-import { ExtendedClient } from '@/index';
+import { Command } from '../../types/index.js';
+import { ExtendedClient } from '../../index.js';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -158,8 +159,10 @@ function getCategoryEmoji(category: string): string {
     'utility': '🔧',
     'music': '🎵',
     'giveaway': '🎁',
-    'poll': '📊',
-    'ticket': '🎫'
+    'polls': '📊',
+    'tickets': '🎫',
+    'quarantine': '🔒',
+    'voice': '🔊'
   };
   return emojis[category] || '📁';
 }

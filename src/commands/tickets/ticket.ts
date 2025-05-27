@@ -1,11 +1,11 @@
-// src/commands/tickets/ticket.ts - Final Fixed Ticket Commands
+// src/commands/tickets/ticket.ts - Fixed Ticket Commands
 import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, EmbedBuilder, ChannelType } from 'discord.js';
 import { ExtendedClient } from '../../index.js';
-import { TicketManager } from '../../modules/tickets/TicketManager.js';
 import { Config } from '../../config/Config.js';
 import { TicketPriority } from '@prisma/client';
+import { Command } from '../../types/index.js';
 
-export default {
+const command: Command = {
   data: new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Ticket system commands')
@@ -110,11 +110,10 @@ export default {
             .setDescription('Show all tickets (staff only)')
         )
     ),
+  category: 'tickets',
+  cooldown: 5,
 
-  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const client = interaction.client as ExtendedClient;
-    const ticketManager = new TicketManager(client, client.db, client.logger);
-    
+  async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
     if (!interaction.guild) {
       await interaction.reply({ content: 'This command can only be used in a guild.', ephemeral: true });
       return;
@@ -124,22 +123,22 @@ export default {
 
     switch (subcommand) {
       case 'open':
-        await handleTicketOpen(interaction, ticketManager);
+        await handleTicketOpen(interaction, client);
         break;
       case 'close':
-        await handleTicketClose(interaction, ticketManager);
+        await handleTicketClose(interaction, client);
         break;
       case 'add':
-        await handleTicketAdd(interaction, ticketManager);
+        await handleTicketAdd(interaction, client);
         break;
       case 'remove':
-        await handleTicketRemove(interaction, ticketManager);
+        await handleTicketRemove(interaction, client);
         break;
       case 'priority':
-        await handleTicketPriority(interaction, ticketManager);
+        await handleTicketPriority(interaction, client);
         break;
       case 'list':
-        await handleTicketList(interaction, ticketManager);
+        await handleTicketList(interaction, client);
         break;
       default:
         await interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });
@@ -148,22 +147,21 @@ export default {
   }
 };
 
-async function handleTicketOpen(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketOpen(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply({ ephemeral: true });
 
   const category = interaction.options.getString('category', true);
   const subject = interaction.options.getString('subject', true);
-  const description = interaction.options.getString('description'); // This returns string | null
+  const description = interaction.options.getString('description');
   const priorityStr = interaction.options.getString('priority') || 'MEDIUM';
 
   const priority = priorityStr as TicketPriority;
 
-  // ERROR 8 FIXED: Convert null to undefined for TicketOptions interface
-  const result = await ticketManager.createTicket(interaction.guild!, {
+  const result = await client.ticketManager.createTicket(interaction.guild!, {
     userId: interaction.user.id,
     category,
     subject,
-    description: description || undefined, // Convert null to undefined
+    description: description || undefined,
     priority
   });
 
@@ -187,8 +185,7 @@ async function handleTicketOpen(interaction: ChatInputCommandInteraction, ticket
   await interaction.editReply({ embeds: [embed] });
 }
 
-// ERROR 1 FIXED: Added return type and explicit return
-async function handleTicketClose(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketClose(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
@@ -212,7 +209,7 @@ async function handleTicketClose(interaction: ChatInputCommandInteraction, ticke
     return;
   }
 
-  const ticket = await ticketManager.getTicket(ticketId);
+  const ticket = await client.ticketManager.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply('Ticket not found.');
     return;
@@ -226,7 +223,7 @@ async function handleTicketClose(interaction: ChatInputCommandInteraction, ticke
     return;
   }
 
-  const result = await ticketManager.closeTicket(ticketId, interaction.user.id, reason);
+  const result = await client.ticketManager.closeTicket(ticketId, interaction.user.id, reason);
 
   if (!result.success) {
     await interaction.editReply(`Failed to close ticket: ${result.error}`);
@@ -243,8 +240,7 @@ async function handleTicketClose(interaction: ChatInputCommandInteraction, ticke
   await interaction.editReply({ embeds: [embed] });
 }
 
-// ERROR 2 FIXED: Added return type and explicit return
-async function handleTicketAdd(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketAdd(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -268,7 +264,7 @@ async function handleTicketAdd(interaction: ChatInputCommandInteraction, ticketM
     return;
   }
 
-  const result = await ticketManager.addUserToTicket(ticketId, user.id, interaction.user.id);
+  const result = await client.ticketManager.addUserToTicket(ticketId, user.id, interaction.user.id);
 
   if (!result.success) {
     await interaction.editReply(`Failed to add user: ${result.error}`);
@@ -278,8 +274,7 @@ async function handleTicketAdd(interaction: ChatInputCommandInteraction, ticketM
   await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.displayName} has been added to this ticket.`);
 }
 
-// ERROR 3 FIXED: Added return type and explicit return
-async function handleTicketRemove(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketRemove(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -303,7 +298,7 @@ async function handleTicketRemove(interaction: ChatInputCommandInteraction, tick
     return;
   }
 
-  const result = await ticketManager.removeUserFromTicket(ticketId, user.id, interaction.user.id);
+  const result = await client.ticketManager.removeUserFromTicket(ticketId, user.id, interaction.user.id);
 
   if (!result.success) {
     await interaction.editReply(`Failed to remove user: ${result.error}`);
@@ -313,8 +308,7 @@ async function handleTicketRemove(interaction: ChatInputCommandInteraction, tick
   await interaction.editReply(`${Config.EMOJIS.SUCCESS} ${user.displayName} has been removed from this ticket.`);
 }
 
-// ERROR 4 FIXED: Added return type and explicit return
-async function handleTicketPriority(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketPriority(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const priorityStr = interaction.options.getString('priority', true);
@@ -339,7 +333,7 @@ async function handleTicketPriority(interaction: ChatInputCommandInteraction, ti
     return;
   }
 
-  const result = await ticketManager.setTicketPriority(ticketId, priority, interaction.user.id);
+  const result = await client.ticketManager.setTicketPriority(ticketId, priority, interaction.user.id);
 
   if (!result.success) {
     await interaction.editReply(`Failed to set priority: ${result.error}`);
@@ -349,8 +343,7 @@ async function handleTicketPriority(interaction: ChatInputCommandInteraction, ti
   await interaction.editReply(`${Config.EMOJIS.SUCCESS} Ticket priority set to **${priority}**.`);
 }
 
-// ERROR 5 FIXED: Added return type and explicit return
-async function handleTicketList(interaction: ChatInputCommandInteraction, ticketManager: TicketManager): Promise<void> {
+async function handleTicketList(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<void> {
   await interaction.deferReply();
 
   const showAll = interaction.options.getBoolean('all') || false;
@@ -362,9 +355,9 @@ async function handleTicketList(interaction: ChatInputCommandInteraction, ticket
 
   let tickets;
   if (showAll) {
-    tickets = await ticketManager.getOpenTickets(interaction.guild!.id);
+    tickets = await client.ticketManager.getOpenTickets(interaction.guild!.id);
   } else {
-    tickets = await ticketManager.getUserTickets(interaction.guild!.id, interaction.user.id);
+    tickets = await client.ticketManager.getUserTickets(interaction.guild!.id, interaction.user.id);
   }
 
   if (tickets.length === 0) {
@@ -395,3 +388,5 @@ async function handleTicketList(interaction: ChatInputCommandInteraction, ticket
 
   await interaction.editReply({ embeds: [embed] });
 }
+
+export default command;

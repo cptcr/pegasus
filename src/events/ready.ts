@@ -1,43 +1,45 @@
-// src/events/ready.ts
+// src/events/ready.ts - Fixed Ready Event
 import { ActivityType } from 'discord.js';
 import { ExtendedClient } from '../index.js';
 import { Config } from '../config/Config.js';
+import { BotEvent } from '../types/index.js';
 
-export default {
+const event: BotEvent<'ready'> = {
   name: 'ready',
   once: true,
   async execute(client: ExtendedClient) {
-    console.log(`✅ Logged in as ${client.user?.tag}`);
-    client.user?.setActivity('over the server', { type: ActivityType.Watching });
+    if (!client.user) {
+      client.logger.error('❌ Bot user is null in ready event');
+      return;
+    }
 
-    // Initialize all managers on ready
+    console.log(`✅ Logged in as ${client.user.tag}`);
+    client.logger.info(`🤖 Bot ready! Logged in as ${client.user.tag}`);
+    
+    // Set bot activity
+    client.user.setActivity({
+      name: `${client.guilds.cache.size} servers | /help`,
+      type: ActivityType.Watching
+    });
+
+    // Initialize all managers and systems
     await client.init();
     
-    // Initial fetch and periodic update for guild stats
-    const updateGuildStats = async () => {
-      try {
-        const guild = await client.guilds.fetch(Config.TARGET_GUILD_ID);
-        if (!guild) return;
+    // Log final startup information
+    client.logger.info('🎉 Pegasus Bot is fully initialized and ready!');
+    client.logger.info(`📊 Connected to ${client.guilds.cache.size} guilds`);
+    client.logger.info(`👥 Serving ${client.users.cache.size} users`);
+    client.logger.info(`⚡ Loaded ${client.commands.size} commands`);
 
-        // Fetch member counts
-        await guild.members.fetch();
-        const memberCount = guild.memberCount;
-        const onlineCount = guild.presences.cache.filter(p => p.status !== 'offline').size;
-
-        const stats = {
-          memberCount,
-          onlineCount,
-        };
-
-        // Emit to dashboard
-        client.wsManager.emitRealtimeEvent(guild.id, 'guild:stats:updated', stats);
-      } catch (error) {
-        client.logger.error('Failed to fetch and emit guild stats:', error);
-      }
-    };
-    
-    // Run once on startup, then every 5 minutes
-    updateGuildStats();
-    setInterval(updateGuildStats, 5 * 60 * 1000); // 5 minutes
+    // Emit ready event to dashboard
+    client.wsManager.broadcastGeneralEvent('bot:ready', {
+      tag: client.user.tag,
+      guilds: client.guilds.cache.size,
+      users: client.users.cache.size,
+      commands: client.commands.size,
+      uptime: client.uptime || 0
+    });
   },
 };
+
+export default event;

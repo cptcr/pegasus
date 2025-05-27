@@ -1,4 +1,4 @@
-// src/modules/voice/Join2CreateManager.ts
+// src/modules/voice/Join2CreateManager.ts - Fixed Join2Create System
 import { 
   Guild, 
   VoiceState, 
@@ -53,36 +53,34 @@ export class Join2CreateManager {
   /**
    * Setup Join to Create system
    */
-  public async setupJoin2Create(
+  public async setup(
     guild: Guild, 
-    options: {
-      categoryId: string;
-      channelName: string;
-      userLimit: number;
-      bitrate: number;
-    }
+    categoryId: string,
+    channelName: string,
+    userLimit: number,
+    bitrate: number
   ): Promise<{ success: true; channel: VoiceChannel } | { success: false; error: string }> {
     try {
-      const category = guild.channels.cache.get(options.categoryId) as CategoryChannel;
+      const category = guild.channels.cache.get(categoryId) as CategoryChannel;
       if (!category || category.type !== ChannelType.GuildCategory) {
         return { success: false, error: 'Invalid category provided' };
       }
 
       const j2cChannel = await guild.channels.create({
-        name: options.channelName,
+        name: channelName,
         type: ChannelType.GuildVoice,
-        parent: options.categoryId,
+        parent: categoryId,
         userLimit: 1,
-        bitrate: options.bitrate,
+        bitrate: bitrate,
       });
 
       const settings = {
         isEnabled: true,
-        categoryId: options.categoryId,
+        categoryId: categoryId,
         joinChannelId: j2cChannel.id,
         channelNameTemplate: '{user}\'s Channel',
-        defaultUserLimit: options.userLimit,
-        defaultBitrate: options.bitrate,
+        defaultUserLimit: userLimit,
+        defaultBitrate: bitrate,
         autoDeleteEmpty: true,
         lockEmptyChannels: false,
         allowTextChannel: false,
@@ -95,11 +93,18 @@ export class Join2CreateManager {
         create: { guildId: guild.id, ...settings },
       });
 
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(guild.id, 'j2c:setup', {
+        categoryId,
+        channelId: j2cChannel.id,
+        channelName: j2cChannel.name
+      });
+
       this.logger.info(`J2C system setup for guild ${guild.name}`);
       return { success: true, channel: j2cChannel };
     } catch (error) {
-      this.logger.error("Failed to setup J2C:", error);
-      return { success: false, error: "Could not create channel or save settings. Please check permissions." };
+      this.logger.error('Failed to setup J2C:', error);
+      return { success: false, error: 'Could not create channel or save settings. Please check permissions.' };
     }
   }
 
@@ -131,6 +136,11 @@ export class Join2CreateManager {
         data: { isEnabled: false }
       });
 
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(guildId, 'j2c:disabled', {
+        cleanedChannels: cleanedChannels.cleanedChannels
+      });
+
       this.logger.info(`J2C system disabled for guild ${guildId}`);
       return { success: true, cleanedChannels: cleanedChannels.cleanedChannels };
     } catch (error) {
@@ -152,11 +162,13 @@ export class Join2CreateManager {
         }
       });
       
+      // Emit to dashboard
       this.client.wsManager.emitRealtimeEvent(guildId, 'j2c:settings:updated', data);
+      
       return { success: true };
     } catch (error) {
       this.logger.error(`Failed to update J2C settings for guild ${guildId}:`, error);
-      return { success: false, error: "Database update failed." };
+      return { success: false, error: 'Database update failed.' };
     }
   }
 
@@ -241,12 +253,15 @@ export class Join2CreateManager {
 
       await member.voice.setChannel(tempChannel);
       
+      // Emit to dashboard
       this.client.wsManager.emitRealtimeEvent(
         member.guild.id, 
         'j2c:channel:created', 
         { 
           userId: member.id, 
+          username: member.displayName,
           channelId: tempChannel.id,
+          channelName: tempChannel.name,
           textChannelId: textChannel?.id 
         }
       );
@@ -277,10 +292,14 @@ export class Join2CreateManager {
 
       await channel.delete('Temporary channel empty');
       
+      // Emit to dashboard
       this.client.wsManager.emitRealtimeEvent(
         channel.guild.id, 
         'j2c:channel:deleted', 
-        { channelId: channel.id }
+        { 
+          channelId: channel.id,
+          channelName: channel.name
+        }
       );
 
       this.logger.debug(`Deleted empty temp channel: ${channel.name}`);

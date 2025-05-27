@@ -2,21 +2,26 @@
   "name": "pegasus-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "workspaces": [
     "dashboard"
   ],
   "scripts": {
     "dev": "npm run build && npm-run-all --parallel dev:bot dev:dashboard",
-    "dev:bot": "ts-node-esm src/index.ts",
+    "dev:bot": "node --loader ts-node/esm src/index.ts",
     "dev:dashboard": "npm run dev --workspace=dashboard",
     "build": "tsc -p tsconfig.json",
-    "build:dashboard": "npm run build --workspace=dashboard",
+    "build:dashboard": "npm run build --workspace=dashboard", 
     "start": "node dist/index.js",
     "start:dashboard": "npm run start --workspace=dashboard",
+    "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
+    "db:seed": "node --loader ts-node/esm prisma/seed.ts",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:commands": "node --loader ts-node/esm scripts/deploy-commands.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.15.0",
@@ -25,6 +30,7 @@
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "npm-run-all": "^4.1.5",
+    "socket.io": "^4.7.5",
     "winston": "^3.13.0"
   },
   "devDependencies": {
@@ -39,6 +45,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.32.1"
-  },
-  "type": "module"
+  }
 }

@@ -1,8 +1,8 @@
-// src/index.ts
+// src/index.ts - Fixed Main Bot Entry Point
 import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
 import { createServer, Server as HTTPServer } from 'http';
 import { PrismaClient } from '@prisma/client';
-import { Command, BotEvent } from './types/index.js';
+import { Command } from './types/index.js';
 import { CommandHandler } from './handlers/CommandHandler.js';
 import { EventHandler } from './handlers/EventHandler.js';
 import { ButtonHandler } from './handlers/ButtonHandler.js';
@@ -13,12 +13,11 @@ import { Join2CreateManager } from './modules/voice/Join2CreateManager.js';
 import { QuarantineManager } from './modules/quarantine/QuarantineManager.js';
 import { WebSocketManager } from './api/WebSocketManager.js';
 import { Logger } from './utils/Logger.js';
-import { Config } from './config/Config.js';
+import { Config, validateConfig } from './config/Config.js';
 import 'dotenv/config';
 
 export class ExtendedClient extends Client {
   public readonly commands: Collection<string, Command> = new Collection();
-  public readonly events: Collection<string, BotEvent<keyof import('discord.js').ClientEvents>> = new Collection();
   public readonly cooldowns: Collection<string, Collection<string, number>> = new Collection();
   
   public readonly db: PrismaClient;
@@ -65,6 +64,7 @@ export class ExtendedClient extends Client {
     this.j2cManager = new Join2CreateManager(this, this.db, this.logger);
     this.quarantineManager = new QuarantineManager(this, this.db, this.logger);
 
+    // Create HTTP server for WebSocket
     this.httpServer = createServer((req, res) => {
       if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -72,11 +72,17 @@ export class ExtendedClient extends Client {
           status: 'ok', 
           message: 'Pegasus Bot is running',
           uptime: process.uptime(),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          guilds: this.guilds.cache.size,
+          users: this.users.cache.size
         }));
       } else {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', message: 'Pegasus Bot is running' }));
+        res.end(JSON.stringify({ 
+          status: 'ok', 
+          message: 'Pegasus Bot WebSocket Server',
+          timestamp: new Date().toISOString()
+        }));
       }
     });
     
@@ -84,96 +90,185 @@ export class ExtendedClient extends Client {
   }
 
   public async start(): Promise<void> {
-    this.logger.info('Starting Pegasus Bot...');
+    this.logger.info('🚀 Starting Pegasus Bot...');
     
     try {
+      // Validate configuration
+      const configValidation = validateConfig();
+      if (!configValidation.valid) {
+        this.logger.error('❌ Configuration validation failed:');
+        configValidation.errors.forEach(error => this.logger.error(`   - ${error}`));
+        process.exit(1);
+      }
+
       // Connect to database
       await this.db.$connect();
-      this.logger.info('Database connected successfully.');
+      this.logger.info('✅ Database connected successfully.');
       
+      // Test database connection
+      await this.db.$queryRaw`SELECT 1`;
+      this.logger.info('✅ Database connection tested successfully.');
+
       // Load commands and events
       await this.commandHandler.loadCommands();
       await this.eventHandler.loadEvents();
 
       // Start HTTP server for WebSocket
       this.httpServer.listen(Config.API.WEBSOCKET_PORT, () => {
-        this.logger.info(`Bot WebSocket Server listening on port ${Config.API.WEBSOCKET_PORT}`);
+        this.logger.info(`🌐 Bot WebSocket Server listening on port ${Config.API.WEBSOCKET_PORT}`);
       });
 
       // Login to Discord
-      await this.login(process.env.DISCORD_BOT_TOKEN || Config.BOT_TOKEN);
+      await this.login(Config.BOT_TOKEN);
       
     } catch (error) {
-      this.logger.error('Failed to start bot:', error);
+      this.logger.error('❌ Failed to start bot:', error);
       process.exit(1);
     }
   }
 
   public async init(): Promise<void> {
-    // Initialize all managers after bot is ready
-    const targetGuild = this.guilds.cache.get(Config.TARGET_GUILD_ID);
-    if (targetGuild) {
-      await this.giveawayManager.initializeGuild(targetGuild);
-      await this.pollManager.initializeGuild(targetGuild);
-      await this.quarantineManager.initializeGuild(targetGuild);
-      this.logger.info(`Initialized all managers for guild: ${targetGuild.name}`);
+    this.logger.info('🔧 Initializing bot systems...');
+    
+    try {
+      // Ensure target guild exists in database
+      const targetGuild = this.guilds.cache.get(Config.TARGET_GUILD_ID);
+      if (targetGuild) {
+        await this.db.guild.upsert({
+          where: { id: targetGuild.id },
+          update: { 
+            name: targetGuild.name,
+            updatedAt: new Date()
+          },
+          create: {
+            id: targetGuild.id,
+            name: targetGuild.name
+          }
+        });
+
+        // Initialize all managers
+        await Promise.all([
+          this.giveawayManager.initializeGuild(targetGuild),
+          this.pollManager.initializeGuild(targetGuild),
+          this.quarantineManager.initializeGuild(targetGuild),
+          this.ticketManager.initializeGuild(targetGuild)
+        ]);
+
+        this.logger.info(`✅ Initialized all systems for guild: ${targetGuild.name}`);
+
+        // Start periodic stats updates
+        this.startStatsUpdates(targetGuild.id);
+      } else {
+        this.logger.warn(`⚠️ Target guild ${Config.TARGET_GUILD_ID} not found`);
+      }
+    } catch (error) {
+      this.logger.error('❌ Error during initialization:', error);
     }
   }
 
+  private startStatsUpdates(guildId: string): void {
+    const updateStats = async () => {
+      try {
+        const guild = this.guilds.cache.get(guildId);
+        if (!guild) return;
+
+        // Fetch fresh member data
+        await guild.members.fetch();
+        
+        const memberCount = guild.memberCount;
+        const onlineCount = guild.presences.cache.filter(p => p.status !== 'offline').size;
+
+        const stats = {
+          memberCount,
+          onlineCount
+        };
+
+        // Emit to dashboard
+        this.wsManager.emitGuildStatsUpdate(guildId, stats);
+        
+        this.logger.debug(`📊 Updated guild stats: ${memberCount} members, ${onlineCount} online`);
+      } catch (error) {
+        this.logger.error('❌ Failed to update guild stats:', error);
+      }
+    };
+    
+    // Update immediately, then every 5 minutes
+    updateStats();
+    setInterval(updateStats, 5 * 60 * 1000);
+  }
+
   public async shutdown(): Promise<void> {
-    this.logger.info('Shutting down Pegasus Bot...');
+    this.logger.info('🛑 Shutting down Pegasus Bot...');
     
     try {
       // Cleanup managers
-      await this.giveawayManager.cleanup();
-      await this.pollManager.cleanup();
-      await this.ticketManager.cleanup();
-      await this.quarantineManager.cleanup();
+      await Promise.all([
+        this.giveawayManager.cleanup(),
+        this.pollManager.cleanup(),
+        this.ticketManager.cleanup(),
+        this.quarantineManager.cleanup()
+      ]);
       
       // Close WebSocket server
       this.wsManager.close();
       
       // Close HTTP server
-      this.httpServer.close();
+      await new Promise<void>((resolve, reject) => {
+        this.httpServer.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
       
       // Disconnect from database
       await this.db.$disconnect();
       
-      // Destroy client
+      // Destroy Discord client
       this.destroy();
       
-      this.logger.info('Bot shutdown complete.');
+      this.logger.info('✅ Bot shutdown complete.');
     } catch (error) {
-      this.logger.error('Error during shutdown:', error);
+      this.logger.error('❌ Error during shutdown:', error);
     }
   }
 }
 
+// Create bot instance
 const client = new ExtendedClient();
 
 // Graceful shutdown handlers
 process.on('SIGINT', async () => {
-  console.log('\nReceived SIGINT. Graceful shutdown...');
+  console.log('\n🛑 Received SIGINT. Graceful shutdown...');
   await client.shutdown();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\nReceived SIGTERM. Graceful shutdown...');
+  console.log('\n🛑 Received SIGTERM. Graceful shutdown...');
   await client.shutdown();
   process.exit(0);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit the process for unhandled rejections in production
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Log but don't exit in production
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  console.error('❌ Uncaught Exception:', error);
   // Exit on uncaught exceptions
   process.exit(1);
 });
 
-// Start the bot
-client.start();
+// Start the bot if this file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  client.start().catch(error => {
+    console.error('❌ Failed to start bot:', error);
+    process.exit(1);
+  });
+}
+
+export default client;
