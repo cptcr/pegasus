@@ -1,9 +1,10 @@
-// dashboard/pages/api/auth/[...nextauth].ts
-import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Profile as NextAuthProfile, Session } from 'next-auth';
+// dashboard/pages/api/auth/[...nextauth].ts - Fixed Database Access
+import NextAuth, { NextAuthOptions, Account, Profile as NextAuthProfile, Session } from 'next-auth';
+import { User as NextAuthUser } from 'next-auth';
 import { AdapterUser } from 'next-auth/adapters';
 import DiscordProvider, { DiscordProfile as DiscordOAuthProfile } from 'next-auth/providers/discord';
 import { discordService } from '@/lib/discordService';
-import db from '@/lib/database';
+import databaseEvents, { PrismaInstance as prisma } from '@/lib/database'; // Import prisma directly
 import { DiscordProfile, GuildMemberWithRoles } from '@/types/index';
 import { JWT } from 'next-auth/jwt';
 
@@ -46,10 +47,13 @@ export const authOptions: NextAuthOptions = {
       const discordProfile = profile as DiscordOAuthProfile;
 
       try {
+        // Ensure Discord service is initialized
         if (!discordService.isReady()) {
-            await discordService.initialize();
+          console.log("[NextAuth SignIn] Initializing Discord service...");
+          await discordService.initialize();
         }
 
+        // Check guild membership
         const member = await discordService.getGuildMember(TARGET_GUILD_ID, discordProfile.id);
 
         if (!member) {
@@ -57,6 +61,7 @@ export const authOptions: NextAuthOptions = {
           return `/auth/error?error=GuildAccess&guildName=${TARGET_GUILD_ID}`;
         }
 
+        // Check required role (if specified)
         const hasRequiredRole = REQUIRED_ROLE_ID ? member.roles.cache.has(REQUIRED_ROLE_ID) : true;
 
         if (!hasRequiredRole) {
@@ -64,37 +69,53 @@ export const authOptions: NextAuthOptions = {
           return `/auth/error?error=RoleAccess&roleName=${REQUIRED_ROLE_ID}`;
         }
 
-        await db.user.upsert({
+        // Create or update user in database using prisma directly
+        try {
+          await prisma.user.upsert({
             where: { id: discordProfile.id },
             update: {
-                username: discordProfile.username,
-                discriminator: discordProfile.discriminator,
-                avatar: discordProfile.avatar,
-                email: discordProfile.email,
-                lastLogin: new Date(),
+              username: discordProfile.username,
+              discriminator: discordProfile.discriminator,
+              avatar: discordProfile.avatar,
+              email: discordProfile.email,
+              lastLogin: new Date(),
+              updatedAt: new Date(),
             },
             create: {
-                id: discordProfile.id,
-                username: discordProfile.username,
-                discriminator: discordProfile.discriminator,
-                avatar: discordProfile.avatar,
-                email: discordProfile.email,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                lastLogin: new Date(),
+              id: discordProfile.id,
+              username: discordProfile.username,
+              discriminator: discordProfile.discriminator,
+              avatar: discordProfile.avatar,
+              email: discordProfile.email,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              lastLogin: new Date(),
             }
-        });
+          });
 
-        const guildInfo = await discordService.getGuildInfo(TARGET_GUILD_ID);
-        if (guildInfo) {
-          await db.syncGuild(TARGET_GUILD_ID, guildInfo.name);
+          console.log(`[NextAuth SignIn] User ${discordProfile.username} (${discordProfile.id}) authenticated successfully`);
+        } catch (dbError) {
+          console.error('[NextAuth SignIn] Database error during user upsert:', dbError);
+          // Continue authentication even if DB update fails
+        }
+
+        // Sync guild information
+        try {
+          const guildInfo = await discordService.getGuildInfo(TARGET_GUILD_ID);
+          if (guildInfo) {
+            await databaseEvents.syncGuild(TARGET_GUILD_ID, guildInfo.name);
+          }
+        } catch (guildError) {
+          console.error('[NextAuth SignIn] Error syncing guild:', guildError);
+          // Continue authentication even if guild sync fails
         }
         
+        // Set user properties for session
         (user as SessionUser).hasRequiredAccess = true;
         (user as SessionUser).member = {
-            roles: member.roles.cache.map(role => role.id),
-            nick: member.nickname,
-            joined_at: member.joinedAt?.toISOString() ?? new Date().toISOString(),
+          roles: member.roles.cache.map(role => role.id),
+          nick: member.nickname,
+          joined_at: member.joinedAt?.toISOString() ?? new Date().toISOString(),
         };
 
         return true;
@@ -108,9 +129,12 @@ export const authOptions: NextAuthOptions = {
       const tokenUser = token as TokenUser;
       const nextAuthUser = user as SessionUser | undefined;
 
-      if (account) {
+      // Store access token
+      if (account?.access_token) {
         tokenUser.accessToken = account.access_token;
       }
+
+      // Store Discord profile information
       if (profile) {
         const discordProfile = profile as DiscordOAuthProfile;
         tokenUser.id = discordProfile.id;
@@ -121,11 +145,14 @@ export const authOptions: NextAuthOptions = {
         tokenUser.discriminator = discordProfile.discriminator;
         tokenUser.avatar = discordProfile.avatar;
       }
-       if (nextAuthUser) {
+
+      // Store user session data
+      if (nextAuthUser) {
         tokenUser.id = nextAuthUser.id;
         tokenUser.hasRequiredAccess = nextAuthUser.hasRequiredAccess;
         tokenUser.member = nextAuthUser.member;
       }
+
       return tokenUser;
     },
 
@@ -133,7 +160,7 @@ export const authOptions: NextAuthOptions = {
       const sessionUser = session.user as SessionUser;
       const tokenData = token as TokenUser;
 
-      if (sessionUser) {
+      if (sessionUser && tokenData) {
         sessionUser.id = tokenData.id || sessionUser.id;
         sessionUser.username = tokenData.username || sessionUser.username;
         sessionUser.discriminator = tokenData.discriminator || sessionUser.discriminator;
@@ -141,6 +168,7 @@ export const authOptions: NextAuthOptions = {
         sessionUser.hasRequiredAccess = tokenData.hasRequiredAccess;
         sessionUser.member = tokenData.member;
       }
+
       return session;
     },
   },

@@ -1,4 +1,4 @@
-// dashboard/lib/ThemeContext.tsx
+// dashboard/lib/ThemeContext.tsx - Fixed Hydration Issues
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -12,31 +12,51 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('dark'); // Default to dark
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Get theme from localStorage or default to dark
+    
+    // Only access localStorage after component mounts to prevent hydration mismatch
     const savedTheme = localStorage.getItem('dashboard-theme') as Theme;
     if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       setTheme(savedTheme);
     } else {
-      // Check system preference
+      // Check system preference only after mounting
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setTheme(prefersDark ? 'dark' : 'light');
     }
   }, []);
 
+  // Apply theme class to document when theme changes
+  useEffect(() => {
+    if (mounted) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme, mounted]);
+
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('dashboard-theme', newTheme);
+    
+    // Only save to localStorage after mounting
+    if (mounted) {
+      localStorage.setItem('dashboard-theme', newTheme);
+    }
   };
 
-  // Prevent hydration mismatch
+  // Prevent hydration mismatch by ensuring consistent initial state
   if (!mounted) {
-    return <div className="dark">{children}</div>;
+    return (
+      <div className="dark">
+        {children}
+      </div>
+    );
   }
 
   return (
@@ -51,7 +71,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    // Return default values instead of throwing error
+    // Return safe default values instead of throwing error
     return {
       theme: 'dark' as Theme,
       toggleTheme: () => {},

@@ -1,4 +1,4 @@
-// dashboard/lib/database.ts - Fixed to use dashboard client
+// dashboard/lib/database.ts - Improved with Better Error Handling and Optimizations
 import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '.prisma/dashboard-client';
 import { EventEmitter } from 'events';
 import { discordService } from './discordService';
@@ -14,345 +14,600 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
+/**
+ * Database Service Class
+ * Handles all database operations for the Discord bot dashboard
+ */
 class DatabaseService extends EventEmitter {
-  user: any;
   constructor() {
     super();
   }
 
   // --- Guild Methods ---
 
+  /**
+   * Get basic guild information
+   */
   async getGuild(guildId: string): Promise<Guild | null> {
-    return prisma.guild.findUnique({ where: { id: guildId } });
+    try {
+      return await prisma.guild.findUnique({ where: { id: guildId } });
+    } catch (error) {
+      console.error(`[DB] Failed to fetch guild ${guildId}:`, error);
+      return null;
+    }
   }
 
+  /**
+   * Get guild with all related data including members, warnings, etc.
+   */
   async getGuildWithFullData(guildId: string): Promise<FullGuildData | null> {
-    const guild = await prisma.guild.findUnique({
-      where: { id: guildId },
-      include: {
-        userLevels: { include: { user: true } },
-        warnings: { include: { user: true } },
-        polls: { include: { options: true, votes: true } },
-        giveaways: { include: { entries: true } },
-        tickets: true,
-        logs: true,
-        levelRewards: true,
-        autoModRules: true,
-      },
-    });
+    try {
+      const [guild, discordGuildInfo] = await Promise.all([
+        prisma.guild.findUnique({
+          where: { id: guildId },
+          include: {
+            userLevels: { include: { user: true } },
+            warnings: { include: { user: true } },
+            polls: { include: { options: true, votes: true } },
+            giveaways: { include: { entries: true } },
+            tickets: true,
+            logs: true,
+            levelRewards: true,
+            autoModRules: true,
+          },
+        }),
+        discordService.getGuildInfo(guildId)
+      ]);
 
-    if (!guild) return null;
-
-    // Extract unique users from various relations
-    const userMap = new Map<string, User & { warnings: Warn[]; userLevels: UserLevel[] }>();
-    
-    // Add users from userLevels
-    guild.userLevels.forEach((ul: UserLevel & { user: User }) => {
-      if (ul.user && !userMap.has(ul.user.id)) {
-        userMap.set(ul.user.id, {
-          ...ul.user,
-          warnings: [],
-          userLevels: []
-        });
+      if (!guild) {
+        console.warn(`[DB] Guild ${guildId} not found in database`);
+        return null;
       }
-    });
 
-    // Add users from warnings
-    guild.warnings.forEach((w: Warn & { user: User }) => {
-      if (w.user && !userMap.has(w.user.id)) {
-        userMap.set(w.user.id, {
-          ...w.user,
-          warnings: [],
-          userLevels: []
-        });
-      }
-    });
+      // Extract unique users from various relations with proper typing
+      const userMap = new Map<string, User & { warnings: Warn[]; userLevels: UserLevel[] }>();
+      
+      // Add users from userLevels
+      guild.userLevels.forEach((ul: UserLevel & { user: User }) => {
+        if (ul.user && !userMap.has(ul.user.id)) {
+          userMap.set(ul.user.id, {
+            ...ul.user,
+            warnings: [],
+            userLevels: []
+          });
+        }
+      });
 
-    // Populate user warnings and levels
-    guild.userLevels.forEach((ul: UserLevel) => {
-      const user = userMap.get(ul.userId);
-      if (user) {
-        user.userLevels.push(ul);
-      }
-    });
+      // Add users from warnings
+      guild.warnings.forEach((w: Warn & { user: User }) => {
+        if (w.user && !userMap.has(w.user.id)) {
+          userMap.set(w.user.id, {
+            ...w.user,
+            warnings: [],
+            userLevels: []
+          });
+        }
+      });
 
-    guild.warnings.forEach((w: Warn) => {
-      const user = userMap.get(w.userId);
-      if (user) {
-        user.warnings.push(w);
-      }
-    });
+      // Populate user warnings and levels
+      guild.userLevels.forEach((ul: UserLevel) => {
+        const user = userMap.get(ul.userId);
+        if (user) {
+          user.userLevels.push(ul);
+        }
+      });
 
-    // Transform the result to match FullGuildData interface
-    return {
-      id: guild.id,
-      name: guild.name,
-      prefix: guild.prefix,
-      settings: guild.settings || {},
-      enableLeveling: guild.enableLeveling,
-      enableModeration: guild.enableModeration,
-      enableGeizhals: guild.enableGeizhals,
-      enablePolls: guild.enablePolls,
-      enableGiveaways: guild.enableGiveaways,
-      enableAutomod: guild.enableAutomod,
-      enableTickets: guild.enableTickets,
-      enableMusic: guild.enableMusic,
-      enableJoinToCreate: guild.enableJoinToCreate,
-      createdAt: guild.createdAt,
-      updatedAt: guild.updatedAt,
-      ownerId: undefined, // This would come from Discord API
-      description: null,  // This would come from Discord API
-      members: Array.from(userMap.values()),
-      warnings: guild.warnings || [],
-      polls: guild.polls || [],
-      giveaways: guild.giveaways || [],
-      tickets: guild.tickets || [],
-      logs: guild.logs || [],
-      levelRewards: guild.levelRewards || [],
-      autoModRules: guild.autoModRules || [],
-    } as FullGuildData;
+      guild.warnings.forEach((w: Warn) => {
+        const user = userMap.get(w.userId);
+        if (user) {
+          user.warnings.push(w);
+        }
+      });
+
+      // Transform the result to match FullGuildData interface
+      const fullGuildData: FullGuildData = {
+        id: guild.id,
+        name: guild.name,
+        prefix: guild.prefix,
+        settings: guild.settings || {},
+        enableLeveling: guild.enableLeveling,
+        enableModeration: guild.enableModeration,
+        enableGeizhals: guild.enableGeizhals,
+        enablePolls: guild.enablePolls,
+        enableGiveaways: guild.enableGiveaways,
+        enableAutomod: guild.enableAutomod,
+        enableTickets: guild.enableTickets,
+        enableMusic: guild.enableMusic,
+        enableJoinToCreate: guild.enableJoinToCreate,
+        createdAt: guild.createdAt,
+        updatedAt: guild.updatedAt,
+        // Enhanced with Discord API data
+        ownerId: discordGuildInfo?.ownerId,
+        description: discordGuildInfo?.description,
+        members: Array.from(userMap.values()),
+        warnings: guild.warnings || [],
+        polls: guild.polls || [],
+        giveaways: guild.giveaways || [],
+        tickets: guild.tickets || [],
+        logs: guild.logs || [],
+        levelRewards: guild.levelRewards || [],
+        autoModRules: guild.autoModRules || [],
+      };
+
+      return fullGuildData;
+    } catch (error) {
+      console.error(`[DB] Failed to fetch full guild data for ${guildId}:`, error);
+      return null;
+    }
   }
 
+  /**
+   * Get guild with comprehensive stats for dashboard display
+   */
   async getGuildWithFullStats(guildId: string): Promise<GuildWithFullStats | null> {
-    const [guildData, discordGuildData]: [FullGuildData | null, unknown] = await Promise.all([
-      this.getGuildWithFullData(guildId),
-      discordService.getGuildInfo(guildId)
-    ]);
+    try {
+      const [guildData, discordGuildData] = await Promise.all([
+        this.getGuildWithFullData(guildId),
+        discordService.getGuildInfo(guildId)
+      ]);
 
-    if (!guildData) return null;
+      if (!guildData) {
+        console.warn(`[DB] Could not fetch guild data for stats calculation: ${guildId}`);
+        return null;
+      }
 
-    const discordData = discordGuildData as { memberCount?: number; onlineCount?: number } | null;
-    const memberCount: number = discordData?.memberCount ?? guildData.members?.length ?? 0;
-    const onlineCount: number = discordData?.onlineCount ?? 0;
+      // Cache frequently used values to avoid repeated calculations
+      const memberCountFromDB = guildData.members?.length ?? 0;
+      const memberCountFromDiscord = discordGuildData?.memberCount ?? memberCountFromDB;
+      const onlineCount = discordGuildData?.onlineCount ?? 0;
+      const warningCount = guildData.warnings?.length ?? 0;
+      const activeQuarantineCount = await this.getActiveQuarantineCount(guildId);
 
-    const stats: GuildWithFullStats['stats'] = {
-      memberCount,
-      onlineCount,
-      ticketCount: guildData.tickets?.length ?? 0,
-      pollCount: guildData.polls?.length ?? 0,
-      giveawayCount: guildData.giveaways?.length ?? 0,
-      warningCount: guildData.warnings?.length ?? 0,
-      totalUsers: guildData.members?.length ?? 0,
-      activeQuarantine: (await prisma.quarantine.count({ where: { guildId, active: true }})),
-      totalTrackers: 0,
-      activePolls: guildData.polls?.filter((p: Poll) => p.active).length ?? 0,
-      activeGiveaways: guildData.giveaways?.filter((g: Giveaway) => g.active && !g.ended).length ?? 0,
-      openTickets: guildData.tickets?.filter((t: Ticket) => t.status !== 'CLOSED').length ?? 0,
-      customCommands: 0, // Would need to be implemented
-      levelRewards: guildData.levelRewards?.length ?? 0,
-      automodRules: guildData.autoModRules?.filter((r: AutoModRule) => r.enabled).length ?? 0,
-      levelingEnabled: guildData.enableLeveling ?? true,
-      moderationEnabled: guildData.enableModeration ?? true,
-      geizhalsEnabled: guildData.enableGeizhals ?? false,
-      enableAutomod: guildData.enableAutomod ?? false,
-      enableMusic: guildData.enableMusic ?? false,
-      enableJoinToCreate: guildData.enableJoinToCreate ?? false,
-      engagementRate: memberCount > 0 ? Math.round(((guildData.members?.length ?? 0) / memberCount) * 100) : 0,
-      moderationRate: (guildData.members?.length ?? 0) > 0 ? Math.round(((guildData.warnings?.length ?? 0) / (guildData.members?.length ?? 1)) * 100) : 0,
-      lastUpdated: new Date().toISOString(),
-    };
+      const stats: GuildWithFullStats['stats'] = {
+        memberCount: memberCountFromDiscord,
+        onlineCount,
+        ticketCount: guildData.tickets?.length ?? 0,
+        pollCount: guildData.polls?.length ?? 0,
+        giveawayCount: guildData.giveaways?.length ?? 0,
+        warningCount,
+        totalUsers: memberCountFromDB,
+        activeQuarantine: activeQuarantineCount,
+        totalTrackers: 0, // Would need separate tracker table
+        activePolls: guildData.polls?.filter((p: Poll) => p.active).length ?? 0,
+        activeGiveaways: guildData.giveaways?.filter((g: Giveaway) => g.active && !g.ended).length ?? 0,
+        openTickets: guildData.tickets?.filter((t: Ticket) => t.status !== 'CLOSED').length ?? 0,
+        customCommands: 0, // Would need implementation
+        levelRewards: guildData.levelRewards?.length ?? 0,
+        automodRules: guildData.autoModRules?.filter((r: AutoModRule) => r.enabled).length ?? 0,
+        levelingEnabled: guildData.enableLeveling ?? true,
+        moderationEnabled: guildData.enableModeration ?? true,
+        geizhalsEnabled: guildData.enableGeizhals ?? false,
+        enableAutomod: guildData.enableAutomod ?? false,
+        enableMusic: guildData.enableMusic ?? false,
+        enableJoinToCreate: guildData.enableJoinToCreate ?? false,
+        engagementRate: memberCountFromDiscord > 0 ? Math.round((memberCountFromDB / memberCountFromDiscord) * 100) : 0,
+        moderationRate: memberCountFromDB > 0 ? Math.round((warningCount / memberCountFromDB) * 100) : 0,
+        lastUpdated: new Date().toISOString(),
+      };
 
+      // Ensure Discord data has required fields with proper defaults
+      const discordResponse = discordGuildData ? {
+        id: discordGuildData.id,
+        name: discordGuildData.name,
+        icon: discordGuildData.iconURL,
+        iconURL: discordGuildData.iconURL,
+        features: discordGuildData.features || [],
+        memberCount: memberCountFromDiscord,
+        onlineCount,
+        ownerId: discordGuildData.ownerId,
+        description: discordGuildData.description,
+        createdAt: discordGuildData.createdAt,
+      } : {
+        id: guildId,
+        name: guildData.name,
+        icon: null,
+        iconURL: null,
+        features: [],
+        memberCount: memberCountFromDiscord,
+        onlineCount,
+        ownerId: guildData.ownerId || undefined,
+        description: guildData.description,
+        createdAt: guildData.createdAt,
+      };
+
+      const result: GuildWithFullStats = {
+        ...guildData,
+        settings: guildData.settings,
+        stats,
+        discord: discordResponse,
+        members: guildData.members,
+        warnings: guildData.warnings,
+        polls: guildData.polls,
+        giveaways: guildData.giveaways,
+        tickets: guildData.tickets,
+        logs: guildData.logs,
+        levelRewards: guildData.levelRewards,
+        autoModRules: guildData.autoModRules,
+        userLevels: guildData.members?.map((m) => m.userLevels).flat() || []
+      };
+
+      return result;
+    } catch (error) {
+      console.error(`[DB] Failed to fetch guild with full stats for ${guildId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get active quarantine count efficiently
+   */
+  private async getActiveQuarantineCount(guildId: string): Promise<number> {
+    try {
+      return await prisma.quarantine.count({ 
+        where: { guildId, active: true } 
+      });
+    } catch (error) {
+      console.error(`[DB] Failed to get active quarantine count for ${guildId}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Create guild with comprehensive default settings
+   */
+  async createGuildWithDefaults(guildId: string, name: string): Promise<Guild | null> {
+    try {
+      const defaultSettings: GuildSettings = this.getDefaultGuildSettings();
+      
+      const guild = await prisma.guild.create({
+        data: {
+          id: guildId,
+          name: name,
+          settings: defaultSettings as unknown as Prisma.JsonObject,
+        },
+      });
+
+      this.emit('guild:created', { guildId, name });
+      console.log(`[DB] Created guild with defaults: ${name} (${guildId})`);
+      return guild;
+    } catch (error) {
+      console.error(`[DB] Failed to create guild ${guildId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Sync guild information (upsert operation)
+   */
+  async syncGuild(guildId: string, name: string): Promise<Guild | null> {
+    try {
+      const defaultSettings: GuildSettings = this.getDefaultGuildSettings();
+      
+      const guild = await prisma.guild.upsert({
+        where: { id: guildId },
+        update: { 
+          name,
+          updatedAt: new Date()
+        },
+        create: {
+          id: guildId,
+          name: name,
+          settings: defaultSettings as unknown as Prisma.JsonObject,
+        },
+      });
+
+      console.log(`[DB] Synced guild: ${name} (${guildId})`);
+      return guild;
+    } catch (error) {
+      console.error(`[DB] Failed to sync guild ${guildId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get default guild settings with documentation
+   */
+  private getDefaultGuildSettings(): GuildSettings {
     return {
-      id: guildData.id,
-      name: guildData.name,
-      prefix: guildData.prefix,
-      settings: guildData.settings,
-      enableLeveling: guildData.enableLeveling,
-      enableModeration: guildData.enableModeration,
-      enableGeizhals: guildData.enableGeizhals,
-      enablePolls: guildData.enablePolls,
-      enableGiveaways: guildData.enableGiveaways,
-      enableAutomod: guildData.enableAutomod,
-      enableTickets: guildData.enableTickets,
-      enableMusic: guildData.enableMusic,
-      enableJoinToCreate: guildData.enableJoinToCreate,
-      createdAt: guildData.createdAt,
-      updatedAt: guildData.updatedAt,
-      stats,
-      discord: discordData || { 
-        id: guildId, 
-        name: guildData.name, 
-        icon: null, 
-        features: [], 
-        memberCount, 
-        onlineCount 
-      },
-      members: guildData.members,
-      warnings: guildData.warnings,
-      polls: guildData.polls,
-      giveaways: guildData.giveaways,
-      tickets: guildData.tickets,
-      logs: guildData.logs,
-      levelRewards: guildData.levelRewards,
-      autoModRules: guildData.autoModRules,
-      userLevels: guildData.members?.map((m: { userLevels: any; }) => m.userLevels).flat()
-    } as GuildWithFullStats;
-  }
-
-  async createGuildWithDefaults(guildId: string, name: string): Promise<Guild> {
-    const defaultSettings: GuildSettings = {
+      /** Command prefix for the bot */
       prefix: '!',
+      /** Channel ID for moderation logs */
       modLogChannelId: null,
+      /** Role ID for quarantined users */
       quarantineRoleId: null,
+      /** Role ID for staff members */
       staffRoleId: null,
+      /** Enable the leveling/XP system */
       enableLeveling: true,
+      /** Enable moderation features */
       enableModeration: true,
+      /** Enable community polls */
       enablePolls: true,
+      /** Enable giveaway system */
       enableGiveaways: true,
+      /** Enable support ticket system */
       enableTickets: false,
+      /** Enable Geizhals price tracking */
       enableGeizhals: false,
+      /** Enable automatic moderation */
       enableAutomod: false,
+      /** Enable music bot features */
       enableMusic: false,
+      /** Enable join-to-create voice channels */
       enableJoinToCreate: false,
-      welcomeChannelId: null, // FIXED: Use welcomeChannelId
+      /** Channel for welcome messages */
+      welcomeChannelId: null,
+      /** Channel for level-up notifications */
       levelUpChannelId: null,
+      /** Channel for Geizhals notifications */
       geizhalsChannelId: null,
+      /** Voice channel for join-to-create */
       joinToCreateChannelId: null,
+      /** Category for join-to-create channels */
       joinToCreateCategoryId: null,
+      /** Welcome message template */
       welcomeMessage: "Welcome {user} to {server}!",
+      /** Goodbye message template */
       goodbyeMessage: "{user} has left the server.",
     };
-    return prisma.guild.create({
-      data: {
-        id: guildId,
-        name: name,
-        settings: defaultSettings as unknown as Prisma.JsonObject,
-      },
-    });
-  }
-
-  async syncGuild(guildId: string, name: string): Promise<Guild> {
-     const defaultSettings: GuildSettings = {
-      prefix: '!',
-      modLogChannelId: null,
-      quarantineRoleId: null,
-      staffRoleId: null,
-      enableLeveling: true,
-      enableModeration: true,
-      enablePolls: true,
-      enableGiveaways: true,
-      enableTickets: false,
-      enableGeizhals: false,
-      enableAutomod: false,
-      enableMusic: false,
-      enableJoinToCreate: false,
-      welcomeChannelId: null, // FIXED: Use welcomeChannelId
-      levelUpChannelId: null,
-      geizhalsChannelId: null,
-      joinToCreateChannelId: null,
-      joinToCreateCategoryId: null,
-      welcomeMessage: "Welcome {user} to {server}!",
-      goodbyeMessage: "{user} has left the server.",
-    };
-    return prisma.guild.upsert({
-      where: { id: guildId },
-      update: { name },
-      create: {
-        id: guildId,
-        name: name,
-        settings: defaultSettings as unknown as Prisma.JsonObject,
-      },
-    });
   }
 
   // --- Settings Methods ---
 
+  /**
+   * Get guild settings with proper error handling
+   */
   async getGuildSettings(guildId: string): Promise<GuildSettings | null> {
-    const guild = await this.getGuild(guildId);
-    if (!guild?.settings) return null;
-    
-    // Safe conversion from JsonValue to GuildSettings
-    return guild.settings as unknown as GuildSettings;
+    try {
+      const guild = await this.getGuild(guildId);
+      if (!guild?.settings) {
+        console.warn(`[DB] No settings found for guild ${guildId}`);
+        return null;
+      }
+      
+      // Safe conversion from JsonValue to GuildSettings
+      return guild.settings as unknown as GuildSettings;
+    } catch (error) {
+      console.error(`[DB] Failed to get guild settings for ${guildId}:`, error);
+      return null;
+    }
   }
 
-  async updateGuildSettings(guildId: string, settingsUpdate: Partial<GuildSettings>): Promise<Guild> {
-    const currentGuild = await this.getGuild(guildId);
-    if (!currentGuild) {
-      throw new Error("Guild not found");
-    }
-    
-    const currentSettings = (currentGuild.settings as GuildSettings | null) || {};
-    const updatedSettings = { ...currentSettings, ...settingsUpdate };
+  /**
+   * Update guild settings with validation and error handling
+   */
+  async updateGuildSettings(guildId: string, settingsUpdate: Partial<GuildSettings>): Promise<Guild | null> {
+    try {
+      const currentGuild = await this.getGuild(guildId);
+      if (!currentGuild) {
+        throw new Error(`Guild ${guildId} not found`);
+      }
+      
+      // Safe settings merge
+      const currentSettings: GuildSettings = currentGuild.settings 
+        ? currentGuild.settings as GuildSettings 
+        : this.getDefaultGuildSettings();
+      
+      const updatedSettings = { ...currentSettings, ...settingsUpdate };
 
-    const result = await prisma.guild.update({
-      where: { id: guildId },
-      data: { settings: updatedSettings as unknown as Prisma.JsonObject },
-    });
-    this.emit('guild:updated', result);
-    return result;
+      const result = await prisma.guild.update({
+        where: { id: guildId },
+        data: { 
+          settings: updatedSettings as unknown as Prisma.JsonObject,
+          updatedAt: new Date()
+        },
+      });
+
+      this.emit('guild:updated', result);
+      console.log(`[DB] Updated settings for guild ${guildId}`);
+      return result;
+    } catch (error) {
+      console.error(`[DB] Failed to update guild settings for ${guildId}:`, error);
+      return null;
+    }
   }
 
   // --- Moderation Data ---
+  
+  /**
+   * Get comprehensive moderation data for a guild
+   */
   async getModerationData(guildId: string): Promise<{ warnings: Warn[]; quarantinedUsers: Quarantine[]; autoModRules: AutoModRule[] }> {
-    const warnings: Warn[] = await prisma.warn.findMany({ where: { guildId }, orderBy: { createdAt: 'desc' }, take: 20 });
-    const quarantinedUsers: Quarantine[] = await prisma.quarantine.findMany({ where: { guildId, active: true }, orderBy: { quarantinedAt: 'desc' } });
-    const autoModRules: AutoModRule[] = await prisma.autoModRule.findMany({ where: { guildId } });
-    return { warnings, quarantinedUsers, autoModRules };
+    try {
+      const [warnings, quarantinedUsers, autoModRules] = await Promise.all([
+        prisma.warn.findMany({ 
+          where: { guildId }, 
+          orderBy: { createdAt: 'desc' }, 
+          take: 50,
+          include: { user: true }
+        }),
+        prisma.quarantine.findMany({ 
+          where: { guildId, active: true }, 
+          orderBy: { quarantinedAt: 'desc' },
+          include: { user: true }
+        }),
+        prisma.autoModRule.findMany({ 
+          where: { guildId },
+          orderBy: { createdAt: 'desc' }
+        })
+      ]);
+
+      return { warnings, quarantinedUsers, autoModRules };
+    } catch (error) {
+      console.error(`[DB] Failed to get moderation data for ${guildId}:`, error);
+      return { warnings: [], quarantinedUsers: [], autoModRules: [] };
+    }
   }
 
   // --- Leveling Data ---
-  async getLevelData(guildId: string, page: number = 1, limit: number = 25): Promise<{ leaderboard: (UserLevel & { rank: number; user: { id: string; username: string } })[]; total: number; currentPage: number; totalPages: number; levelRewards: LevelReward[]}> {
-    const skip: number = (page - 1) * limit;
-    const [userLevels, totalUsers, levelRewards]: [
-      (UserLevel & { user: { id: string; username: string } })[],
-      number,
-      LevelReward[]
-    ] = await Promise.all([
+  
+  /**
+   * Get paginated level data with enhanced error handling
+   */
+  async getLevelData(guildId: string, page: number = 1, limit: number = 25): Promise<{
+    leaderboard: (UserLevel & { rank: number; user: { id: string; username: string } })[];
+    total: number;
+    currentPage: number;
+    totalPages: number;
+    levelRewards: LevelReward[];
+  }> {
+    try {
+      const skip: number = (page - 1) * limit;
+      
+      const [userLevels, totalUsers, levelRewards] = await Promise.all([
         prisma.userLevel.findMany({
-            where: { guildId },
-            orderBy: { xp: 'desc' },
-            take: limit,
-            skip: skip,
-            include: { user: { select: { id: true, username: true }} }
+          where: { guildId },
+          orderBy: { xp: 'desc' },
+          take: limit,
+          skip: skip,
+          include: { user: { select: { id: true, username: true } } }
         }),
-        prisma.userLevel.count({ where: { guildId }}),
-        prisma.levelReward.findMany({ where: { guildId }, orderBy: { level: 'asc' } })
-    ]);
+        prisma.userLevel.count({ where: { guildId } }),
+        prisma.levelReward.findMany({ 
+          where: { guildId }, 
+          orderBy: { level: 'asc' } 
+        })
+      ]);
 
-    const rankedLeaderboard: (UserLevel & { rank: number; user: { id: string; username: string } })[] = userLevels.map((ul, index: number) => ({
+      const rankedLeaderboard = userLevels.map((ul, index: number) => ({
         ...ul,
         rank: skip + index + 1,
-    }));
+      }));
 
-    return {
+      return {
         leaderboard: rankedLeaderboard,
         total: totalUsers,
         currentPage: page,
         totalPages: Math.ceil(totalUsers / limit),
         levelRewards
-    };
+      };
+    } catch (error) {
+      console.error(`[DB] Failed to get level data for ${guildId}:`, error);
+      return {
+        leaderboard: [],
+        total: 0,
+        currentPage: page,
+        totalPages: 0,
+        levelRewards: []
+      };
+    }
   }
 
-  async addLevelReward(data: {guildId: string, level: number, roleId: string, description: string}): Promise<LevelReward> {
-    return prisma.levelReward.create({data});
+  // --- CRUD Operations with Error Handling ---
+
+  async addLevelReward(data: {guildId: string, level: number, roleId: string, description: string}): Promise<LevelReward | null> {
+    try {
+      const reward = await prisma.levelReward.create({ data });
+      console.log(`[DB] Added level reward for guild ${data.guildId}: Level ${data.level}`);
+      return reward;
+    } catch (error) {
+      console.error(`[DB] Failed to add level reward:`, error);
+      return null;
+    }
   }
 
   async deleteLevelReward(rewardId: number): Promise<LevelReward | null> {
-    return prisma.levelReward.delete({ where: { id: rewardId }});
+    try {
+      const reward = await prisma.levelReward.delete({ where: { id: rewardId } });
+      console.log(`[DB] Deleted level reward ${rewardId}`);
+      return reward;
+    } catch (error) {
+      console.error(`[DB] Failed to delete level reward ${rewardId}:`, error);
+      return null;
+    }
   }
 
   async toggleAutomodRule(ruleId: number, enabled: boolean): Promise<AutoModRule | null> {
-      return prisma.autoModRule.update({ where: { id: ruleId }, data: { enabled } });
+    try {
+      const rule = await prisma.autoModRule.update({ 
+        where: { id: ruleId }, 
+        data: { enabled, updatedAt: new Date() } 
+      });
+      console.log(`[DB] Toggled automod rule ${ruleId}: ${enabled ? 'enabled' : 'disabled'}`);
+      return rule;
+    } catch (error) {
+      console.error(`[DB] Failed to toggle automod rule ${ruleId}:`, error);
+      return null;
+    }
   }
   
-  async deleteAutomodRule(ruleId: number): Promise<AutoModRule | null > {
-      return prisma.autoModRule.delete({ where: { id: ruleId } });
+  async deleteAutomodRule(ruleId: number): Promise<AutoModRule | null> {
+    try {
+      const rule = await prisma.autoModRule.delete({ where: { id: ruleId } });
+      console.log(`[DB] Deleted automod rule ${ruleId}`);
+      return rule;
+    } catch (error) {
+      console.error(`[DB] Failed to delete automod rule ${ruleId}:`, error);
+      return null;
+    }
   }
 
   async deleteQuarantineEntry(entryId: number): Promise<Quarantine | null> {
-      return prisma.quarantine.delete({ where: { id: entryId } });
+    try {
+      const entry = await prisma.quarantine.delete({ where: { id: entryId } });
+      console.log(`[DB] Deleted quarantine entry ${entryId}`);
+      return entry;
+    } catch (error) {
+      console.error(`[DB] Failed to delete quarantine entry ${entryId}:`, error);
+      return null;
+    }
   }
 
   async deleteWarn(warningId: number): Promise<Warn | null> {
-      return prisma.warn.delete({ where: {id: warningId } });
+    try {
+      const warning = await prisma.warn.delete({ where: { id: warningId } });
+      console.log(`[DB] Deleted warning ${warningId}`);
+      return warning;
+    } catch (error) {
+      console.error(`[DB] Failed to delete warning ${warningId}:`, error);
+      return null;
+    }
   }
 
-  async createGuild(guildId: string, name: string): Promise<Guild> {
-    this.emit('guild:created', { guildId, name });
-    return this.createGuildWithDefaults(guildId, name);
+  /**
+   * Create guild with event emission
+   */
+  async createGuild(guildId: string, name: string): Promise<Guild | null> {
+    try {
+      const guild = await this.createGuildWithDefaults(guildId, name);
+      if (guild) {
+        this.emit('guild:created', { guildId, name });
+      }
+      return guild;
+    } catch (error) {
+      console.error(`[DB] Failed to create guild ${guildId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Health check for database service
+   */
+  async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: Record<string, unknown> }> {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return {
+        status: 'healthy',
+        details: {
+          database: 'connected',
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        details: {
+          database: 'disconnected',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
   }
 }
 
 const databaseEvents = new DatabaseService();
+
+// Export both the service and direct Prisma access
 export { prisma as PrismaInstance };
 export default databaseEvents;

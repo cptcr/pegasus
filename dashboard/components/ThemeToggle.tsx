@@ -1,4 +1,4 @@
-// dashboard/components/ThemeToggle.tsx
+// dashboard/components/ThemeToggle.tsx - Fixed Hydration Issues
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/lib/ThemeContext';
 import { useEffect, useState } from 'react';
@@ -29,8 +29,8 @@ export function ThemeToggle({ className = '', size = 'md' }: ThemeToggleProps) {
     lg: 'w-7 h-7'
   };
 
+  // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
-    // Show a neutral state during SSR
     return (
       <div
         className={`

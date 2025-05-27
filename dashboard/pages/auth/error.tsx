@@ -1,9 +1,9 @@
-// dashboard/pages/auth/error.tsx
+// dashboard/pages/auth/error.tsx - Fixed Hydration Issue
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { ExclamationTriangleIcon, HomeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const errorMessages: Record<string, { title: string; description: string; canRetry: boolean }> = {
   AccessDenied: {
@@ -37,8 +37,14 @@ export default function AuthError() {
   const router = useRouter();
   const { error } = router.query;
   const [retrying, setRetrying] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   const errorInfo = errorMessages[error as string] || errorMessages.Default;
+
+  // Fix hydration issue by only showing timestamp after component mounts
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -145,8 +151,8 @@ export default function AuthError() {
               </Link>
             </div>
 
-            {/* Debug info for development */}
-            {process.env.NODE_ENV === 'development' && (
+            {/* Debug info for development - Only show after hydration */}
+            {process.env.NODE_ENV === 'development' && mounted && (
               <div className="pt-4 mt-6 border-t border-gray-200">
                 <details className="text-xs">
                   <summary className="font-medium text-gray-500 cursor-pointer">Debug Information</summary>
