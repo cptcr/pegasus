@@ -1,4 +1,4 @@
-// src/modules/tickets/TicketManager.ts - Ticket System
+// src/modules/tickets/TicketManager.ts - Fixed Ticket System
 import {
   Guild,
   TextChannel,
@@ -8,7 +8,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
-  OverwriteResolvable,
   User,
   GuildMember,
   Message,
@@ -39,30 +38,18 @@ export interface TicketData {
   category: string;
   subject: string;
   priority: TicketPriority;
-  moderatorId?: string;
-  closedAt?: Date;
-  closeReason?: string;
+  moderatorId?: string | null;
+  closedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface TicketCategoryData {
-  id: number;
-  guildId: string;
-  name: string;
-  description?: string;
-  emoji?: string;
-  channelId?: string;
-  categoryId?: string;
-  enabled: boolean;
 }
 
 export class TicketManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;
@@ -88,37 +75,16 @@ export class TicketManager {
         return { success: false, error: `You can only have ${Config.TICKET.MAX_OPEN_PER_USER} open tickets at a time.` };
       }
 
-      // Get ticket category
-      const ticketCategory = await this.db.ticketCategory.findFirst({
-        where: {
-          guildId: guild.id,
-          name: options.category,
-          enabled: true
-        }
-      });
+      // Create or get tickets category
+      let ticketsCategory = guild.channels.cache.find(
+        c => c.type === ChannelType.GuildCategory && c.name.toLowerCase().includes('tickets')
+      ) as CategoryChannel;
 
-      if (!ticketCategory) {
-        return { success: false, error: 'Invalid ticket category.' };
-      }
-
-      // Get or create Discord category
-      let discordCategory: CategoryChannel | null = null;
-      if (ticketCategory.categoryId) {
-        discordCategory = guild.channels.cache.get(ticketCategory.categoryId) as CategoryChannel;
-      }
-
-      if (!discordCategory) {
-        // Create category if it doesn't exist
-        discordCategory = await guild.channels.create({
-          name: `${ticketCategory.name}-tickets`,
+      if (!ticketsCategory) {
+        ticketsCategory = await guild.channels.create({
+          name: 'Tickets',
           type: ChannelType.GuildCategory,
           reason: 'Ticket system setup'
-        });
-
-        // Update category in database
-        await this.db.ticketCategory.update({
-          where: { id: ticketCategory.id },
-          data: { categoryId: discordCategory.id }
         });
       }
 
@@ -130,7 +96,7 @@ export class TicketManager {
       const ticketChannel = await guild.channels.create({
         name: channelName,
         type: ChannelType.GuildText,
-        parent: discordCategory,
+        parent: ticketsCategory,
         reason: `Ticket created by ${options.userId}`,
         permissionOverwrites: [
           {
@@ -166,8 +132,14 @@ export class TicketManager {
         where: { id: guild.id }
       });
 
-      if (guildSettings?.staffRoleId) {
-        await ticketChannel.permissionOverwrites.create(guildSettings.staffRoleId, {
+      let staffRoleId: string | null = null;
+      if (guildSettings?.settings && typeof guildSettings.settings === 'object') {
+        const settings = guildSettings.settings as any;
+        staffRoleId = settings.staffRoleId || null;
+      }
+
+      if (staffRoleId) {
+        await ticketChannel.permissionOverwrites.create(staffRoleId, {
           ViewChannel: true,
           SendMessages: true,
           ReadMessageHistory: true,
@@ -195,6 +167,16 @@ export class TicketManager {
 
       // Log the action
       await this.logTicketAction(guild.id, 'TICKET_CREATED', ticket as TicketData);
+
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(guild.id, 'ticket:created', {
+        id: ticket.id,
+        subject: ticket.subject,
+        category: ticket.category,
+        userId: ticket.userId,
+        channelId: ticket.channelId,
+        priority: ticket.priority
+      });
 
       this.logger.info(`Ticket ${ticket.id} created in ${guild.name} by ${options.userId}`);
 
@@ -248,7 +230,6 @@ export class TicketManager {
           status: TicketStatus.CLOSED,
           moderatorId,
           closedAt: new Date(),
-          closeReason: reason || 'No reason provided',
           updatedAt: new Date()
         }
       });
@@ -294,6 +275,14 @@ export class TicketManager {
 
       // Log the action
       await this.logTicketAction(ticket.guildId, 'TICKET_CLOSED', ticket as TicketData, moderatorId);
+
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(ticket.guildId, 'ticket:closed', {
+        id: ticket.id,
+        subject: ticket.subject,
+        moderatorId,
+        reason
+      });
 
       this.logger.info(`Ticket ${ticketId} closed by ${moderatorId}`);
 
@@ -457,6 +446,100 @@ export class TicketManager {
   }
 
   /**
+   * Handle button interactions for ticket controls
+   */
+  async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+    try {
+      if (!interaction.guild) return;
+
+      // Parse custom ID: format is "ticket:action:ticketId" or "ticket:action"
+      const [prefix, action, ticketIdStr] = interaction.customId.split(':');
+      
+      if (prefix !== 'ticket') {
+        return;
+      }
+
+      switch (action) {
+        case 'close':
+          if (ticketIdStr) {
+            const ticketId = parseInt(ticketIdStr);
+            if (!isNaN(ticketId)) {
+              const result = await this.closeTicket(ticketId, interaction.user.id, 'Closed via button');
+              if (result.success) {
+                await interaction.reply({ content: `✅ Ticket has been closed.`, ephemeral: true });
+              } else {
+                await interaction.reply({ content: `❌ Failed to close ticket: ${result.error}`, ephemeral: true });
+              }
+            }
+          } else {
+            // Handle channel-based close
+            await this.handleChannelBasedClose(interaction);
+          }
+          break;
+        
+        default:
+          await interaction.reply({ content: 'Unknown ticket action.', ephemeral: true });
+          break;
+      }
+
+    } catch (error) {
+      this.logger.error('Error handling ticket button interaction:', error);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: 'An error occurred while processing this action.', 
+          ephemeral: true 
+        });
+      }
+    }
+  }
+
+  /**
+   * Handle channel-based ticket close
+   */
+  private async handleChannelBasedClose(interaction: ButtonInteraction): Promise<void> {
+    if (!interaction.channel || interaction.channel.type !== ChannelType.GuildText) {
+      await interaction.reply({ content: 'This command can only be used in a text channel.', ephemeral: true });
+      return;
+    }
+
+    const channelName = interaction.channel.name;
+    if (!channelName.startsWith('ticket-')) {
+      await interaction.reply({ content: 'This command can only be used in a ticket channel.', ephemeral: true });
+      return;
+    }
+
+    const ticketNumber = channelName.split('-')[1];
+    const ticketId = parseInt(ticketNumber);
+
+    if (isNaN(ticketId)) {
+      await interaction.reply({ content: 'Invalid ticket channel.', ephemeral: true });
+      return;
+    }
+
+    const ticket = await this.getTicket(ticketId);
+    if (!ticket) {
+      await interaction.reply({ content: 'Ticket not found.', ephemeral: true });
+      return;
+    }
+
+    const isOwner = ticket.userId === interaction.user.id;
+    const isStaff = interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels);
+
+    if (!isOwner && !isStaff) {
+      await interaction.reply({ content: 'You do not have permission to close this ticket.', ephemeral: true });
+      return;
+    }
+
+    const result = await this.closeTicket(ticketId, interaction.user.id, 'Closed via button');
+
+    if (result.success) {
+      await interaction.reply({ content: `✅ Ticket closed successfully.` });
+    } else {
+      await interaction.reply({ content: `❌ Failed to close ticket: ${result.error}`, ephemeral: true });
+    }
+  }
+
+  /**
    * Get ticket data by ID
    */
   async getTicket(ticketId: number): Promise<TicketData | null> {
@@ -511,67 +594,6 @@ export class TicketManager {
       return tickets as TicketData[];
     } catch (error) {
       this.logger.error('Error getting user tickets:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Create or update ticket category
-   */
-  async createTicketCategory(
-    guildId: string,
-    name: string,
-    options: {
-      description?: string;
-      emoji?: string;
-      channelId?: string;
-      categoryId?: string;
-    }
-  ): Promise<{ success: boolean; category?: TicketCategoryData; error?: string }> {
-    try {
-      const category = await this.db.ticketCategory.upsert({
-        where: {
-          guildId_name: { guildId, name }
-        },
-        update: {
-          description: options.description,
-          emoji: options.emoji,
-          channelId: options.channelId,
-          categoryId: options.categoryId,
-          updatedAt: new Date()
-        },
-        create: {
-          guildId,
-          name,
-          description: options.description,
-          emoji: options.emoji,
-          channelId: options.channelId,
-          categoryId: options.categoryId,
-          enabled: true
-        }
-      });
-
-      return { success: true, category: category as TicketCategoryData };
-
-    } catch (error) {
-      this.logger.error('Error creating ticket category:', error);
-      return { success: false, error: 'Internal error occurred' };
-    }
-  }
-
-  /**
-   * Get ticket categories for guild
-   */
-  async getTicketCategories(guildId: string): Promise<TicketCategoryData[]> {
-    try {
-      const categories = await this.db.ticketCategory.findMany({
-        where: { guildId, enabled: true },
-        orderBy: { name: 'asc' }
-      });
-
-      return categories as TicketCategoryData[];
-    } catch (error) {
-      this.logger.error('Error getting ticket categories:', error);
       return [];
     }
   }
@@ -694,15 +716,10 @@ export class TicketManager {
       const row = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId(`ticket_close_${ticket.id}`)
+            .setCustomId(`ticket:close`)
             .setLabel('Close Ticket')
             .setStyle(ButtonStyle.Danger)
-            .setEmoji('🔒'),
-          new ButtonBuilder()
-            .setCustomId(`ticket_priority_${ticket.id}`)
-            .setLabel('Set Priority')
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('⚠️')
+            .setEmoji('🔒')
         );
 
       await channel.send({ content: `${user}`, embeds: [embed], components: [row] });
@@ -800,14 +817,20 @@ export class TicketManager {
         where: { id: guildId }
       });
 
-      if (!guildSettings?.modLogChannelId) {
+      let modLogChannelId: string | null = null;
+      if (guildSettings?.settings && typeof guildSettings.settings === 'object') {
+        const settings = guildSettings.settings as any;
+        modLogChannelId = settings.modLogChannelId || null;
+      }
+
+      if (!modLogChannelId) {
         return;
       }
 
       const guild = this.client.guilds.cache.get(guildId);
       if (!guild) return;
 
-      const logChannel = guild.channels.cache.get(guildSettings.modLogChannelId) as TextChannel;
+      const logChannel = guild.channels.cache.get(modLogChannelId) as TextChannel;
       if (!logChannel) return;
 
       const user = await this.client.users.fetch(ticket.userId).catch(() => null);
@@ -832,10 +855,6 @@ export class TicketManager {
 
       if (moderator && action !== 'TICKET_CREATED') {
         embed.addFields({ name: `${action.split('_')[1]} by`, value: `${moderator.tag} (${moderator.id})`, inline: true });
-      }
-
-      if (action === 'TICKET_CLOSED' && ticket.closeReason) {
-        embed.addFields({ name: 'Close Reason', value: ticket.closeReason, inline: false });
       }
 
       await logChannel.send({ embeds: [embed] });
@@ -866,6 +885,17 @@ export class TicketManager {
 
     } catch (error) {
       this.logger.error('Error during ticket cleanup:', error);
+    }
+  }
+
+  /**
+   * Initialize ticket system for guild
+   */
+  async initializeGuild(guild: Guild): Promise<void> {
+    try {
+      this.logger.info(`Initialized ticket system for guild ${guild.name}`);
+    } catch (error) {
+      this.logger.error('Error initializing ticket system for guild:', error);
     }
   }
 }

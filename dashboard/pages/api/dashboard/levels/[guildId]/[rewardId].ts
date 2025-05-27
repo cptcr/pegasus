@@ -1,7 +1,7 @@
 // dashboard/pages/api/dashboard/levels/[guildId]/[rewardId].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../../lib/auth';
-import { DatabaseService } from '../../../../../lib/database';
+import DatabaseService from '../../../../../lib/database';
 
 const ALLOWED_GUILD_ID = '554266392262737930';
 

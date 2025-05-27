@@ -1,18 +1,30 @@
 // dashboard/pages/api/auth/[...nextauth].ts
-import NextAuth, { NextAuthOptions, User as NextAuthUser } from 'next-auth';
-import DiscordProvider from 'next-auth/providers/discord';
-import { REST } from '@discordjs/rest';
-import { Routes, APIUserGuild } from 'discord-api-types/v10';
-import discordService from '@/lib/discordService';
+import NextAuth, { NextAuthOptions, User as NextAuthUser, Account, Profile as NextAuthProfile, Session } from 'next-auth';
+import { AdapterUser } from 'next-auth/adapters';
+import DiscordProvider, { DiscordProfile as DiscordOAuthProfile } from 'next-auth/providers/discord';
+import { discordService } from '@/lib/discordService';
 import db from '@/lib/database';
+import { DiscordProfile, GuildMemberWithRoles } from '@/types/index';
+import { JWT } from 'next-auth/jwt';
 
-// These should be configured in your .env file
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID;
 const REQUIRED_ROLE_ID = process.env.REQUIRED_ROLE_ID;
 
 if (!TARGET_GUILD_ID) {
-  console.error("FATAL: TARGET_GUILD_ID environment variable is not set.");
-  process.exit(1);
+  console.error("FATAL: TARGET_GUILD_ID environment variable is not set for NextAuth.");
+}
+
+interface SessionUser extends NextAuthUser, Partial<DiscordProfile> {
+  id: string;
+  hasRequiredAccess?: boolean;
+  member?: GuildMemberWithRoles | null;
+}
+
+interface TokenUser extends JWT, Partial<DiscordProfile> {
+  id?: string;
+  accessToken?: string;
+  hasRequiredAccess?: boolean;
+  member?: GuildMemberWithRoles | null;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -20,57 +32,114 @@ export const authOptions: NextAuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || '',
       clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
-      authorization: { params: { scope: 'identify email guilds' } },
+      authorization: { params: { scope: 'identify email guilds guilds.members.read' } },
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }: { user: NextAuthUser | AdapterUser; account: Account | null; profile?: NextAuthProfile | DiscordOAuthProfile }): Promise<boolean | string> {
       if (!account?.access_token || !TARGET_GUILD_ID) {
-        return false;
+        console.warn("[NextAuth SignIn] Missing access_token or TARGET_GUILD_ID");
+        return '/auth/error?error=Configuration';
       }
 
+      const discordProfile = profile as DiscordOAuthProfile;
+
       try {
-        await discordService.initialize(account.access_token);
-        const member = await discordService.getGuildMember(TARGET_GUILD_ID, user.id);
+        if (!discordService.isReady()) {
+            await discordService.initialize();
+        }
+
+        const member = await discordService.getGuildMember(TARGET_GUILD_ID, discordProfile.id);
 
         if (!member) {
-          console.log(`User ${user.id} denied access: Not a member of guild ${TARGET_GUILD_ID}`);
-          return '/auth/error?error=GuildAccess';
+          console.log(`[NextAuth SignIn] User ${discordProfile.id} denied: Not a member of guild ${TARGET_GUILD_ID}`);
+          return `/auth/error?error=GuildAccess&guildName=${TARGET_GUILD_ID}`;
         }
 
-        // If REQUIRED_ROLE_ID is set, check for the role. Otherwise, allow any member.
-        if (REQUIRED_ROLE_ID && !member.roles.includes(REQUIRED_ROLE_ID)) {
-          console.log(`User ${user.id} denied access: Lacks required role ${REQUIRED_ROLE_ID}`);
-          return '/auth/error?error=RoleAccess';
+        const hasRequiredRole = REQUIRED_ROLE_ID ? member.roles.cache.has(REQUIRED_ROLE_ID) : true;
+
+        if (!hasRequiredRole) {
+          console.log(`[NextAuth SignIn] User ${discordProfile.id} denied: Lacks required role ${REQUIRED_ROLE_ID}`);
+          return `/auth/error?error=RoleAccess&roleName=${REQUIRED_ROLE_ID}`;
         }
-        
-        // Sync guild info on successful sign-in
+
+        await db.user.upsert({
+            where: { id: discordProfile.id },
+            update: {
+                username: discordProfile.username,
+                discriminator: discordProfile.discriminator,
+                avatar: discordProfile.avatar,
+                email: discordProfile.email,
+                lastLogin: new Date(),
+            },
+            create: {
+                id: discordProfile.id,
+                username: discordProfile.username,
+                discriminator: discordProfile.discriminator,
+                avatar: discordProfile.avatar,
+                email: discordProfile.email,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                lastLogin: new Date(),
+            }
+        });
+
         const guildInfo = await discordService.getGuildInfo(TARGET_GUILD_ID);
         if (guildInfo) {
           await db.syncGuild(TARGET_GUILD_ID, guildInfo.name);
         }
         
+        (user as SessionUser).hasRequiredAccess = true;
+        (user as SessionUser).member = {
+            roles: member.roles.cache.map(role => role.id),
+            nick: member.nickname,
+            joined_at: member.joinedAt?.toISOString() ?? new Date().toISOString(),
+        };
+
         return true;
       } catch (error) {
-        console.error('Error during sign-in check:', error);
+        console.error('[NextAuth SignIn] Error during sign-in check:', error);
         return '/auth/error?error=ApiError';
       }
     },
-    async jwt({ token, account, profile }) {
+
+    async jwt({ token, user, account, profile }: { token: JWT; user?: NextAuthUser | AdapterUser; account?: Account | null; profile?: NextAuthProfile | DiscordOAuthProfile }): Promise<JWT> {
+      const tokenUser = token as TokenUser;
+      const nextAuthUser = user as SessionUser | undefined;
+
       if (account) {
-        token.accessToken = account.access_token;
+        tokenUser.accessToken = account.access_token;
       }
       if (profile) {
-        // profile is a DiscordProfile
-        token.id = profile.id;
-        token.image = profile.image_url;
+        const discordProfile = profile as DiscordOAuthProfile;
+        tokenUser.id = discordProfile.id;
+        tokenUser.name = discordProfile.username;
+        tokenUser.email = discordProfile.email;
+        tokenUser.image = discordProfile.image_url;
+        tokenUser.username = discordProfile.username;
+        tokenUser.discriminator = discordProfile.discriminator;
+        tokenUser.avatar = discordProfile.avatar;
       }
-      return token;
+       if (nextAuthUser) {
+        tokenUser.id = nextAuthUser.id;
+        tokenUser.hasRequiredAccess = nextAuthUser.hasRequiredAccess;
+        tokenUser.member = nextAuthUser.member;
+      }
+      return tokenUser;
     },
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as NextAuthUser & { id: string }).id = token.id as string;
+
+    async session({ session, token }: { session: Session; token: JWT }): Promise<Session> {
+      const sessionUser = session.user as SessionUser;
+      const tokenData = token as TokenUser;
+
+      if (sessionUser) {
+        sessionUser.id = tokenData.id || sessionUser.id;
+        sessionUser.username = tokenData.username || sessionUser.username;
+        sessionUser.discriminator = tokenData.discriminator || sessionUser.discriminator;
+        sessionUser.avatar = tokenData.avatar || sessionUser.avatar;
+        sessionUser.hasRequiredAccess = tokenData.hasRequiredAccess;
+        sessionUser.member = tokenData.member;
       }
       return session;
     },
@@ -78,7 +147,8 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
-  }
+  },
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export default NextAuth(authOptions);

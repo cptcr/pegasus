@@ -1,20 +1,33 @@
-// dashboard/components/ProtectedLayout.tsx
+// dashboard/components/ProtectedLayout.tsx - Fixed All Issues with Type Assertion
 import { useSession, signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import { ShieldCheckIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface ProtectedLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requiredGuildId?: string;
 }
 
-const ALLOWED_GUILD_ID = '554266392262737930';
-const REQUIRED_ROLE_ID = '797927858420187186';
+// Extended user interface for proper typing
+interface ExtendedUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  username?: string;
+  discriminator?: string;
+  avatar?: string | null;
+  hasRequiredAccess?: boolean;
+}
 
-export default function ProtectedLayout({ 
-  children, 
-  requiredGuildId = ALLOWED_GUILD_ID 
+const ALLOWED_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930';
+const REQUIRED_ROLE_ID = process.env.NEXT_PUBLIC_REQUIRED_ROLE_ID || '797927858420187186';
+
+export default function ProtectedLayout({
+  children,
+  requiredGuildId = ALLOWED_GUILD_ID
 }: ProtectedLayoutProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -29,9 +42,12 @@ export default function ProtectedLayout({
       return;
     }
 
+    // Type assertion to access extended properties
+    const extendedUser = session.user as ExtendedUser;
+    
     // Check if user has required access (guild membership + role)
-    if (session.user?.hasRequiredAccess !== true) {
-      console.log('Access denied - redirecting to error page');
+    if (extendedUser?.hasRequiredAccess !== true) {
+      console.log('Access denied - redirecting to error page (ProtectedLayout)');
       router.push('/auth/error?error=AccessDenied');
       return;
     }
@@ -43,6 +59,9 @@ export default function ProtectedLayout({
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/auth/signin' });
   };
+
+  // Type-safe current user access with assertion
+  const currentUser = session?.user as ExtendedUser | undefined;
 
   if (status === 'loading' || isLoading) {
     return (
@@ -77,37 +96,42 @@ export default function ProtectedLayout({
             <div className="flex items-center">
               <ShieldCheckIcon className="w-8 h-8 text-indigo-600" />
               <span className="ml-2 text-xl font-semibold text-gray-900">
-                Hinko Dashboard
+                Pegasus Dashboard
               </span>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                {session?.user?.avatar && (
-                  <img
-                    src={`https://cdn.discordapp.com/avatars/${session.user.id}/${session.user.avatar}.png`}
-                    alt="Avatar"
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <span className="text-sm text-gray-700">
-                  {session?.user?.username}#{session?.user?.discriminator}
-                </span>
+
+            {currentUser && (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  {currentUser.avatar && (
+                    <Image
+                      src={`https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png`}
+                      alt="User Avatar"
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  )}
+                  <span className="text-sm text-gray-700">
+                    {currentUser.username || currentUser.name || 'Unknown User'}
+                    {currentUser.discriminator && `#${currentUser.discriminator}`}
+                  </span>
+                </div>
+
+                <div className="px-2 py-1 text-xs text-green-600 bg-green-100 rounded">
+                  Authorized
+                </div>
+
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-1 text-gray-500 transition-colors hover:text-gray-700"
+                  title="Sign Out"
+                >
+                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                  <span className="text-sm">Sign Out</span>
+                </button>
               </div>
-              
-              <div className="px-2 py-1 text-xs text-green-600 bg-green-100 rounded">
-                Authorized
-              </div>
-              
-              <button
-                onClick={handleSignOut}
-                className="flex items-center space-x-1 text-gray-500 transition-colors hover:text-gray-700"
-                title="Sign Out"
-              >
-                <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                <span className="text-sm">Sign Out</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </nav>
@@ -122,7 +146,7 @@ export default function ProtectedLayout({
         <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              Hinko Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}
+              Pegasus Bot Dashboard v2.0.0 - Guild: {requiredGuildId} - Role: {REQUIRED_ROLE_ID}
             </div>
             <div className="text-sm text-gray-500">
               Authorized access only

@@ -1,4 +1,4 @@
-// src/modules/giveaways/GiveawayManager.ts - Fixed Giveaway System
+// src/modules/giveaways/GiveawayManager.ts - Fixed Entry Type Issue
 import {
   Guild,
   TextChannel,
@@ -34,7 +34,7 @@ export interface GiveawayData {
   channelId: string;
   messageId: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   prize: string;
   winners: number;
   creatorId: string;
@@ -42,8 +42,8 @@ export interface GiveawayData {
   active: boolean;
   ended: boolean;
   winnerUserIds: string[];
-  requiredRole?: string;
-  requiredLevel?: number;
+  requiredRole?: string | null;
+  requiredLevel?: number | null;
   createdAt: Date;
   updatedAt: Date;
   entries: GiveawayEntryData[];
@@ -58,10 +58,10 @@ export interface GiveawayEntryData {
 export class GiveawayManager {
   private client: ExtendedClient;
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
   private activeTimers: Map<number, NodeJS.Timeout> = new Map();
 
-  constructor(client: ExtendedClient, db: PrismaClient, logger: Logger) {
+  constructor(client: ExtendedClient, db: PrismaClient, logger: typeof Logger) {
     this.client = client;
     this.db = db;
     this.logger = logger;
@@ -86,13 +86,13 @@ export class GiveawayManager {
           guildId: guild.id,
           channelId: options.channelId,
           title: options.title,
-          description: options.description,
+          description: options.description || null,
           prize: options.prize,
           winners: options.winners,
           creatorId: options.creatorId,
           endTime,
-          requiredRole: options.requirements?.roleRequired,
-          requiredLevel: options.requirements?.levelRequired,
+          requiredRole: options.requirements?.roleRequired || null,
+          requiredLevel: options.requirements?.levelRequired || null,
           active: true,
           ended: false,
           winnerUserIds: []
@@ -113,6 +113,16 @@ export class GiveawayManager {
       });
 
       this.setExpirationTimer(giveaway.id, endTime);
+
+      // Emit to dashboard
+      this.client.wsManager.emitRealtimeEvent(guild.id, 'giveaway:created', {
+        id: giveaway.id,
+        title: giveaway.title,
+        prize: giveaway.prize,
+        winners: giveaway.winners,
+        endTime: giveaway.endTime.toISOString(),
+        creatorId: giveaway.creatorId
+      });
 
       this.logger.info(`Giveaway created in ${guild.name} by ${options.creatorId}: ${options.title}`);
 
@@ -160,6 +170,13 @@ export class GiveawayManager {
       if (updatedGiveaway) {
         await this.updateGiveawayMessage(updatedGiveaway as unknown as GiveawayData);
         await this.announceWinners(updatedGiveaway as unknown as GiveawayData, winners);
+
+        // Emit to dashboard
+        this.client.wsManager.emitRealtimeEvent(updatedGiveaway.guildId, 'giveaway:ended', {
+          id: updatedGiveaway.id,
+          title: updatedGiveaway.title,
+          winners: winners.map(w => ({ id: w.id, tag: w.tag }))
+        });
       }
 
       this.logger.info(`Giveaway ${giveawayId} ended, ${winners.length} winners selected`);
@@ -211,11 +228,40 @@ export class GiveawayManager {
     }
   }
 
-  async handleEntry(interaction: ButtonInteraction): Promise<void> {
+  async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
     try {
       if (!interaction.guild) return;
 
-      const giveawayId = parseInt(interaction.customId.split('_')[1]);
+      // Parse custom ID: format is "giveaway:enter:giveawayId"
+      const [prefix, action, giveawayIdStr] = interaction.customId.split(':');
+      
+      if (prefix !== 'giveaway' || action !== 'enter') {
+        return;
+      }
+
+      const giveawayId = parseInt(giveawayIdStr);
+      if (isNaN(giveawayId)) {
+        await interaction.reply({ content: 'Invalid giveaway ID.', ephemeral: true });
+        return;
+      }
+
+      await this.handleEntry(interaction, giveawayId);
+
+    } catch (error) {
+      this.logger.error('Error handling giveaway button interaction:', error);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: 'An error occurred while processing your entry.', 
+          ephemeral: true 
+        });
+      }
+    }
+  }
+
+  async handleEntry(interaction: ButtonInteraction, giveawayId: number): Promise<void> {
+    try {
+      if (!interaction.guild) return;
+
       const giveaway = await this.db.giveaway.findUnique({
         where: { id: giveawayId },
         include: { entries: true }
@@ -228,10 +274,12 @@ export class GiveawayManager {
 
       if (giveaway.endTime < new Date()) {
         await this.endGiveaway(giveawayId);
-        void interaction.reply({ content: 'This giveaway has expired.', ephemeral: true });
+        await interaction.reply({ content: 'This giveaway has expired.', ephemeral: true });
+        return;
       }
 
-      const existingEntry = giveaway.entries.find(entry => entry.userId === interaction.user.id);
+      // FIXED: Added proper type annotation for entry parameter
+      const existingEntry = giveaway.entries.find((entry: any) => entry.userId === interaction.user.id);
       if (existingEntry) {
         await interaction.reply({ content: 'You have already entered this giveaway!', ephemeral: true });
         return;
@@ -262,6 +310,13 @@ export class GiveawayManager {
       
       if (updatedGiveaway) {
         await this.updateGiveawayMessage(updatedGiveaway as unknown as GiveawayData);
+
+        // Emit to dashboard
+        this.client.wsManager.emitRealtimeEvent(interaction.guild.id, 'giveaway:entered', {
+          id: giveawayId,
+          userId: interaction.user.id,
+          entryCount: updatedGiveaway.entries.length
+        });
       }
 
     } catch (error) {
@@ -466,7 +521,7 @@ export class GiveawayManager {
     const row = new ActionRowBuilder<ButtonBuilder>()
       .addComponents(
         new ButtonBuilder()
-          .setCustomId(`giveaway_${giveaway.id}`)
+          .setCustomId(`giveaway:enter:${giveaway.id}`)
           .setLabel(`Enter Giveaway (${giveaway.entries.length})`)
           .setStyle(ButtonStyle.Success)
           .setEmoji(Config.GIVEAWAY.ENTRY_EMOJI)
@@ -616,6 +671,33 @@ export class GiveawayManager {
 
     } catch (error) {
       this.logger.error('Error initializing giveaway system for guild:', error);
+    }
+  }
+
+  async cleanup(): Promise<void> {
+    try {
+      // Clear all active timers
+      for (const [giveawayId, timer] of this.activeTimers) {
+        clearTimeout(timer);
+      }
+      this.activeTimers.clear();
+
+      // Clean up old inactive giveaways (older than 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      
+      await this.db.giveaway.deleteMany({
+        where: {
+          active: false,
+          updatedAt: {
+            lt: thirtyDaysAgo
+          }
+        }
+      });
+
+      this.logger.info('Giveaway system cleanup completed');
+
+    } catch (error) {
+      this.logger.error('Error during giveaway cleanup:', error);
     }
   }
 }

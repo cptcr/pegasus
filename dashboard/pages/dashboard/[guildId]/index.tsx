@@ -1,9 +1,10 @@
-// dashboard/pages/dashboard/[guildId]/index.tsx
-import { useState, useEffect } from 'react';
+// dashboard/pages/dashboard/[guildId]/index.tsx - Fixed Import Issue
+import { useState, useEffect, useCallback } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { 
   ChartBarIcon, 
@@ -80,10 +81,10 @@ interface RecentActivity {
   recentGiveaways: number;
   recentTickets: number;
   today: {
-    recentWarns: number;
-    recentPolls: number;
-    recentGiveaways: number;
-    recentTickets: number;
+    warns: number;
+    polls: number;
+    giveaways: number;
+    tickets: number;
   };
   metrics: {
     activityScore: number;
@@ -108,19 +109,7 @@ export default function ModernGuildDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  useEffect(() => {
-    if (guildId && typeof guildId === 'string') {
-      fetchDashboardData();
-      
-      const interval = setInterval(() => {
-        fetchDashboardData(true);
-      }, 30000);
-
-      return () => clearInterval(interval);
-    }
-  }, [guildId]);
-
-  const fetchDashboardData = async (silent = false) => {
+  const fetchDashboardData = useCallback(async (silent = false) => {
     try {
       if (!silent) setRefreshing(true);
       setError(null);
@@ -152,7 +141,19 @@ export default function ModernGuildDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [guildId]);
+
+  useEffect(() => {
+    if (guildId && typeof guildId === 'string') {
+      fetchDashboardData();
+      
+      const interval = setInterval(() => {
+        fetchDashboardData(true);
+      }, 30000);
+
+      return () => clearInterval(interval);
+    }
+  }, [guildId, fetchDashboardData]);
 
   if (loading) {
     return (
@@ -228,10 +229,12 @@ export default function ModernGuildDashboard() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-4">
                 {guild.iconURL ? (
-                  <img 
+                  <Image 
                     src={guild.iconURL} 
                     alt="Guild Icon" 
-                    className="w-12 h-12 shadow-lg rounded-xl ring-2 ring-indigo-500/20" 
+                    width={48}
+                    height={48}
+                    className="shadow-lg rounded-xl ring-2 ring-indigo-500/20" 
                   />
                 ) : (
                   <div className="flex items-center justify-center w-12 h-12 shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
@@ -377,7 +380,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.totalWarns}
               icon={<ExclamationTriangleIcon className="w-6 h-6" />}
               color="red"
-              change={activity?.today.recentWarns ? `+${activity.today.recentWarns} today` : undefined}
+              change={activity?.today.warns ? `+${activity.today.warns} today` : undefined}
               description="Unresolved user warnings"
             />
             <ModernStatsCard
@@ -385,7 +388,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.openTickets}
               icon={<TicketIcon className="w-6 h-6" />}
               color="purple"
-              change={activity?.today.recentTickets ? `+${activity.today.recentTickets} today` : undefined}
+              change={activity?.today.tickets ? `+${activity.today.tickets} today` : undefined}
               description="Support tickets awaiting response"
             />
             <ModernStatsCard
@@ -414,7 +417,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.activePolls}
               icon={<ChatBubbleLeftRightIcon className="w-6 h-6" />}
               color="blue"
-              change={activity?.today.recentPolls ? `+${activity.today.recentPolls} today` : undefined}
+              change={activity?.today.polls ? `+${activity.today.polls} today` : undefined}
               description="Running community polls"
               disabled={!guild.stats.enablePolls}
             />
@@ -423,7 +426,7 @@ export default function ModernGuildDashboard() {
               value={guild.stats.activeGiveaways}
               icon={<GiftIcon className="w-6 h-6" />}
               color="green"
-              change={activity?.today.recentGiveaways ? `+${activity.today.recentGiveaways} today` : undefined}
+              change={activity?.today.giveaways ? `+${activity.today.giveaways} today` : undefined}
               description="Ongoing giveaways"
               disabled={!guild.stats.enableGiveaways}
             />
@@ -752,6 +755,7 @@ function QuickActionCard({ title, icon, href, color, description, disabled }: Qu
     </Link>
   );
 }
+
 function MetricCard({
   title,
   value,
@@ -811,7 +815,6 @@ interface FeatureStatusCardProps {
   description: string;
   stats?: string;
 }
-
 
 function FeatureStatusCard({ name, enabled, icon, description, stats }: FeatureStatusCardProps) {
   return (
@@ -927,7 +930,6 @@ function ManagementCard({ title, description, href, icon, features }: Management
     </Link>
   );
 }
-
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);

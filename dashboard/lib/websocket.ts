@@ -1,40 +1,53 @@
-
-// dashboard/lib/websocket.ts (Real-time Updates)
-import { useEffect, useState, useRef } from 'react';
+// dashboard/lib/websocket.ts (Real-time Updates) - Fixed ESLint Issues
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { RealtimeEvent as SharedRealtimeEvent } from '@/types/index';
 
-export interface RealtimeEvent {
-  type: 'guild:updated' | 'warn:created' | 'warn:deleted' | 'poll:created' | 'poll:ended' | 
-        'giveaway:created' | 'giveaway:ended' | 'ticket:created' | 'ticket:closed' | 
-        'level:updated' | 'command:used' | 'member:joined' | 'member:left';
-  guildId: string;
-  data: any;
-  timestamp: string;
+// Re-exporting with additional properties if needed - now has members
+export interface RealtimeEvent<T = unknown> extends SharedRealtimeEvent<T> {
+  // Add any additional properties specific to the websocket implementation
+  priority?: 'low' | 'medium' | 'high';
+  source?: string;
 }
 
 class RealtimeService {
   private socket: Socket | null = null;
-  private listeners: Map<string, Set<(event: RealtimeEvent) => void>> = new Map();
+  private listeners: Map<string, Set<(event: RealtimeEvent<unknown>) => void>> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isConnecting = false;
+  private currentGuildId: string | null = null;
 
   connect(guildId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.socket?.connected) {
+      if (this.socket?.connected && this.currentGuildId === guildId) {
         resolve();
         return;
       }
 
-      if (this.isConnecting) {
+      if (this.isConnecting && this.currentGuildId === guildId) {
         resolve();
         return;
       }
 
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket = null;
+      }
+      this.currentGuildId = guildId;
       this.isConnecting = true;
+      this.reconnectAttempts = 0;
 
       try {
-        this.socket = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', {
+        const websocketUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL || '';
+        if (!websocketUrl) {
+          console.error('❌ NEXT_PUBLIC_WEBSOCKET_URL is not set.');
+          this.isConnecting = false;
+          reject(new Error('WebSocket URL is not configured.'));
+          return;
+        }
+
+        this.socket = io(websocketUrl, {
           query: { guildId },
           transports: ['websocket', 'polling'],
           timeout: 10000,
@@ -45,48 +58,34 @@ class RealtimeService {
         });
 
         this.socket.on('connect', () => {
-          console.log('✅ Real-time connection established');
+          console.log(`✅ Real-time connection established for guild ${guildId}`);
           this.reconnectAttempts = 0;
           this.isConnecting = false;
           resolve();
         });
 
-        this.socket.on('disconnect', (reason) => {
-          console.log('🔌 Real-time connection lost:', reason);
+        this.socket.on('disconnect', (reason: Socket.DisconnectReason) => {
+          console.log(`🔌 Real-time connection lost for guild ${guildId}: ${reason}`);
           this.isConnecting = false;
         });
 
-        this.socket.on('connect_error', (error) => {
-          console.error('❌ Real-time connection error:', error);
+        this.socket.on('connect_error', (error: Error) => {
+          console.error(`❌ Real-time connection error for guild ${guildId}:`, error.message);
           this.isConnecting = false;
           this.reconnectAttempts++;
-          
+
           if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            reject(new Error('Failed to establish real-time connection'));
+            this.socket?.disconnect();
+            reject(new Error('Failed to establish real-time connection after multiple attempts.'));
           }
         });
 
-        this.socket.on('realtime:event', (event: RealtimeEvent) => {
+        this.socket.on('realtime:event', (event: RealtimeEvent<unknown>) => {
           this.handleEvent(event);
         });
-
-        // Guild-specific events
-        this.socket.on('guild:stats:updated', (data) => {
-          this.handleEvent({
-            type: 'guild:updated',
-            guildId: data.guildId,
-            data: data.stats,
-            timestamp: new Date().toISOString()
-          });
-        });
-
-        this.socket.on('activity:updated', (data) => {
-          this.handleEvent({
-            type: 'guild:updated',
-            guildId: data.guildId,
-            data: { activity: data.activity },
-            timestamp: new Date().toISOString()
-          });
+        
+        this.socket.on('realtime:update', (event: RealtimeEvent<unknown>) => {
+            this.handleEvent(event);
         });
 
       } catch (error) {
@@ -101,19 +100,17 @@ class RealtimeService {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.listeners.clear();
     this.isConnecting = false;
-    console.log('🔌 Real-time connection closed');
+    this.currentGuildId = null;
+    console.log('🔌 Real-time connection explicitly closed');
   }
 
-  subscribe(eventType: string, callback: (event: RealtimeEvent) => void): () => void {
+  subscribe(eventType: string, callback: (event: RealtimeEvent<unknown>) => void): () => void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
-    
     this.listeners.get(eventType)!.add(callback);
 
-    // Return unsubscribe function
     return () => {
       const callbacks = this.listeners.get(eventType);
       if (callbacks) {
@@ -125,27 +122,29 @@ class RealtimeService {
     };
   }
 
-  private handleEvent(event: RealtimeEvent): void {
-    // Notify all listeners for this event type
-    const callbacks = this.listeners.get(event.type);
-    if (callbacks) {
-      callbacks.forEach(callback => {
+  private handleEvent(event: RealtimeEvent<unknown>): void {
+    if (event.guildId !== this.currentGuildId) {
+      return;
+    }
+
+    const notifySpecific = this.listeners.get(event.type);
+    if (notifySpecific) {
+      notifySpecific.forEach(callback => {
         try {
           callback(event);
         } catch (error) {
-          console.error('Error in realtime event callback:', error);
+          console.error('Error in specific realtime event callback:', error);
         }
       });
     }
 
-    // Notify all listeners for 'all' events
-    const allCallbacks = this.listeners.get('*');
-    if (allCallbacks) {
-      allCallbacks.forEach(callback => {
+    const notifyAll = this.listeners.get('*');
+    if (notifyAll) {
+      notifyAll.forEach(callback => {
         try {
           callback(event);
         } catch (error) {
-          console.error('Error in realtime event callback:', error);
+          console.error('Error in wildcard realtime event callback:', error);
         }
       });
     }
@@ -155,31 +154,38 @@ class RealtimeService {
     return this.socket?.connected || false;
   }
 
-  emit(event: string, data: any): void {
+  emit(event: string, data: { guildId: string, [key: string]: unknown }): void {
     if (this.socket?.connected) {
       this.socket.emit(event, data);
+    } else {
+      console.warn(`[RealtimeService] Cannot emit event '${event}', socket not connected.`);
     }
   }
 }
 
-// Singleton instance
 export const realtimeService = new RealtimeService();
 
-// React Hook for real-time updates
 export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
   const [isConnected, setIsConnected] = useState(false);
-  const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null);
-  const [events, setEvents] = useState<RealtimeEvent[]>([]);
-  const unsubscribeFunctions = useRef<(() => void)[]>([]);
+  const [lastEvent, setLastEvent] = useState<RealtimeEvent<unknown> | null>(null);
+  const [events, setEvents] = useState<RealtimeEvent<unknown>[]>([]);
+  const unsubscribeFunctionsRef = useRef<(() => void)[]>([]);
+
+  // Create a stable string key from eventTypes array
+  const eventTypesKey = eventTypes.join(',');
+  // Memoize eventTypes array to prevent unnecessary re-renders
+  const memoizedEventTypes = useMemo(() => eventTypes, [eventTypes, eventTypesKey]);
 
   useEffect(() => {
     let mounted = true;
 
-    const connect = async () => {
+    const connectAndSubscribe = async () => {
+      if (!guildId) return;
+
       try {
         await realtimeService.connect(guildId);
         if (mounted) {
-          setIsConnected(true);
+          setIsConnected(realtimeService.isConnected());
         }
       } catch (error) {
         console.error('Failed to connect to real-time service:', error);
@@ -187,22 +193,25 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
           setIsConnected(false);
         }
       }
+
+      unsubscribeFunctionsRef.current.forEach(unsubscribe => unsubscribe());
+      unsubscribeFunctionsRef.current = [];
+
+      if (realtimeService.isConnected()) {
+        memoizedEventTypes.forEach(eventType => {
+          const unsubscribe = realtimeService.subscribe(eventType, (event) => {
+            if (mounted) {
+              setLastEvent(event);
+              setEvents(prev => [event, ...prev.slice(0, 99)]);
+            }
+          });
+          unsubscribeFunctionsRef.current.push(unsubscribe);
+        });
+      }
     };
 
-    connect();
+    connectAndSubscribe();
 
-    // Subscribe to events
-    eventTypes.forEach(eventType => {
-      const unsubscribe = realtimeService.subscribe(eventType, (event) => {
-        if (mounted) {
-          setLastEvent(event);
-          setEvents(prev => [event, ...prev.slice(0, 99)]); // Keep last 100 events
-        }
-      });
-      unsubscribeFunctions.current.push(unsubscribe);
-    });
-
-    // Check connection status periodically
     const statusInterval = setInterval(() => {
       if (mounted) {
         setIsConnected(realtimeService.isConnected());
@@ -212,40 +221,52 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
     return () => {
       mounted = false;
       clearInterval(statusInterval);
-      
-      // Unsubscribe from all events
-      unsubscribeFunctions.current.forEach(unsubscribe => unsubscribe());
-      unsubscribeFunctions.current = [];
+      unsubscribeFunctionsRef.current.forEach(unsubscribe => unsubscribe());
+      unsubscribeFunctionsRef.current = [];
     };
-  }, [guildId, eventTypes.join(',')]);
+  }, [guildId, memoizedEventTypes]);
+
+  const emitToServer = useCallback((event: string, data: { [key: string]: unknown }) => {
+      realtimeService.emit(event, { guildId, ...data});
+  }, [guildId]);
 
   return {
     isConnected,
     lastEvent,
     events,
-    subscribe: (eventType: string, callback: (event: RealtimeEvent) => void) => 
-      realtimeService.subscribe(eventType, callback),
-    emit: (event: string, data: any) => realtimeService.emit(event, data)
+    subscribe: realtimeService.subscribe.bind(realtimeService),
+    emit: emitToServer,
   };
 }
 
-// Hook for specific data updates
-export function useRealtimeData<T>(
+export function useRealtimeData<T extends object>(
   guildId: string,
   initialData: T,
-  eventTypes: string[] = ['guild:updated']
+  eventTypesToUpdateOn: string[] = ['guild:updated']
 ) {
   const [data, setData] = useState<T>(initialData);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const { isConnected, subscribe } = useRealtime(guildId, eventTypes);
+
+  // Create a stable string key from eventTypesToUpdateOn array
+  const eventTypesToUpdateOnKey = eventTypesToUpdateOn.join(',');
+  // Memoize eventTypesToUpdateOn array to prevent unnecessary re-renders
+  const memoizedEventTypesToUpdateOn = useMemo(() => eventTypesToUpdateOn, [eventTypesToUpdateOn, eventTypesToUpdateOnKey]);
+
+  const { isConnected, subscribe } = useRealtime(guildId, memoizedEventTypesToUpdateOn);
 
   useEffect(() => {
-    const unsubscribes = eventTypes.map(eventType => 
-      subscribe(eventType, (event) => {
-        if (event.guildId === guildId) {
+    setData(initialData);
+  }, [initialData]);
+
+  useEffect(() => {
+    if (!isConnected || !guildId) return;
+
+    const unsubscribes = memoizedEventTypesToUpdateOn.map(eventType =>
+      subscribe(eventType, (event: RealtimeEvent<unknown>) => {
+        if (event.guildId === guildId && event.data) {
           setData(prev => ({
             ...prev,
-            ...event.data
+            ...(event.data as object)
           }));
           setLastUpdated(new Date());
         }
@@ -255,23 +276,32 @@ export function useRealtimeData<T>(
     return () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, [guildId, eventTypes.join(','), subscribe]);
+  }, [guildId, memoizedEventTypesToUpdateOn, subscribe, isConnected]);
+
+  const refresh = useCallback(() => {
+    setLastUpdated(new Date());
+  }, []);
 
   return {
     data,
     lastUpdated,
     isConnected,
-    refresh: () => setLastUpdated(new Date())
+    refresh
   };
 }
 
-// Hook for guild stats with real-time updates
-export function useGuildStats(guildId: string, initialStats: any) {
-  return useRealtimeData(initialStats, ['guild:updated', 'activity:updated'], guildId);
+interface GuildStatsData { 
+  [key: string]: unknown;
 }
 
-// Hook for activity data with real-time updates
-export function useActivityData(guildId: string, initialActivity: any) {
-  return useRealtimeData(initialActivity, ['activity:updated'], guildId);
+export function useGuildStats(guildId: string, initialStats: GuildStatsData) {
+  return useRealtimeData<GuildStatsData>(guildId, initialStats, ['guild:updated', 'guild:stats:updated', 'activity:updated']);
 }
 
+interface ActivityData { 
+  [key: string]: unknown;
+}
+
+export function useActivityData(guildId: string, initialActivity: ActivityData) {
+  return useRealtimeData<ActivityData>(guildId, initialActivity, ['activity:updated']);
+}

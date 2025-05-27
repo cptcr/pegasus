@@ -1,23 +1,52 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "rootDir": "./",
-    "baseUrl": ".",
+    "rootDir": "./",  // Changed from "./src" to "./"
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["src/*"],
-      "@/types": ["types"]
-    }
+      "@/*": ["./src/*"],  // Updated path
+      "@/types": ["./src/types"],
+      "@/config/*": ["./src/config/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/handlers/*": ["./src/handlers/*"],
+      "@/modules/*": ["./src/modules/*"],
+      "@/commands/*": ["./src/commands/*"],
+      "@/events/*": ["./src/events/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["src/**/*.ts", "types/**/*.ts"],
-  "exclude": ["node_modules", "dist", "dashboard"]
+  "include": [
+    "src/**/*.ts", 
+    "types/**/*.ts", 
+    "prisma/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules", 
+    "dist", 
+    "dashboard",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
 }

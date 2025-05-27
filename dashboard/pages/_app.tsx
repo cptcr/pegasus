@@ -2,14 +2,16 @@
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
 import { SessionProvider } from 'next-auth/react'
-import ModernProtectedLayout from '../components/ModernProtectedLayout'
+import ModernProtectedLayout from '../components/ModernProtectedLayout' // Assuming ModernProtectedLayout is default export
 import { ThemeProvider } from '../lib/ThemeContext'
 import { useRouter } from 'next/router'
-import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary' // Import FallbackProps
+import { ComponentType } from 'react'; // Import ComponentType
 
-const publicPages = ['/auth/signin', '/auth/error', '/']
+const publicPages = ['/auth/signin', '/auth/error', '/']; // '/' might be your landing page
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+// Define props for ErrorFallback based on FallbackProps
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="p-8 space-y-4 text-center">
@@ -27,35 +29,53 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
         </button>
       </div>
     </div>
-  )
+  );
 }
 
-function AppContent({ Component, pageProps }: { Component: any; pageProps: any }) {
-  const router = useRouter()
-  const isPublicPage = publicPages.includes(router.pathname)
+interface AppContentProps {
+  Component: ComponentType<Record<string, unknown>>; // Use ComponentType and allow any props for the page
+  pageProps: Record<string, unknown>; // Page props can be anything
+}
+
+function AppContent({ Component, pageProps }: AppContentProps) {
+  const router = useRouter();
+  const isPublicPage = publicPages.includes(router.pathname);
 
   if (isPublicPage) {
-    return <Component {...pageProps} />
+    return <Component {...pageProps} />;
   }
 
+  // Assuming ModernProtectedLayout handles its own props, or you can pass them if needed
   return (
     <ModernProtectedLayout>
       <Component {...pageProps} />
     </ModernProtectedLayout>
-  )
+  );
 }
 
-export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
+// Define a more specific type for session in pageProps
+interface AppPageProps {
+  session?: ReturnType<typeof useSession>['data']; // Or a more specific session type
+  [key: string]: unknown; // Allow other pageProps
+}
+
+export default function App({ Component, pageProps }: AppProps<AppPageProps>) {
+  const { session, ...restPageProps } = pageProps;
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
-      onReset={() => window.location.reload()}
+      onReset={() => {
+        // Attempt to reload the page or navigate to a safe route
+        if (typeof window !== "undefined") {
+            window.location.reload();
+        }
+      }}
     >
       <SessionProvider session={session}>
         <ThemeProvider>
-          <AppContent Component={Component} pageProps={pageProps} />
+          <AppContent Component={Component} pageProps={restPageProps} />
         </ThemeProvider>
       </SessionProvider>
     </ErrorBoundary>
-  )
+  );
 }

@@ -2,36 +2,55 @@
   "name": "pegasus-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "workspaces": [
     "dashboard"
   ],
   "scripts": {
-    "dev": "npm run build && npm-run-all --parallel dev:bot dev:dashboard",
-    "dev:bot": "ts-node-esm src/index.ts",
+    "dev": "npm run db:generate && npm run build && npm-run-all --parallel dev:bot dev:dashboard",
+    "dev:bot": "npm run db:generate:root && node --import=./register.js src/index.ts",
     "dev:dashboard": "npm run dev --workspace=dashboard",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run db:generate && tsc -p tsconfig.json",
     "build:dashboard": "npm run build --workspace=dashboard",
     "start": "node dist/index.js",
     "start:dashboard": "npm run start --workspace=dashboard",
+    "db:generate": "npm run db:generate:root && npm run db:generate:dashboard",
+    "db:generate:root": "prisma generate --schema=./prisma/schema.prisma",
+    "db:generate:dashboard": "prisma generate --schema=./dashboard/prisma/schema.prisma",
     "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
+    "db:seed": "node --import=./register.js prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset",
+    "db:deploy": "npx prisma migrate deploy",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "deploy:commands": "node --import=./register.js scripts/deploy-commands.ts",
+    "clean": "rm -rf dist node_modules/.cache",
+    "postinstall": "npm run db:generate"
   },
   "dependencies": {
-    "@prisma/client": "^5.15.0",
+    "@prisma/client": "^6.8.2",
+    "@types/json5": "^0.0.30",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "npm-run-all": "^4.1.5",
+    "socket.io": "^4.7.5",
     "winston": "^3.13.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.27.0",
     "@types/node": "^20.14.2",
-    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "date-fns": "^4.1.0",
+    "eslint": "^8.57.1",
+    "globals": "^16.2.0",
     "prettier": "^3.3.1",
-    "prisma": "^5.15.0",
+    "prisma": "^6.8.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
-  },
-  "type": "module"
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.32.1"
+  }
 }

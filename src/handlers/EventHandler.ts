@@ -3,14 +3,15 @@ import { ExtendedClient } from '../index.js';
 import { Logger } from '../utils/Logger.js';
 import path from 'path';
 import fs from 'fs';
+import { pathToFileURL } from 'url';
 
 export class EventHandler {
   private client: ExtendedClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
-  constructor(client: ExtendedClient, logger: Logger) {
+  constructor(client: ExtendedClient) {
     this.client = client;
-    this.logger = logger;
+    this.logger = client.logger;
   }
 
   async loadEvents(): Promise<void> {
@@ -21,28 +22,38 @@ export class EventHandler {
       return;
     }
 
-    const eventFiles = fs.readdirSync(eventsPath).filter(file => 
-      (file.endsWith('.ts') || file.endsWith('.js')) && !file.startsWith('.')
-    );
+    try {
+      const eventFiles = fs.readdirSync(eventsPath).filter(file => 
+        (file.endsWith('.ts') || file.endsWith('.js')) && !file.startsWith('.')
+      );
 
-    for (const file of eventFiles) {
-      try {
-        const filePath = path.join(eventsPath, file);
-        const fileUrl = `file://${filePath.replace(/\\/g, '/')}`;
-        const event = await import(fileUrl);
-        const eventData = event.default || event;
+      for (const file of eventFiles) {
+        try {
+          const filePath = path.join(eventsPath, file);
+          // Convert to file URL for ES modules
+          const fileUrl = pathToFileURL(filePath).href;
+          
+          const eventModule = await import(fileUrl);
+          const eventData = eventModule.default;
 
-        if (eventData.name && eventData.execute) {
-          if (eventData.once) {
-            this.client.once(eventData.name, (...args) => eventData.execute(...args, this.client));
+          if (eventData && eventData.name && eventData.execute) {
+            if (eventData.once) {
+              this.client.once(eventData.name, (...args) => eventData.execute(this.client, ...args));
+            } else {
+              this.client.on(eventData.name, (...args) => eventData.execute(this.client, ...args));
+            }
+            this.logger.debug(`📅 Loaded event: ${eventData.name}`);
           } else {
-            this.client.on(eventData.name, (...args) => eventData.execute(...args, this.client));
+            this.logger.warn(`⚠️ Event file ${file} is missing required properties`);
           }
-          this.logger.debug(`📅 Loaded event: ${eventData.name}`);
+        } catch (error) {
+          this.logger.error(`❌ Failed to load event ${file}:`, error);
         }
-      } catch (error) {
-        this.logger.error(`❌ Failed to load event ${file}:`, error);
       }
+      
+      this.logger.info(`📅 Loaded ${eventFiles.length} events.`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to load events:`, error);
     }
   }
 }

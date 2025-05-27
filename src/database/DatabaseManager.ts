@@ -1,13 +1,14 @@
-// src/database/DatabaseManager.ts - Fixed Database Manager
+// src/database/DatabaseManager.ts - Updated with Fixed Prisma Client
 import { PrismaClient } from '@prisma/client';
 import { Logger } from '../utils/Logger.js';
+import { prisma } from './PrismaClient.js';
 
 export class DatabaseManager {
   private db: PrismaClient;
-  private logger: Logger;
+  private logger: typeof Logger;
 
-  constructor(db: PrismaClient, logger: Logger) {
-    this.db = db;
+  constructor(logger: typeof Logger) {
+    this.db = prisma;
     this.logger = logger;
   }
 
