@@ -11,19 +11,23 @@ datasource db {
 model User {
   id          String @id
   username    String
+  discriminator String?
+  avatar      String?
+  email       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  lastLogin   DateTime?
 
   // Relations
   userLevels     UserLevel[]
-  warns          Warn[]
+  warnings       Warn[]
   moderatedWarns Warn[] @relation("ModeratorWarns")
   polls          Poll[]
   giveaways      Giveaway[]
   tickets        Ticket[]
   customCommands CustomCommand[]
-  quarantineEntries QuarantineEntry[]
-  moderatedQuarantine QuarantineEntry[] @relation("ModeratorQuarantine")
+  quarantineEntries Quarantine[]
+  moderatedQuarantine Quarantine[] @relation("ModeratorQuarantine")
 
   @@map("users")
 }
@@ -32,17 +36,7 @@ model Guild {
   id                     String  @id
   name                   String
   prefix                 String  @default("!")
-  
-  // Channel Configuration
-  modLogChannelId        String?
-  levelUpChannelId       String?
-  geizhalsChannelId      String?
-  welcomeChannelId       String?
-  joinToCreateChannelId  String?
-  joinToCreateCategoryId String?
-  
-  // Role Configuration
-  quarantineRoleId       String?
+  settings               Json?   @default("{}")
   
   // Feature Toggles
   enableLeveling         Boolean @default(true)
@@ -55,24 +49,21 @@ model Guild {
   enableMusic            Boolean @default(false)
   enableJoinToCreate     Boolean @default(false)
   
-  // Messages
-  welcomeMessage         String?
-  leaveMessage           String?
-  
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
   // Relations
   userLevels       UserLevel[]
-  warns            Warn[]
+  warnings         Warn[]
   levelRewards     LevelReward[]
   polls            Poll[]
   giveaways        Giveaway[]
   tickets          Ticket[]
+  logs             Log[]
   customCommands   CustomCommand[]
-  geizhalsTrackers GeizhalsTracker[]
-  quarantineEntries QuarantineEntry[]
-  automodRules     AutomodRule[]
+  quarantines      Quarantine[]
+  autoModRules     AutoModRule[]
+  j2cSettings      J2CSettings?
 
   @@map("guilds")
 }
@@ -129,26 +120,26 @@ model Warn {
   @@map("warns")
 }
 
-model QuarantineEntry {
-  id          Int      @id @default(autoincrement())
-  targetId    String
-  targetType  String   // USER, CHANNEL, ROLE
-  guildId     String
-  moderatorId String
-  reason      String
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Quarantine {
+  id            Int      @id @default(autoincrement())
+  guildId       String
+  userId        String
+  moderatorId   String
+  reason        String
+  active        Boolean  @default(true)
+  quarantinedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
   guild     Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   moderator User  @relation("ModeratorQuarantine", fields: [moderatorId], references: [id], onDelete: Cascade)
-  user      User? @relation(fields: [targetId], references: [id], onDelete: Cascade)
 
-  @@map("quarantine_entries")
+  @@map("quarantines")
 }
 
-model AutomodRule {
+model AutoModRule {
   id             Int      @id @default(autoincrement())
   guildId        String
   name           String
@@ -279,6 +270,20 @@ model Ticket {
   @@map("tickets")
 }
 
+model Log {
+  id        Int      @id @default(autoincrement())
+  guildId   String
+  type      String   // message, member, mod, etc.
+  content   String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("logs")
+}
+
 model CustomCommand {
   id          Int      @id @default(autoincrement())
   guildId     String
@@ -299,23 +304,24 @@ model CustomCommand {
   @@map("custom_commands")
 }
 
-model GeizhalsTracker {
-  id         Int      @id @default(autoincrement())
-  guildId    String
-  channelId  String
-  productUrl String
-  productId  String
-  name       String
-  minPrice   Float?
-  maxPrice   Float?
-  active     Boolean  @default(true)
-  lastPrice  Float?
-  lastCheck  DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model J2CSettings {
+  id                  Int      @id @default(autoincrement())
+  guildId             String   @unique
+  isEnabled           Boolean  @default(false)
+  categoryId          String?
+  joinChannelId       String?
+  channelNameTemplate String   @default("{user}'s Channel")
+  defaultUserLimit    Int      @default(0)
+  defaultBitrate      Int      @default(64000)
+  allowTextChannel    Boolean  @default(false)
+  autoDeleteEmpty     Boolean  @default(true)
+  lockEmptyChannels   Boolean  @default(true)
+  blacklistUserIds    String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relations
   guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
 
-  @@map("geizhals_trackers")
+  @@map("j2c_settings")
 }

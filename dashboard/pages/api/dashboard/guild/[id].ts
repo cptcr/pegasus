@@ -1,13 +1,13 @@
 // dashboard/pages/api/dashboard/guild/[id].ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth';
-import { PrismaInstance as _, default as databaseEvents } from '../../../../lib/database';
+import { default as databaseEvents } from '../../../../lib/database';
 import { discordService, DiscordGuildInfo } from '../../../../lib/discordService';
-import { GuildWithFullStats, GuildSettings } from '@/types/index';
+import { GuildWithFullStats, GuildSettings, FullGuildData } from '@/types/index';
 
 const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 
-function calculateStatsFromFullData(guildData: NonNullable<Awaited<ReturnType<typeof databaseEvents.getGuildWithFullData>>>, memberCountFromDiscord: number): GuildWithFullStats['stats'] {
+function calculateStatsFromFullData(guildData: FullGuildData, memberCountFromDiscord: number): GuildWithFullStats['stats'] {
   const totalUsers = guildData.members?.length ?? 0;
   const engagementRate = memberCountFromDiscord > 0 && totalUsers > 0 ? Math.round((totalUsers / memberCountFromDiscord) * 100) : 0;
   const moderationRate = totalUsers > 0 && (guildData.warnings?.length ?? 0) > 0 ? Math.round(((guildData.warnings?.length ?? 0) / totalUsers) * 100) : 0;
@@ -20,14 +20,14 @@ function calculateStatsFromFullData(guildData: NonNullable<Awaited<ReturnType<ty
     giveawayCount: guildData.giveaways?.length ?? 0,
     warningCount: guildData.warnings?.length ?? 0,
     totalUsers,
-    activeQuarantine: guildData.warnings?.filter(w => w.active).length ?? 0,
+    activeQuarantine: guildData.warnings?.filter((w: { active: any; }) => w.active).length ?? 0,
     totalTrackers: 0,
-    activePolls: guildData.polls?.filter(p => p.active).length ?? 0,
-    activeGiveaways: guildData.giveaways?.filter(g => g.active && !g.ended).length ?? 0,
-    openTickets: guildData.tickets?.filter(t => t.status !== 'CLOSED').length ?? 0,
+    activePolls: guildData.polls?.filter((p: { active: any; }) => p.active).length ?? 0,
+    activeGiveaways: guildData.giveaways?.filter((g: { active: any; ended: any; }) => g.active && !g.ended).length ?? 0,
+    openTickets: guildData.tickets?.filter((t: { status: string; }) => t.status !== 'CLOSED').length ?? 0,
     customCommands: 0,
     levelRewards: guildData.levelRewards?.length ?? 0,
-    automodRules: guildData.autoModRules?.filter(r => r.enabled).length ?? 0,
+    automodRules: guildData.autoModRules?.filter((r: { enabled: any; }) => r.enabled).length ?? 0,
     levelingEnabled: guildData.enableLeveling ?? true,
     moderationEnabled: guildData.enableModeration ?? true,
     geizhalsEnabled: guildData.enableGeizhals ?? false,

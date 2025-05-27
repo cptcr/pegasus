@@ -5,29 +5,45 @@ import {
   ClientEvents,
   ColorResolvable as DiscordColorResolvable,
 } from 'discord.js';
-import { ExtendedClient } from '@/index';
-import { J2CSettings as PrismaJ2CSettings, Prisma, Guild as PrismaGuild, User as PrismaUser, Warn as PrismaWarn, Poll as PrismaPoll, PollOption as PrismaPollOption, PollVote as PrismaPollVote, Giveaway as PrismaGiveaway, GiveawayEntry as PrismaGiveawayEntry, Ticket as PrismaTicket, LevelReward as PrismaLevelReward, AutoModRule as PrismaAutoModRule, UserLevel as PrismaUserLevel, QuarantineEntry as PrismaQuarantineEntry } from '@prisma/client';
+import { 
+  Prisma, 
+  Guild as PrismaGuild, 
+  User as PrismaUser, 
+  Warn as PrismaWarn, 
+  Poll as PrismaPoll, 
+  PollOption as PrismaPollOption, 
+  PollVote as PrismaPollVote, 
+  Giveaway as PrismaGiveaway, 
+  GiveawayEntry as PrismaGiveawayEntry, 
+  Ticket as PrismaTicket, 
+  LevelReward as PrismaLevelReward, 
+  AutoModRule as PrismaAutoModRule, 
+  UserLevel as PrismaUserLevel, 
+  Quarantine as PrismaQuarantine, 
+  J2CSettings as PrismaJ2CSettings,
+  Log as PrismaLog
+} from '@prisma/client';
 
-// Bot & Event Structures
+// Bot & Event Structures (removed ExtendedClient reference)
 export interface Command {
   data: Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup">;
   category: string;
   cooldown?: number;
-  execute: (interaction: ChatInputCommandInteraction, client: ExtendedClient) => Promise<void>;
+  execute: (interaction: ChatInputCommandInteraction, client: any) => Promise<void>;
 }
 
 export interface BotEvent<K extends keyof ClientEvents> {
   name: K;
   once?: boolean;
-  execute: (client: ExtendedClient, ...args: ClientEvents[K]) => Promise<void> | void;
+  execute: (client: any, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
 // Settings Structures
 export interface GuildSettings extends Prisma.JsonObject {
   name?: string | null;
   prefix?: string | null;
-  logChannel?: string | null;
   modLogChannel?: string | null;
+  modLogChannelId?: string | null;
   quarantineRoleId?: string | null;
   staffRoleId?: string | null;
   enableLeveling?: boolean | null;
@@ -51,6 +67,7 @@ export interface GuildSettings extends Prisma.JsonObject {
   joinToCreateCategoryId?: string | null;
 }
 
+// J2CSettings type from Prisma
 export type J2CSettings = PrismaJ2CSettings;
 export type J2CSettingsUpdate = Partial<Omit<J2CSettings, 'id' | 'guildId' | 'createdAt' | 'updatedAt'>>;
 
@@ -71,19 +88,24 @@ export interface GuildStatsUpdateData {
 export interface WarnCreateData extends PrismaWarn {
   username?: string;
 }
+
 export interface PollCreateData extends PrismaPoll {
   title: string;
 }
+
 export interface GiveawayCreateData extends PrismaGiveaway {
   prize: string;
 }
+
 export interface TicketCreateData extends PrismaTicket {
   subject: string;
 }
+
 export interface MemberJoinLeaveData {
   username?: string;
   userId: string;
 }
+
 export interface LevelUpdateData extends PrismaUserLevel {
    username?: string;
 }
@@ -104,7 +126,24 @@ export interface ApiChannel {
   parentId?: string | null;
 }
 
-export type GuildWithFullStats = PrismaGuild & {
+// Extended Guild type with additional properties - EXPORTED
+export interface FullGuildData extends PrismaGuild {
+  settings: Prisma.JsonValue;
+  ownerId?: string;
+  description?: string | null;
+  members: (PrismaUser & { warnings: PrismaWarn[]; userLevels: PrismaUserLevel[] })[];
+  warnings: PrismaWarn[];
+  polls: (PrismaPoll & { options: PrismaPollOption[]; votes: PrismaPollVote[] })[];
+  giveaways: (PrismaGiveaway & { entries: PrismaGiveawayEntry[] })[];
+  tickets: PrismaTicket[];
+  logs: PrismaLog[];
+  levelRewards: PrismaLevelReward[];
+  autoModRules: PrismaAutoModRule[];
+}
+
+// Guild with full stats - EXPORTED
+export interface GuildWithFullStats extends PrismaGuild {
+  settings?: GuildSettings;
   stats: {
     memberCount: number;
     onlineCount: number;
@@ -143,16 +182,16 @@ export type GuildWithFullStats = PrismaGuild & {
     description?: string | null;
     createdAt?: Date;
   };
-  members?: (PrismaUser & { warnings?: PrismaWarn[], userLevels?: PrismaUserLevel[] })[];
+  members?: (PrismaUser & { warnings?: PrismaWarn[]; userLevels?: PrismaUserLevel[] })[];
   warnings?: PrismaWarn[];
-  polls?: (PrismaPoll & { options?: PrismaPollOption[], votes?: PrismaPollVote[] })[];
+  polls?: (PrismaPoll & { options?: PrismaPollOption[]; votes?: PrismaPollVote[] })[];
   giveaways?: (PrismaGiveaway & { entries?: PrismaGiveawayEntry[] })[];
   tickets?: PrismaTicket[];
-  logs?: Prisma.JsonValue[];
+  logs?: PrismaLog[];
   levelRewards?: PrismaLevelReward[];
   autoModRules?: PrismaAutoModRule[];
   userLevels?: PrismaUserLevel[];
-};
+}
 
 // For DiscordProfile in [...nextauth].ts
 export interface DiscordProfile {
@@ -217,7 +256,7 @@ export interface RecentActivityData {
 // For Moderation API Data
 export interface ModerationData {
   warnings: PrismaWarn[];
-  quarantinedUsers: PrismaQuarantineEntry[];
+  quarantinedUsers: PrismaQuarantine[];
   autoModRules: PrismaAutoModRule[];
 }
 
@@ -226,6 +265,7 @@ export interface LeaderboardEntry extends PrismaUserLevel {
   user: Pick<PrismaUser, 'id' | 'username'>;
   rank: number;
 }
+
 export interface LevelDataResponse {
   leaderboard: LeaderboardEntry[];
   total: number;
@@ -252,4 +292,4 @@ export interface ApiResponse<T> {
 export type { DiscordColorResolvable as ColorResolvable };
 
 // Default cooldown for commands if not specified
-export const DEFAULT_COOLDOWN = 3;
+export const DEFAULT_COOLDOWN: number = 3;

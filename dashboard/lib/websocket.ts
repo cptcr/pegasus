@@ -3,9 +3,11 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { RealtimeEvent as SharedRealtimeEvent } from '@/types/index';
 
-// Re-exporting with additional properties if needed
+// Re-exporting with additional properties if needed - now has members
 export interface RealtimeEvent<T = unknown> extends SharedRealtimeEvent<T> {
   // Add any additional properties specific to the websocket implementation
+  priority?: 'low' | 'medium' | 'high';
+  source?: string;
 }
 
 class RealtimeService {

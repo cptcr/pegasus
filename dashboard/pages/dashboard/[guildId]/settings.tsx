@@ -1,21 +1,16 @@
-// dashboard/pages/settings.tsx
-// This page seems like an alternative or older version of dashboard/[guildId]/settings.tsx
-// Consider consolidating into the dynamic route if this is for guild-specific settings.
-// If it's for global bot settings (not guild-specific), the API and data structure would differ.
-
+// dashboard/pages/dashboard/[guildId]/settings.tsx
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { GetServerSideProps } from 'next';
+import { getSession } from 'next-auth/react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import {
   CogIcon,
 } from '@heroicons/react/24/outline';
-import { ModernProtectedLayout } from '@/components/ModernProtectedLayout'; // Assuming this is the desired layout
-import { GuildSettings as SharedGuildSettings, ApiChannel, ApiRole } from '@/types/index'; // Use shared types
-import { toast } from 'sonner'; // For notifications
+import ModernProtectedLayout from '@/components/ModernProtectedLayout';
+import { GuildSettings as SharedGuildSettings, ApiChannel, ApiRole } from '@/types/index';
+import { toast } from 'sonner';
 
 // Using a fixed GUILD_ID for this page if it's meant for a specific guild.
-// Otherwise, this page might need a different approach (e.g., selecting a guild first).
 const PAGE_GUILD_ID = process.env.NEXT_PUBLIC_TARGET_GUILD_ID || '554266392262737930';
 
 interface SettingsPageProps {
@@ -39,8 +34,8 @@ const getInitialSettings = (settings: SharedGuildSettings | null): SharedGuildSe
     enableMusic: false,
     enableJoinToCreate: false,
     // Initialize other fields to null or default values
-    logChannel: null,
     modLogChannel: null,
+    modLogChannelId: null,
     quarantineRoleId: null,
     staffRoleId: null,
     welcomeChannel: null,
@@ -54,21 +49,16 @@ const getInitialSettings = (settings: SharedGuildSettings | null): SharedGuildSe
   return settings ? { ...defaults, ...settings } : defaults;
 };
 
-
 export default function SettingsPage({ initialSettings, channels, roles, error: initialError }: SettingsPageProps) {
-  const router = useRouter();
   // State for settings, initialized with props or defaults
   const [settings, setSettings] = useState<SharedGuildSettings>(getInitialSettings(initialSettings));
   const [loading, setLoading] = useState(false); // For individual field updates
-  const [, setPageError] = useState<string | undefined>(initialError);
-
 
   useEffect(() => {
     if (initialError) {
       toast.error(`Failed to load initial settings: ${initialError}`);
     }
   }, [initialError]);
-
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -97,11 +87,10 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
     saveSetting({ [key]: selectedValue });
   };
 
-
   const saveSetting = async (updatedSetting: Partial<SharedGuildSettings>) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/dashboard/settings/${PAGE_GUILD_ID}`, { // Assuming API uses guildId
+      const response = await fetch(`/api/dashboard/settings/${PAGE_GUILD_ID}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedSetting),
@@ -151,7 +140,6 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
       </ModernProtectedLayout>
     );
   }
-
 
   return (
     <ModernProtectedLayout>
@@ -225,7 +213,6 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
             </div>
           </section>
 
-
           {/* Role Settings Section */}
           <section className="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
             <h2 className="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-100">Role Configuration</h2>
@@ -252,7 +239,6 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
             </div>
           </section>
 
-
           <div className="flex justify-end mt-8">
             <button
               type="submit"
@@ -269,19 +255,10 @@ export default function SettingsPage({ initialSettings, channels, roles, error: 
 }
 
 export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (context) => {
-  // This getServerSideProps is more suited for the dynamic `dashboard/[guildId]/settings.tsx` page.
-  // For a static `/settings` page, you might fetch global settings or redirect.
-  // For demonstration, assuming it fetches for a predefined guildId or errors out.
-
   const session = await getSession(context);
   if (!session?.user) { // Basic session check
     return { redirect: { destination: '/auth/signin', permanent: false } };
   }
-  // Add hasRequiredAccess check if needed for this specific page globally
-  // if (!(session.user as any).hasRequiredAccess) {
-  //   return { redirect: { destination: '/auth/error?error=AccessDenied', permanent: false }, props: {} };
-  // }
-
 
   const guildId = PAGE_GUILD_ID; // Using the predefined guild ID for this static page.
 
@@ -289,7 +266,7 @@ export const getServerSideProps: GetServerSideProps<SettingsPageProps> = async (
     // Fetching data from your API routes
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3001'; // Ensure this is correct for server-side
     const [settingsRes, channelsRes, rolesRes] = await Promise.all([
-      fetch(`${baseUrl}/api/dashboard/settings/${guildId}`), // Assuming this API exists and works
+      fetch(`${baseUrl}/api/dashboard/settings/${guildId}`),
       fetch(`${baseUrl}/api/dashboard/channels/${guildId}`),
       fetch(`${baseUrl}/api/dashboard/roles/${guildId}`),
     ]);
