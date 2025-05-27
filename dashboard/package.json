@@ -14,11 +14,14 @@
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
-    "db:init": "tsx scripts/init-db.ts"
+    "db:init": "tsx scripts/init-db.ts",
+    "check": "tsc --noEmit && eslint . --ext .ts,.tsx"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^5.22.0",
+    "@types/date-fns": "^2.5.3",
+    "date-fns": "^4.1.0",
     "discord.js": "^14.14.1",
     "next": "^14.0.4",
     "next-auth": "^4.24.5",

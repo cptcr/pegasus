@@ -1,4 +1,4 @@
-// dashboard/lib/websocket.ts (Real-time Updates)
+// dashboard/lib/websocket.ts (Real-time Updates) - Fixed ESLint Issues
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { RealtimeEvent as SharedRealtimeEvent } from '@/types/index';
@@ -171,8 +171,10 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
   const [events, setEvents] = useState<RealtimeEvent<unknown>[]>([]);
   const unsubscribeFunctionsRef = useRef<(() => void)[]>([]);
 
-  // Memoize eventTypes string to prevent unnecessary re-renders
-  const eventTypesKey = useMemo(() => eventTypes.join(','), [eventTypes]);
+  // Create a stable string key from eventTypes array
+  const eventTypesKey = eventTypes.join(',');
+  // Memoize eventTypes array to prevent unnecessary re-renders
+  const memoizedEventTypes = useMemo(() => eventTypes, [eventTypes, eventTypesKey]);
 
   useEffect(() => {
     let mounted = true;
@@ -196,7 +198,7 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
       unsubscribeFunctionsRef.current = [];
 
       if (realtimeService.isConnected()) {
-        eventTypes.forEach(eventType => {
+        memoizedEventTypes.forEach(eventType => {
           const unsubscribe = realtimeService.subscribe(eventType, (event) => {
             if (mounted) {
               setLastEvent(event);
@@ -222,7 +224,7 @@ export function useRealtime(guildId: string, eventTypes: string[] = ['*']) {
       unsubscribeFunctionsRef.current.forEach(unsubscribe => unsubscribe());
       unsubscribeFunctionsRef.current = [];
     };
-  }, [guildId, eventTypesKey]);
+  }, [guildId, memoizedEventTypes]);
 
   const emitToServer = useCallback((event: string, data: { [key: string]: unknown }) => {
       realtimeService.emit(event, { guildId, ...data});
@@ -245,10 +247,12 @@ export function useRealtimeData<T extends object>(
   const [data, setData] = useState<T>(initialData);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Memoize eventTypesToUpdateOn string to prevent unnecessary re-renders
-  const eventTypesToUpdateOnKey = useMemo(() => eventTypesToUpdateOn.join(','), [eventTypesToUpdateOn]);
+  // Create a stable string key from eventTypesToUpdateOn array
+  const eventTypesToUpdateOnKey = eventTypesToUpdateOn.join(',');
+  // Memoize eventTypesToUpdateOn array to prevent unnecessary re-renders
+  const memoizedEventTypesToUpdateOn = useMemo(() => eventTypesToUpdateOn, [eventTypesToUpdateOn, eventTypesToUpdateOnKey]);
 
-  const { isConnected, subscribe } = useRealtime(guildId, eventTypesToUpdateOn);
+  const { isConnected, subscribe } = useRealtime(guildId, memoizedEventTypesToUpdateOn);
 
   useEffect(() => {
     setData(initialData);
@@ -257,7 +261,7 @@ export function useRealtimeData<T extends object>(
   useEffect(() => {
     if (!isConnected || !guildId) return;
 
-    const unsubscribes = eventTypesToUpdateOn.map(eventType =>
+    const unsubscribes = memoizedEventTypesToUpdateOn.map(eventType =>
       subscribe(eventType, (event: RealtimeEvent<unknown>) => {
         if (event.guildId === guildId && event.data) {
           setData(prev => ({
@@ -272,7 +276,7 @@ export function useRealtimeData<T extends object>(
     return () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
-  }, [guildId, eventTypesToUpdateOnKey, subscribe, isConnected]);
+  }, [guildId, memoizedEventTypesToUpdateOn, subscribe, isConnected]);
 
   const refresh = useCallback(() => {
     setLastUpdated(new Date());

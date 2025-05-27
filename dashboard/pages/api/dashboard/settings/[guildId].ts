@@ -1,13 +1,47 @@
-// dashboard/pages/api/dashboard/settings/[guildId].ts
+// dashboard/pages/api/dashboard/settings/[guildId].ts - Fixed Type Issues
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth, AuthenticatedRequest } from '@/lib/auth'; // Use AuthenticatedRequest
-import databaseEvents from '@/lib/database'; // Use the default export
-import { GuildSettings } from '@/types/index'; // Use shared types
+import { requireAuth, AuthenticatedRequest } from '@/lib/auth';
+import databaseEvents from '@/lib/database';
+import { GuildSettings } from '@/types/index';
 
 const ALLOWED_GUILD_ID = process.env.TARGET_GUILD_ID;
 
+// Helper function to safely convert JsonValue to GuildSettings
+function safeConvertToGuildSettings(jsonValue: unknown): GuildSettings | null {
+  if (!jsonValue || typeof jsonValue !== 'object') {
+    return null;
+  }
+  
+  // Type assertion after validation
+  return jsonValue as GuildSettings;
+}
 
-// The handler now correctly uses AuthenticatedRequest
+// Helper function to create default settings
+function createDefaultSettings(): GuildSettings {
+  return {
+    prefix: '!',
+    enableLeveling: true,
+    enableModeration: true,
+    enablePolls: true,
+    enableGiveaways: true,
+    enableTickets: false,
+    enableGeizhals: false,
+    enableAutomod: false,
+    enableMusic: false,
+    enableJoinToCreate: false,
+    modLogChannelId: null,
+    quarantineRoleId: null,
+    staffRoleId: null,
+    welcomeChannel: null,
+    levelUpChannelId: null,
+    geizhalsChannelId: null,
+    joinToCreateChannelId: null,
+    joinToCreateCategoryId: null,
+    welcomeMessage: "Welcome {user} to {server}!",
+    goodbyeMessage: "{user} has left the server.",
+  };
+}
+
 async function settingsHandler(req: AuthenticatedRequest, res: NextApiResponse<GuildSettings | { error: string }>) {
   const { guildId } = req.query;
 
@@ -20,55 +54,59 @@ async function settingsHandler(req: AuthenticatedRequest, res: NextApiResponse<G
       return res.status(403).json({ error: 'Access denied to configure this guild.' });
   }
 
-  // Optional: Add permission check here to see if user can manage this guild.
-  // This would typically involve checking req.user against roles/permissions for the guild.
-
   switch (req.method) {
     case 'GET':
       try {
-        const settings = await databaseEvents.getGuildSettings(guildId);
+        const guild = await databaseEvents.getGuild(guildId);
+        if (!guild) {
+          return res.status(404).json({ error: 'Guild not found.' });
+        }
+        
+        const settings = safeConvertToGuildSettings(guild.settings);
         if (!settings) {
-          // If no settings, provide default settings or an empty object based on frontend expectation
-          const defaultSettings: GuildSettings = {
-            // Populate with default values from your Config or common defaults
-            prefix: '!',
-            enableLeveling: true,
-            // ... other default fields
-          };
+          // Return default settings if none exist
+          const defaultSettings = createDefaultSettings();
           return res.status(200).json(defaultSettings);
         }
+        
         res.status(200).json(settings);
-      } catch (error: unknown) { // Catch unknown
+      } catch (error: unknown) {
         console.error(`Failed to get settings for guild ${guildId}:`, error);
         res.status(500).json({ error: 'Internal Server Error.' });
       }
       break;
 
-    case 'PUT': // Changed from POST to PUT for updating existing resource
+    case 'PUT':
       try {
         const settingsToUpdate = req.body as Partial<GuildSettings>;
         if (typeof settingsToUpdate !== 'object' || settingsToUpdate === null) {
           return res.status(400).json({ error: 'Invalid request body.' });
         }
 
-        // Add more specific validation if needed (e.g., using Zod)
-        // Example basic validation:
+        // Validate specific fields
         if ('enableLeveling' in settingsToUpdate && typeof settingsToUpdate.enableLeveling !== 'boolean') {
            return res.status(400).json({ error: 'Invalid type for enableLeveling.' });
         }
         if ('prefix' in settingsToUpdate && typeof settingsToUpdate.prefix !== 'string' && settingsToUpdate.prefix !== null) {
             return res.status(400).json({ error: 'Invalid type for prefix.'});
         }
-        // ... more validations
+        if ('modLogChannelId' in settingsToUpdate && typeof settingsToUpdate.modLogChannelId !== 'string' && settingsToUpdate.modLogChannelId !== null) {
+            return res.status(400).json({ error: 'Invalid type for modLogChannelId.'});
+        }
 
         const updatedGuild = await databaseEvents.updateGuildSettings(guildId, settingsToUpdate);
-        // updateGuildSettings should return the updated Guild object, from which we extract settings
+        
         if (updatedGuild && updatedGuild.settings) {
-            res.status(200).json(updatedGuild.settings as GuildSettings);
+            const updatedSettings = safeConvertToGuildSettings(updatedGuild.settings);
+            if (updatedSettings) {
+              res.status(200).json(updatedSettings);
+            } else {
+              throw new Error("Failed to convert updated settings.");
+            }
         } else {
             throw new Error("Failed to retrieve updated settings after update.");
         }
-      } catch (error: unknown) { // Catch unknown
+      } catch (error: unknown) {
          console.error(`Failed to update settings for guild ${guildId}:`, error);
          res.status(500).json({ error: 'Internal Server Error.' });
       }

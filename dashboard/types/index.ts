@@ -1,4 +1,4 @@
-// dashboard/types/index.ts
+// types/index.ts - Fixed All Type Issues
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
@@ -39,31 +39,29 @@ export interface BotEvent<K extends keyof ClientEvents> {
   execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
 }
 
-// Settings Structures
-export interface GuildSettings extends Prisma.JsonObject {
-  name?: string | null;
+// Settings Structures - Fixed to be consistent
+export interface GuildSettings {
   prefix?: string | null;
-  modLogChannel?: string | null;
-  modLogChannelId?: string | null;
+  modLogChannelId?: string | null; // Fixed: was modLogChannel
   quarantineRoleId?: string | null;
   staffRoleId?: string | null;
-  enableLeveling?: boolean | null;
-  enableModeration?: boolean | null;
-  enablePolls?: boolean | null;
-  enableGiveaways?: boolean | null;
-  enableTickets?: boolean | null;
-  enableQuarantine?: boolean | null;
-  enableWelcome?: boolean | null;
+  enableLeveling?: boolean;
+  enableModeration?: boolean;
+  enablePolls?: boolean;
+  enableGiveaways?: boolean;
+  enableTickets?: boolean;
+  enableQuarantine?: boolean;
+  enableWelcome?: boolean;
   welcomeChannel?: string | null;
   autorole?: string | null;
   welcomeMessage?: string | null;
   goodbyeMessage?: string | null;
-  enableGeizhals?: boolean | null;
+  enableGeizhals?: boolean;
   geizhalsChannelId?: string | null;
   levelUpChannelId?: string | null;
-  enableAutomod?: boolean | null;
-  enableMusic?: boolean | null;
-  enableJoinToCreate?: boolean | null;
+  enableAutomod?: boolean;
+  enableMusic?: boolean;
+  enableJoinToCreate?: boolean;
   joinToCreateChannelId?: string | null;
   joinToCreateCategoryId?: string | null;
 }
@@ -128,8 +126,23 @@ export interface ApiChannel {
 }
 
 // Extended Guild type with additional properties - EXPORTED
-export interface FullGuildData extends PrismaGuild {
+export interface FullGuildData {
+  id: string;
+  name: string;
+  prefix: string;
   settings: Prisma.JsonValue;
+  enableLeveling: boolean;
+  enableModeration: boolean;
+  enableGeizhals: boolean;
+  enablePolls: boolean;
+  enableGiveaways: boolean;
+  enableAutomod: boolean;
+  enableTickets: boolean;
+  enableMusic: boolean;
+  enableJoinToCreate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  // Extended properties
   ownerId?: string;
   description?: string | null;
   members: (PrismaUser & { warnings: PrismaWarn[]; userLevels: PrismaUserLevel[] })[];
@@ -142,9 +155,26 @@ export interface FullGuildData extends PrismaGuild {
   autoModRules: PrismaAutoModRule[];
 }
 
-// Guild with full stats - EXPORTED
-export interface GuildWithFullStats extends PrismaGuild {
-  settings?: GuildSettings;
+// Guild with full stats - EXPORTED - Fixed to match Prisma structure
+export interface GuildWithFullStats {
+  // Base Prisma Guild properties
+  id: string;
+  name: string;
+  prefix: string;
+  settings: Prisma.JsonValue;
+  enableLeveling: boolean;
+  enableModeration: boolean;
+  enableGeizhals: boolean;
+  enablePolls: boolean;
+  enableGiveaways: boolean;
+  enableAutomod: boolean;
+  enableTickets: boolean;
+  enableMusic: boolean;
+  enableJoinToCreate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Additional computed stats
   stats: {
     memberCount: number;
     onlineCount: number;
@@ -171,6 +201,8 @@ export interface GuildWithFullStats extends PrismaGuild {
     moderationRate: number;
     lastUpdated: string;
   };
+  
+  // Discord API data
   discord: {
     id: string;
     name: string;
@@ -183,6 +215,8 @@ export interface GuildWithFullStats extends PrismaGuild {
     description?: string | null;
     createdAt?: Date;
   };
+  
+  // Optional relations
   members?: (PrismaUser & { warnings?: PrismaWarn[]; userLevels?: PrismaUserLevel[] })[];
   warnings?: PrismaWarn[];
   polls?: (PrismaPoll & { options?: PrismaPollOption[]; votes?: PrismaPollVote[] })[];
@@ -194,7 +228,7 @@ export interface GuildWithFullStats extends PrismaGuild {
   userLevels?: PrismaUserLevel[];
 }
 
-// For DiscordProfile in [...nextauth].ts
+// For DiscordProfile in [...nextauth].ts - EXPORTED
 export interface DiscordProfile {
   id: string;
   username: string;
@@ -291,6 +325,20 @@ export interface ApiResponse<T> {
 
 // Shared color type from Discord.js
 export type { DiscordColorResolvable as ColorResolvable };
+
+// Export specific Prisma types we need
+export type { 
+  PrismaWarn as Warn,
+  PrismaQuarantine as Quarantine,
+  PrismaAutoModRule as AutoModRule,
+  PrismaLevelReward as LevelReward,
+  PrismaUserLevel as UserLevel,
+  PrismaUser as User,
+  PrismaPoll as Poll,
+  PrismaGiveaway as Giveaway,
+  PrismaTicket as Ticket,
+  PrismaGuild as Guild
+};
 
 // Default cooldown for commands if not specified
 export const DEFAULT_COOLDOWN: number = 3;

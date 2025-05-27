@@ -1,4 +1,4 @@
-// dashboard/lib/database.ts
+// dashboard/lib/database.ts - Fixed GuildSettings Issues
 import { PrismaClient, Guild, User, Poll, Giveaway, Ticket, LevelReward, Prisma, Warn, Quarantine, AutoModRule, UserLevel } from '@prisma/client';
 import { EventEmitter } from 'events';
 import { discordService } from './discordService';
@@ -84,8 +84,21 @@ class DatabaseService extends EventEmitter {
 
     // Transform the result to match FullGuildData interface
     return {
-      ...guild,
+      id: guild.id,
+      name: guild.name,
+      prefix: guild.prefix,
       settings: guild.settings || {},
+      enableLeveling: guild.enableLeveling,
+      enableModeration: guild.enableModeration,
+      enableGeizhals: guild.enableGeizhals,
+      enablePolls: guild.enablePolls,
+      enableGiveaways: guild.enableGiveaways,
+      enableAutomod: guild.enableAutomod,
+      enableTickets: guild.enableTickets,
+      enableMusic: guild.enableMusic,
+      enableJoinToCreate: guild.enableJoinToCreate,
+      createdAt: guild.createdAt,
+      updatedAt: guild.updatedAt,
       ownerId: undefined, // This would come from Discord API
       description: null,  // This would come from Discord API
       members: Array.from(userMap.values()),
@@ -139,15 +152,45 @@ class DatabaseService extends EventEmitter {
     };
 
     return {
-      ...guildData,
+      id: guildData.id,
+      name: guildData.name,
+      prefix: guildData.prefix,
+      settings: guildData.settings,
+      enableLeveling: guildData.enableLeveling,
+      enableModeration: guildData.enableModeration,
+      enableGeizhals: guildData.enableGeizhals,
+      enablePolls: guildData.enablePolls,
+      enableGiveaways: guildData.enableGiveaways,
+      enableAutomod: guildData.enableAutomod,
+      enableTickets: guildData.enableTickets,
+      enableMusic: guildData.enableMusic,
+      enableJoinToCreate: guildData.enableJoinToCreate,
+      createdAt: guildData.createdAt,
+      updatedAt: guildData.updatedAt,
       stats,
-      discord: discordData || { id: guildId, name: guildData.name, icon: null, features: [], memberCount, onlineCount },
+      discord: discordData || { 
+        id: guildId, 
+        name: guildData.name, 
+        icon: null, 
+        features: [], 
+        memberCount, 
+        onlineCount 
+      },
+      members: guildData.members,
+      warnings: guildData.warnings,
+      polls: guildData.polls,
+      giveaways: guildData.giveaways,
+      tickets: guildData.tickets,
+      logs: guildData.logs,
+      levelRewards: guildData.levelRewards,
+      autoModRules: guildData.autoModRules,
+      userLevels: guildData.members?.map((m: { userLevels: any; }) => m.userLevels).flat()
     } as GuildWithFullStats;
   }
 
   async createGuildWithDefaults(guildId: string, name: string): Promise<Guild> {
     const defaultSettings: GuildSettings = {
-      modLogChannel: null,
+      modLogChannelId: null, // Fixed: was modLogChannel
       quarantineRoleId: null,
       prefix: '!',
       enableLeveling: true,
@@ -171,7 +214,7 @@ class DatabaseService extends EventEmitter {
 
   async syncGuild(guildId: string, name: string): Promise<Guild> {
      const defaultSettings: GuildSettings = {
-      modLogChannel: null,
+      modLogChannelId: null, // Fixed: was modLogChannel
       quarantineRoleId: null,
       prefix: '!',
       enableLeveling: true,
@@ -199,7 +242,10 @@ class DatabaseService extends EventEmitter {
 
   async getGuildSettings(guildId: string): Promise<GuildSettings | null> {
     const guild = await this.getGuild(guildId);
-    return guild?.settings as GuildSettings | null;
+    if (!guild?.settings) return null;
+    
+    // Safe conversion from JsonValue to GuildSettings
+    return guild.settings as unknown as GuildSettings;
   }
 
   async updateGuildSettings(guildId: string, settingsUpdate: Partial<GuildSettings>): Promise<Guild> {
@@ -207,6 +253,7 @@ class DatabaseService extends EventEmitter {
     if (!currentGuild) {
       throw new Error("Guild not found");
     }
+    
     const currentSettings = (currentGuild.settings as GuildSettings | null) || {};
     const updatedSettings = { ...currentSettings, ...settingsUpdate };
 
