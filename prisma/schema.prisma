@@ -1,15 +1,19 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+<<<<<<< HEAD
 
 generator client {
   provider = "prisma-client-js"
 }
+=======
+>>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+<<<<<<< HEAD
 model Guild {
   id                    String           @id
   name                  String
@@ -57,10 +61,64 @@ model Warn {
   id          Int      @id @default(autoincrement())
   guildId     String
   userId      String
+=======
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Guild {
+  id           String    @id
+  name         String
+  settings     Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  j2cSettings  J2CSettings?
+  users        User[]
+  warnings     Warning[]
+  polls        Poll[]
+  giveaways    Giveaway[]
+  tickets      Ticket[]
+  logs         Log[]
+  levelRewards LevelReward[]
+  autoModRules AutoModRule[]
+  quarantines  Quarantine[]
+}
+
+model User {
+  id         String      @id // Discord User ID
+  guildId    String
+  guild      Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  username   String
+  avatar     String?
+  warnings   Warning[]
+  userLevels UserLevel[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([id, guildId])
+}
+
+model UserLevel {
+  id        String   @id @default(cuid())
+  userId    String
+  guildId   String
+  user      User     @relation(fields: [userId, guildId], references: [id, guildId], onDelete: Cascade)
+  level     Int      @default(0)
+  xp        Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model Warning {
+  id          String   @id @default(cuid())
+  userId      String
+  guildId     String
+  user        User     @relation(fields: [userId, guildId], references: [id, guildId], onDelete: Cascade)
+>>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
   moderatorId String
   reason      String
   createdAt   DateTime @default(now())
   guild       Guild    @relation(fields: [guildId], references: [id])
+<<<<<<< HEAD
   user        User     @relation(fields: [userId], references: [id])
 
   @@index([guildId])
@@ -130,3 +188,152 @@ model J2CSettings {
 }
 
 // Add any other missing models...
+=======
+}
+
+model Poll {
+  id          String      @id @default(cuid())
+  guildId     String
+  guild       Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creatorId   String
+  question    String
+  options     PollOption[]
+  votes       PollVote[]
+  messageId   String
+  channelId   String
+  endsAt      DateTime
+  isAnonymous Boolean     @default(false)
+  isMultiVote Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+}
+
+model PollOption {
+  id       String     @id @default(cuid())
+  pollId   String
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text     String
+  votes    PollVote[]
+}
+
+model PollVote {
+  id         String     @id @default(cuid())
+  pollId     String
+  poll       Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId   String
+  option     PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId     String
+}
+
+model Giveaway {
+  id           String           @id @default(cuid())
+  guildId      String
+  guild        Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  prize        String
+  winnersCount Int
+  duration     Int // in milliseconds
+  creatorId    String
+  channelId    String
+  messageId    String?
+  startTime    DateTime
+  endTime      DateTime
+  active       Boolean          @default(true)
+  ended        Boolean          @default(false)
+  requirements Json?
+  entries      GiveawayEntry[]
+  winners      GiveawayWinner[]
+}
+
+model GiveawayEntry {
+  id          String   @id @default(cuid())
+  giveawayId  String
+  giveaway    Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  userId      String
+  enteredAt   DateTime @default(now())
+
+  @@unique([giveawayId, userId])
+}
+
+model GiveawayWinner {
+  id          String   @id @default(cuid())
+  giveawayId  String
+  giveaway    Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  userId      String
+  claimed     Boolean  @default(false)
+  wonAt       DateTime @default(now())
+}
+
+model Ticket {
+  id          String    @id @default(cuid())
+  guildId     String
+  guild       Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creatorId   String
+  channelId   String    @unique
+  status      String // open, closed, claimed
+  claimedById String?
+  priority    String? // low, medium, high
+  topic       String
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  guildId   String
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  type      String // message, member, mod, etc.
+  content   String
+  userId    String?
+  createdAt DateTime @default(now())
+}
+
+model LevelReward {
+  id      String @id @default(cuid())
+  guildId String
+  guild   Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  level   Int
+  roleId  String
+
+  @@unique([guildId, level])
+}
+
+model AutoModRule {
+  id        String   @id @default(cuid())
+  guildId   String
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  type      String // e.g., banned_word, spam, mass_mention
+  config    Json
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Quarantine {
+  id            String   @id @default(cuid())
+  guildId       String
+  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  userId        String
+  active        Boolean  @default(true)
+  quarantinedAt DateTime @default(now())
+  reason        String
+}
+
+// Dedicated model for Join to Create Settings
+model J2CSettings {
+  id                  String   @id @default(cuid())
+  guildId             String   @unique
+  guild               Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  isEnabled           Boolean  @default(false)
+  categoryId          String?
+  joinChannelId       String?
+  channelNameTemplate String   @default("{user}'s Channel")
+  defaultUserLimit    Int      @default(0)
+  defaultBitrate      Int      @default(64000)
+  allowTextChannel    Boolean  @default(false)
+  autoDeleteEmpty     Boolean  @default(true)
+  lockEmptyChannels   Boolean  @default(true)
+  blacklistUserIds    String[] @default([])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+>>>>>>> 01df8e48f17518b570b4f64757b52f448eb715d0
