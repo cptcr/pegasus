@@ -1,16 +1,37 @@
-// dashboard/server.js
+// dashboard/server.js - Fixed Environment Loading
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
 const { io: SocketIOClient } = require('socket.io-client');
-require('dotenv').config({ path: '../.env' }); // Load root .env file
+
+// Load environment variables from root directory
+require('dotenv').config({ path: '../.env' });
+
+console.log('🔧 Dashboard environment loaded from root .env file');
+console.log('🔍 Dashboard Environment Debug:');
+console.log(`   DISCORD_CLIENT_ID: ${process.env.DISCORD_CLIENT_ID ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   TARGET_GUILD_ID: ${process.env.TARGET_GUILD_ID || 'NOT SET'}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓ SET' : '❌ NOT SET'}`);
+console.log('');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
 const dashboardPort = parseInt(process.env.DASHBOARD_PORT || '3001', 10);
 const botWsUrl = process.env.BOT_WEBSOCKET_URL || 'ws://localhost:3002';
 const targetGuildId = process.env.TARGET_GUILD_ID;
+
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error('❌ NEXTAUTH_SECRET is required for the dashboard to work!');
+  console.error('💡 Generate one with: openssl rand -base64 32');
+  process.exit(1);
+}
+
+if (!process.env.DISCORD_CLIENT_SECRET) {
+  console.error('❌ DISCORD_CLIENT_SECRET is required for OAuth!');
+  process.exit(1);
+}
 
 const app = next({ dev, hostname, port: dashboardPort });
 const handle = app.getRequestHandler();

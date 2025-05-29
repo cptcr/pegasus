@@ -1,4 +1,18 @@
-// src/index.ts - Fixed Main Bot Entry Point with Proper Startup Flow
+// src/index.ts - Fixed Main Bot Entry Point
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from root directory FIRST
+config({ path: resolve(process.cwd(), '.env') });
+
+console.log('🔧 Environment loaded from root .env file');
+console.log('🔍 Environment Debug:');
+console.log(`   DISCORD_CLIENT_ID: ${process.env.DISCORD_CLIENT_ID ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   DISCORD_BOT_TOKEN: ${process.env.DISCORD_BOT_TOKEN ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓ SET' : '❌ NOT SET'}`);
+console.log(`   TARGET_GUILD_ID: ${process.env.TARGET_GUILD_ID || 'NOT SET'}`);
+console.log('');
+
 import { Client, GatewayIntentBits, Collection, Partials } from 'discord.js';
 import { createServer, Server as HTTPServer } from 'http';
 import { Command } from './types/index.js';
@@ -14,18 +28,6 @@ import { WebSocketManager } from './api/WebSocketManager.js';
 import { Logger } from './utils/Logger.js';
 import { Config, validateConfig } from './config/Config.js';
 import { prisma, disconnectPrisma } from './database/PrismaClient.js';
-// Load environment variables FIRST before anything else
-import { config } from 'dotenv';
-config();
-
-console.log('🔧 Dotenv loaded, checking key variables:');
-console.log(`   DISCORD_CLIENT_ID: ${process.env.DISCORD_CLIENT_ID ? '✓' : '❌'}`);
-console.log(`   DISCORD_BOT_TOKEN: ${process.env.DISCORD_BOT_TOKEN ? '✓' : '❌'}`);
-console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✓' : '❌'}`);
-console.log(`   TARGET_GUILD_ID: ${process.env.TARGET_GUILD_ID || 'NOT SET'}`);
-console.log('');
-
-// Now import everything else
 
 export class ExtendedClient extends Client {
   public readonly commands: Collection<string, Command> = new Collection();
@@ -235,19 +237,6 @@ export class ExtendedClient extends Client {
     }, 300000); // 5 minutes
 
     this.systemIntervals.set('stats', statsInterval);
-
-    // System health check every 10 minutes
-    const healthInterval = setInterval(async () => {
-      try {
-        await this.db.$queryRaw`SELECT 1`;
-        const memUsage = process.memoryUsage();
-        this.logger.debug(`💚 System healthy - Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
-      } catch (error) {
-        this.logger.error('💔 Health check failed:', error);
-      }
-    }, 600000); // 10 minutes
-
-    this.systemIntervals.set('health', healthInterval);
 
     console.log('✅ Started optimized intervals');
     this.logger.info('✅ Started optimized system intervals');
