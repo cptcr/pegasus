@@ -1,0 +1,353 @@
+{
+  "common": {
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "loading": "Loading...",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "none": "None",
+    "unknown": "Unknown",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "view": "View",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "page": "Page",
+    "total": "Total",
+    "user": "User",
+    "server": "Server",
+    "channel": "Channel",
+    "role": "Role",
+    "member": "Member",
+    "admin": "Admin",
+    "moderator": "Moderator",
+    "bot": "Bot",
+    "online": "Online",
+    "offline": "Offline",
+    "away": "Away",
+    "dnd": "Do Not Disturb"
+  },
+  "errors": {
+    "generic": "An error occurred. Please try again.",
+    "permission_denied": "You don't have permission to use this command.",
+    "user_not_found": "User not found.",
+    "channel_not_found": "Channel not found.",
+    "role_not_found": "Role not found.",
+    "guild_only": "This command can only be used in a server.",
+    "bot_missing_permissions": "I don't have the required permissions to perform this action.",
+    "invalid_user": "Please provide a valid user.",
+    "invalid_channel": "Please provide a valid channel.",
+    "invalid_role": "Please provide a valid role.",
+    "invalid_duration": "Please provide a valid duration.",
+    "invalid_number": "Please provide a valid number.",
+    "invalid_url": "Please provide a valid URL.",
+    "invalid_color": "Please provide a valid hex color code.",
+    "cooldown": "You are on cooldown. Please wait {time} before using this command again.",
+    "missing_arguments": "Please provide all required arguments.",
+    "database_error": "A database error occurred. Please try again later.",
+    "api_error": "An API error occurred. Please try again later.",
+    "rate_limited": "Rate limited. Please try again later."
+  },
+  "moderation": {
+    "ban": {
+      "success": "Successfully banned {user}.",
+      "success_temp": "Successfully banned {user} for {duration}.",
+      "error_self": "You cannot ban yourself.",
+      "error_owner": "You cannot ban the server owner.",
+      "error_hierarchy": "You cannot ban this user due to role hierarchy.",
+      "error_bot_hierarchy": "I cannot ban this user due to role hierarchy.",
+      "already_banned": "This user is already banned.",
+      "dm_message": "You have been banned from **{server}**\n\n**Reason:** {reason}",
+      "dm_message_temp": "You have been banned from **{server}** for {duration}\n\n**Reason:** {reason}",
+      "log_title": "User Banned",
+      "log_description": "{emoji} **{user}** has been banned from the server."
+    },
+    "kick": {
+      "success": "Successfully kicked {user}.",
+      "error_self": "You cannot kick yourself.",
+      "error_owner": "You cannot kick the server owner.",
+      "error_hierarchy": "You cannot kick this user due to role hierarchy.",
+      "error_bot_hierarchy": "I cannot kick this user due to role hierarchy.",
+      "dm_message": "You have been kicked from **{server}**\n\n**Reason:** {reason}",
+      "log_title": "User Kicked",
+      "log_description": "{emoji} **{user}** has been kicked from the server."
+    },
+    "mute": {
+      "success": "Successfully muted {user} for {duration}.",
+      "error_self": "You cannot mute yourself.",
+      "error_hierarchy": "You cannot mute this user due to role hierarchy.",
+      "error_bot_hierarchy": "I cannot mute this user due to role hierarchy.",
+      "already_muted": "This user is already muted.",
+      "dm_message": "You have been muted in **{server}** for {duration}\n\n**Reason:** {reason}",
+      "log_title": "User Muted",
+      "log_description": "{emoji} **{user}** has been muted."
+    },
+    "unmute": {
+      "success": "Successfully unmuted {user}.",
+      "error_not_muted": "This user is not muted.",
+      "log_title": "User Unmuted",
+      "log_description": "{emoji} **{user}** has been unmuted."
+    },
+    "warn": {
+      "success": "Successfully warned {user}.",
+      "error_self": "You cannot warn yourself.",
+      "dm_message": "You have been warned in **{server}**\n\n**Reason:** {reason}\n**Warning Count:** {count}",
+      "log_title": "User Warned",
+      "log_description": "{emoji} **{user}** has been warned."
+    }
+  },
+  "automod": {
+    "violation_dm": "Your message was removed for violating the {type} filter in **{server}**.\n\n**Action taken:** {action}",
+    "filter_created": "AutoMod filter created successfully!",
+    "filter_updated": "Filter updated successfully.",
+    "filter_deleted": "Filter deleted successfully.",
+    "filter_not_found": "Filter not found.",
+    "violations_cleared": "Violations cleared successfully.",
+    "no_violations": "No violations found.",
+    "types": {
+      "profanity": "Profanity",
+      "spam": "Spam",
+      "links": "Links",
+      "invites": "Discord Invites",
+      "caps": "Excessive Caps",
+      "mentions": "Mass Mentions",
+      "zalgo": "Zalgo Text",
+      "custom": "Custom Words"
+    }
+  },
+  "economy": {
+    "balance": {
+      "title": "{user}'s Balance",
+      "wallet": "Wallet",
+      "bank": "Bank",
+      "net_worth": "Net Worth",
+      "statistics": "Statistics",
+      "total_earned": "Total Earned",
+      "total_spent": "Total Spent",
+      "daily_streak": "Daily Streak",
+      "work_streak": "Work Streak",
+      "multiplier": "Multiplier",
+      "prestige": "Prestige"
+    },
+    "daily": {
+      "claimed": "Daily Reward Claimed!",
+      "received": "You received **{amount}** coins!",
+      "streak": "Daily Streak",
+      "cooldown": "You can claim your daily reward again in {time}.",
+      "tip": "Claim daily for {days} more day(s) to maximize your streak!"
+    },
+    "work": {
+      "complete": "Work Complete!",
+      "earned": "You earned **{amount}** coins!",
+      "streak": "Work Streak",
+      "cooldown": "You can work again in {time}.",
+      "next_work": "Available in 4 hours",
+      "streak_bonus": "Streak Bonus"
+    },
+    "gamble": {
+      "won": "You Won!",
+      "lost": "You Lost!",
+      "insufficient_funds": "You don't have enough coins to make this bet.",
+      "winnings": "Winnings",
+      "result": "Result",
+      "multiplier": "Multiplier",
+      "coinflip": {
+        "description": "The coin landed on **{result}**!"
+      },
+      "dice": {
+        "perfect": "Perfect roll! You got a **{roll}**!",
+        "good": "Nice roll! You got a **{roll}**!",
+        "bad": "You rolled a **{roll}**. Better luck next time!"
+      },
+      "slots": {
+        "jackpot": "**JACKPOT!** {slots}\nThree of a kind!",
+        "win": "**WIN!** {slots}\nTwo matching symbols!",
+        "lose": "{slots}\nNo matching symbols."
+      }
+    },
+    "shop": {
+      "title": "Server Shop",
+      "empty": "No items are currently available in the shop.",
+      "purchase_success": "Purchase Successful!",
+      "purchase_failed": "Purchase Failed",
+      "item_added": "Item Added",
+      "item_removed": "Item Removed",
+      "not_enough_stock": "Insufficient stock",
+      "requirements_not_met": "Requirements not met"
+    }
+  },
+  "xp": {
+    "rank": {
+      "title": "{user}'s Rank",
+      "rank": "Rank",
+      "level": "Level",
+      "total_xp": "Total XP",
+      "progress": "Progress to Next Level",
+      "statistics": "Statistics",
+      "voice_time": "Voice Time",
+      "messages": "Messages",
+      "reputation": "Reputation",
+      "coins": "Coins",
+      "xp_needed": "XP needed for next level"
+    },
+    "leaderboard": {
+      "title": "XP Leaderboard",
+      "description": "Top {count} users in **{server}**",
+      "your_rank": "Your Rank",
+      "no_users": "No users found in the leaderboard."
+    },
+    "level_up": {
+      "title": "Level Up!",
+      "message": "{user} has reached level **{level}**! {emoji}"
+    }
+  },
+  "tickets": {
+    "created": "Ticket Created",
+    "creation_message": "Your ticket has been created: {channel}",
+    "closed": "Ticket Closed",
+    "close_message": "This ticket has been closed by {user}",
+    "claimed": "Ticket Claimed",
+    "claim_message": "This ticket has been claimed by {user}",
+    "unclaimed": "Ticket Unclaimed",
+    "unclaim_message": "This ticket has been unclaimed by {user}",
+    "panel_created": "Ticket panel created successfully!",
+    "panel_deployed": "Ticket panel deployed successfully!",
+    "max_tickets": "You have reached the maximum number of open tickets.",
+    "not_found": "Ticket not found.",
+    "no_permission": "You do not have permission to manage this ticket."
+  },
+  "welcome": {
+    "setup_success": "Welcome messages have been {status}.",
+    "dm_setup_success": "DM welcome messages have been {status}.",
+    "card_setup_success": "Welcome cards have been {status}.",
+    "embed_setup_success": "Welcome embeds have been {status}.",
+    "autorole_setup_success": "Autoroles have been {status}.",
+    "test_complete": "{type} message test sent!",
+    "test_failed": "Failed to send test message. Check your configuration.",
+    "placeholders": "Available Placeholders"
+  },
+  "reactionroles": {
+    "panel_created": "Reaction role panel created successfully!",
+    "role_added": "Role {role} has been added to the panel!",
+    "panel_deployed": "Reaction role panel has been deployed successfully!",
+    "panel_deleted": "Panel deleted successfully.",
+    "role_added_user": "Added the {role} role.",
+    "role_removed_user": "Removed the {role} role.",
+    "no_panels": "No reaction role panels found.",
+    "deploy_failed": "Failed to deploy panel. Make sure the panel exists and has roles added.",
+    "permission_error": "I cannot assign this role because it is higher than or equal to my highest role.",
+    "requirements_not_met": "Failed to add role. Check requirements or role limits."
+  },
+  "steam": {
+    "game_info": "Steam Game Information",
+    "app_not_found": "Game not found on Steam.",
+    "price": "Price",
+    "release_date": "Release Date",
+    "developer": "Developer",
+    "publisher": "Publisher",
+    "genres": "Genres",
+    "platforms": "Platforms",
+    "reviews": "Reviews",
+    "free": "Free",
+    "coming_soon": "Coming Soon",
+    "early_access": "Early Access",
+    "positive": "Positive",
+    "negative": "Negative",
+    "mixed": "Mixed",
+    "windows": "Windows",
+    "mac": "Mac",
+    "linux": "Linux"
+  },
+  "language": {
+    "set_user": "Your language has been set to **{language}**.",
+    "set_guild": "Server language has been set to **{language}**.",
+    "current_user": "Your current language is **{language}**.",
+    "current_guild": "Server language is **{language}**.",
+    "invalid": "Invalid language. Available languages: {languages}",
+    "available": "Available Languages",
+    "reset_user": "Your language has been reset to server default.",
+    "reset_guild": "Server language has been reset to English."
+  },
+  "reminders": {
+    "set": "Reminder set for {time}!",
+    "invalid_time": "Invalid time format. Use formats like '1h30m', '2d', '30s'.",
+    "max_duration": "Reminder duration cannot exceed 1 year.",
+    "min_duration": "Reminder duration must be at least 1 minute.",
+    "reminder_dm": "⏰ **Reminder**\n\n{message}\n\n*Set {time} ago*",
+    "list_title": "Your Reminders",
+    "no_reminders": "You have no active reminders.",
+    "cancelled": "Reminder cancelled successfully.",
+    "not_found": "Reminder not found.",
+    "limit_reached": "You can only have {limit} active reminders."
+  },
+  "giveaways": {
+    "created": "Giveaway created successfully!",
+    "ended": "Giveaway Ended",
+    "winners": "Winners",
+    "no_winners": "No valid participants",
+    "winner_dm": "🎉 Congratulations! You won **{prize}** in {server}!",
+    "enter": "Enter Giveaway",
+    "entries": "entries",
+    "hosted_by": "Hosted by",
+    "ends": "Ends",
+    "ended_at": "Ended at",
+    "requirements_not_met": "You don't meet the requirements to enter this giveaway.",
+    "already_entered": "You have already entered this giveaway.",
+    "entered": "You have entered the giveaway!",
+    "left": "You have left the giveaway.",
+    "not_entered": "You haven't entered this giveaway."
+  },
+  "polls": {
+    "created": "Poll created successfully!",
+    "ended": "Poll ended.",
+    "results": "Poll Results",
+    "total_votes": "Total votes",
+    "no_votes": "No votes cast",
+    "voted": "You have voted for option {option}!",
+    "already_voted": "You have already voted in this poll.",
+    "invalid_option": "Invalid poll option.",
+    "anonymous": "Anonymous Poll",
+    "public": "Public Poll"
+  },
+  "verification": {
+    "verify_prompt": "Please complete the verification to access the server.",
+    "verify_button": "Verify",
+    "captcha_prompt": "Please solve the captcha below:",
+    "verified": "You have been verified successfully!",
+    "verification_failed": "Verification failed. Please try again.",
+    "already_verified": "You are already verified.",
+    "timeout": "Verification timed out. Please try again.",
+    "invalid_captcha": "Invalid captcha. Please try again."
+  },
+  "commands": {
+    "ping": {
+      "description": "Check bot latency and response time",
+      "pong": "Pong!",
+      "bot_latency": "Bot Latency",
+      "api_latency": "API Latency",
+      "status": "Status",
+      "excellent": "Excellent",
+      "good": "Good",
+      "poor": "Poor"
+    },
+    "help": {
+      "description": "Get help with bot commands",
+      "title": "Bot Help",
+      "categories": "Command Categories",
+      "usage": "Usage",
+      "permissions": "Required Permissions",
+      "cooldown": "Cooldown",
+      "examples": "Examples"
+    }
+  }
+}
