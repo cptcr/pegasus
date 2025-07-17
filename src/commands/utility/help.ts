@@ -36,6 +36,7 @@ export const data = new SlashCommandBuilder()
         { name: '🛡️ Moderation', value: 'moderation' },
         { name: '⭐ XP System', value: 'xp' },
         { name: '🎫 Tickets', value: 'tickets' },
+        { name: '🎉 Giveaways', value: 'giveaways' },
         { name: '🎮 Games', value: 'games' },
         { name: '💰 Economy', value: 'economy' },
         { name: '🔧 Utility', value: 'utility' },
@@ -75,6 +76,10 @@ async function handleGeneralHelp(interaction: any, t: Function, commands: Comman
       `• Use \`/help <command>\` for detailed command info\n` +
       `• Use \`/help category:<category>\` to browse by category\n` +
       `• Use \`/language set <language>\` to change your language\n\n` +
+      `✨ **Key Features:**\n` +
+      `• 🛡️ Advanced Moderation • 💰 Economy System • ⭐ XP & Leveling\n` +
+      `• 🎫 Ticket Support • 🎉 Giveaways • 🌐 Multi-language Support\n` +
+      `• 🤖 AutoMod • 📊 Logging • 🔧 Utility Commands\n\n` +
       `🔗 **Links:**\n` +
       `• [GitHub Repository](https://github.com/cptcr/pegasus)\n` +
       `• [Documentation](https://github.com/cptcr/pegasus/blob/main/README.md)\n`
@@ -173,8 +178,8 @@ async function handleCategoryHelp(
 
   const emoji = getCategoryEmoji(categoryName);
   const embed = new EmbedBuilder()
-    .setTitle(`${emoji} ${formatCategoryName(categoryName)} Commands`)
-    .setDescription(`Here are all the ${categoryName} commands available:`)
+    .setTitle(`${emoji} ${formatCategoryName(categoryName)} ${t('commands.help.categories')}`)
+    .setDescription(`Here are all the ${formatCategoryName(categoryName)} commands available:`)
     .setColor(0x0099ff)
     .setFooter({ 
       text: `Use /help <command> for detailed information about a specific command`,
@@ -308,6 +313,7 @@ function getCategoryEmoji(category: string): string {
     'moderation': '🛡️',
     'xp': '⭐',
     'tickets': '🎫',
+    'giveaways': '🎉',
     'games': '🎮',
     'economy': '💰',
     'utility': '🔧',
@@ -324,6 +330,7 @@ function formatCategoryName(category: string): string {
     'moderation': 'Moderation',
     'xp': 'XP System',
     'tickets': 'Tickets',
+    'giveaways': 'Giveaways',
     'games': 'Games',
     'economy': 'Economy',
     'utility': 'Utility',

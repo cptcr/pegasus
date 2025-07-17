@@ -176,3 +176,82 @@ export interface VoiceSession {
   muted: boolean;
   deafened: boolean;
 }
+
+export interface Giveaway {
+  id: string;
+  guildId: string;
+  channelId: string;
+  messageId?: string;
+  hostId: string;
+  title: string;
+  description?: string;
+  prize: string;
+  winnerCount: number;
+  endTime: Date;
+  ended: boolean;
+  cancelled: boolean;
+  requirements: GiveawayRequirements;
+  bonusEntries: GiveawayBonusEntries;
+  blacklist: string[];
+  whitelist: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface GiveawayRequirements {
+  minLevel?: number;
+  requiredRoles?: string[];
+  minAccountAge?: number;
+  minJoinAge?: number;
+  inviteCount?: number;
+  mustBeInVoice?: boolean;
+  customRequirements?: string[];
+}
+
+export interface GiveawayBonusEntries {
+  roles?: { [roleId: string]: number };
+  boosts?: number;
+  invites?: number;
+  level?: { [level: number]: number };
+}
+
+export interface GiveawayEntry {
+  id: string;
+  giveawayId: string;
+  userId: string;
+  entryCount: number;
+  entryTime: Date;
+  bonusReason?: string;
+}
+
+export interface GiveawayWinner {
+  id: string;
+  giveawayId: string;
+  userId: string;
+  claimed: boolean;
+  claimTime?: Date;
+  rerolled: boolean;
+  selectedAt: Date;
+}
+
+export interface WarningHistory {
+  id: string;
+  warningId: string;
+  fieldChanged: string;
+  oldValue?: string;
+  newValue?: string;
+  changedBy: string;
+  changedAt: Date;
+  reason?: string;
+}
+
+export interface ModerationNote {
+  id: string;
+  guildId: string;
+  userId: string;
+  moderatorId: string;
+  note: string;
+  internal: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

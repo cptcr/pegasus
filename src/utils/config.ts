@@ -61,6 +61,8 @@ export const emojis = {
   diamond: '💎',
   fire: '🔥',
   tada: '🎉',
+  gift: '🎁',
+  history: '📜',
 };
 
 export const limits = {

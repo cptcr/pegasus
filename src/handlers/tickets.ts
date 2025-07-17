@@ -242,6 +242,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'Ticket not found.')],
         ephemeral: true,
       });
+      return;
     }
 
     if (ticket.user_id !== interaction.user.id && !this.canManageTickets(interaction.member as GuildMember)) {
@@ -249,6 +250,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'You do not have permission to close this ticket.')],
         ephemeral: true,
       });
+      return;
     }
 
     await db.query(
@@ -286,6 +288,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'Ticket not found.')],
         ephemeral: true,
       });
+      return;
     }
 
     if (!this.canManageTickets(interaction.member as GuildMember)) {
@@ -293,6 +296,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'You do not have permission to claim tickets.')],
         ephemeral: true,
       });
+      return;
     }
 
     if (ticket.assigned_to) {
@@ -300,6 +304,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'This ticket is already claimed.')],
         ephemeral: true,
       });
+      return;
     }
 
     await db.query(
@@ -340,6 +345,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'Ticket not found.')],
         ephemeral: true,
       });
+      return;
     }
 
     if (ticket.assigned_to !== interaction.user.id && !this.canManageTickets(interaction.member as GuildMember)) {
@@ -347,6 +353,7 @@ export class TicketHandler {
         embeds: [createErrorEmbed('Error', 'You do not have permission to unclaim this ticket.')],
         ephemeral: true,
       });
+      return;
     }
 
     await db.query(
@@ -388,14 +395,6 @@ export class TicketHandler {
     color: string = colors.primary
   ): Promise<string | null> {
     try {
-      const result = await db.query(
-        `INSERT INTO ticket_panels (guild_id, channel_id, title, description, category, support_roles, color)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [guildId, channelId, title, description, category, supportRoles, color]
-      );
-
-      const panelId = result.rows[0].id;
-
       const embed = createEmbed({
         title: `${emojis.ticket} ${title}`,
         description: description,
@@ -403,6 +402,28 @@ export class TicketHandler {
         footer: 'Click the button below to create a ticket',
       });
 
+      const guild = global.client?.guilds.cache.get(guildId);
+      if (!guild) return null;
+
+      const channel = guild.channels.cache.get(channelId) as TextChannel;
+      if (!channel) return null;
+
+      // First create the message
+      const message = await channel.send({
+        embeds: [embed],
+        components: [], // Empty components initially
+      });
+
+      // Then create the panel record with the message ID
+      const result = await db.query(
+        `INSERT INTO ticket_panels (guild_id, channel_id, message_id, title, description, category, support_roles, color)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [guildId, channelId, message.id, title, description, category, supportRoles, color]
+      );
+
+      const panelId = result.rows[0].id;
+
+      // Now create the button with the panel ID
       const button = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
           new ButtonBuilder()
@@ -412,21 +433,11 @@ export class TicketHandler {
             .setEmoji('🎫')
         );
 
-      const guild = global.client?.guilds.cache.get(guildId);
-      if (!guild) return null;
-
-      const channel = guild.channels.cache.get(channelId) as TextChannel;
-      if (!channel) return null;
-
-      const message = await channel.send({
+      // Update the message with the button
+      await message.edit({
         embeds: [embed],
         components: [button],
       });
-
-      await db.query(
-        'UPDATE ticket_panels SET message_id = $1 WHERE id = $2',
-        [message.id, panelId]
-      );
 
       return panelId;
     } catch (error) {

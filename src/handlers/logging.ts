@@ -15,6 +15,19 @@ import { db } from '../database/connection';
 import { createEmbed } from '../utils/helpers';
 import { colors, emojis } from '../utils/config';
 
+export type LogCategory = 
+  | 'moderation' 
+  | 'message' 
+  | 'member' 
+  | 'voice' 
+  | 'channel' 
+  | 'role' 
+  | 'server' 
+  | 'automod'
+  | 'economy'
+  | 'tickets'
+  | 'giveaways';
+
 export class LoggingHandler {
   private static instance: LoggingHandler;
 
@@ -25,7 +38,22 @@ export class LoggingHandler {
     return LoggingHandler.instance;
   }
 
-  private async getLogChannel(guildId: string): Promise<TextChannel | null> {
+  private async getLogChannel(guildId: string, category: LogCategory): Promise<TextChannel | null> {
+    // First check for category-specific channel
+    const categoryChannel = await db.query(
+      'SELECT channel_id FROM log_channels WHERE guild_id = $1 AND category = $2 AND enabled = true',
+      [guildId, category]
+    );
+
+    if (categoryChannel.rows[0]?.channel_id) {
+      const guild = global.client?.guilds.cache.get(guildId);
+      if (!guild) return null;
+
+      const channel = guild.channels.cache.get(categoryChannel.rows[0].channel_id);
+      if (channel?.isTextBased()) return channel as TextChannel;
+    }
+
+    // Fallback to general log channel
     const settings = await db.query(
       'SELECT log_channel FROM guild_settings WHERE guild_id = $1',
       [guildId]
@@ -40,6 +68,67 @@ export class LoggingHandler {
     return channel?.isTextBased() ? channel as TextChannel : null;
   }
 
+  public async setLogChannel(guildId: string, category: LogCategory, channelId: string): Promise<boolean> {
+    try {
+      await db.query(
+        `INSERT INTO log_channels (guild_id, category, channel_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (guild_id, category)
+         DO UPDATE SET channel_id = $3, enabled = true, updated_at = CURRENT_TIMESTAMP`,
+        [guildId, category, channelId]
+      );
+      return true;
+    } catch (error) {
+      console.error('Error setting log channel:', error);
+      return false;
+    }
+  }
+
+  public async disableLogCategory(guildId: string, category: LogCategory): Promise<boolean> {
+    try {
+      await db.query(
+        'UPDATE log_channels SET enabled = false, updated_at = CURRENT_TIMESTAMP WHERE guild_id = $1 AND category = $2',
+        [guildId, category]
+      );
+      return true;
+    } catch (error) {
+      console.error('Error disabling log category:', error);
+      return false;
+    }
+  }
+
+  public async setGeneralLogChannel(guildId: string, channelId: string | null): Promise<boolean> {
+    try {
+      await db.query(
+        `INSERT INTO guild_settings (guild_id, log_channel) VALUES ($1, $2)
+         ON CONFLICT (guild_id) DO UPDATE SET log_channel = $2`,
+        [guildId, channelId]
+      );
+      return true;
+    } catch (error) {
+      console.error('Error setting general log channel:', error);
+      return false;
+    }
+  }
+
+  public async getLogChannels(guildId: string): Promise<Array<{ category: LogCategory; channelId: string; enabled: boolean }>> {
+    try {
+      const result = await db.query(
+        'SELECT category, channel_id, enabled FROM log_channels WHERE guild_id = $1',
+        [guildId]
+      );
+
+      return result.rows.map((row: any) => ({
+        category: row.category as LogCategory,
+        channelId: row.channel_id,
+        enabled: row.enabled
+      }));
+    } catch (error) {
+      console.error('Error getting log channels:', error);
+      return [];
+    }
+  }
+
   private async logEvent(guildId: string, type: string, data: any, userId?: string, channelId?: string, roleId?: string): Promise<void> {
     try {
       await db.query(
@@ -51,8 +140,8 @@ export class LoggingHandler {
     }
   }
 
-  private async sendLogEmbed(guildId: string, embed: EmbedBuilder): Promise<void> {
-    const logChannel = await this.getLogChannel(guildId);
+  private async sendLogEmbed(guildId: string, category: LogCategory, embed: EmbedBuilder): Promise<void> {
+    const logChannel = await this.getLogChannel(guildId, category);
     if (logChannel) {
       try {
         await logChannel.send({ embeds: [embed] });
@@ -100,7 +189,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(member.guild.id, embed);
+    await this.sendLogEmbed(member.guild.id, 'member', embed);
   }
 
   public async logMemberLeave(member: GuildMember): Promise<void> {
@@ -140,7 +229,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(member.guild.id, embed);
+    await this.sendLogEmbed(member.guild.id, 'member', embed);
   }
 
   public async logMemberUpdate(oldMember: GuildMember, newMember: GuildMember): Promise<void> {
@@ -196,7 +285,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(newMember.guild.id, embed);
+    await this.sendLogEmbed(newMember.guild.id, 'member', embed);
   }
 
   // Message Events
@@ -247,7 +336,7 @@ export class LoggingHandler {
       });
     }
 
-    await this.sendLogEmbed(message.guild?.id || '', embed);
+    await this.sendLogEmbed(message.guild?.id || '', 'message', embed);
   }
 
   public async logMessageUpdate(oldMessage: Message, newMessage: Message): Promise<void> {
@@ -294,7 +383,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(newMessage.guild?.id || '', embed);
+    await this.sendLogEmbed(newMessage.guild?.id || '', 'message', embed);
   }
 
   // Voice Events
@@ -375,7 +464,7 @@ export class LoggingHandler {
       });
     }
 
-    await this.sendLogEmbed(newState.guild?.id || '', embed);
+    await this.sendLogEmbed(newState.guild?.id || '', 'voice', embed);
   }
 
   // Channel Events
@@ -411,7 +500,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(channel.guild.id, embed);
+    await this.sendLogEmbed(channel.guild.id, 'channel', embed);
   }
 
   public async logChannelDelete(channel: any): Promise<void> {
@@ -445,7 +534,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(channel.guild.id, embed);
+    await this.sendLogEmbed(channel.guild.id, 'channel', embed);
   }
 
   // Role Events
@@ -485,7 +574,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(role.guild.id, embed);
+    await this.sendLogEmbed(role.guild.id, 'role', embed);
   }
 
   public async logRoleDelete(role: Role): Promise<void> {
@@ -517,7 +606,7 @@ export class LoggingHandler {
       timestamp: true,
     });
 
-    await this.sendLogEmbed(role.guild.id, embed);
+    await this.sendLogEmbed(role.guild.id, 'role', embed);
   }
 
   // Moderation Events
@@ -579,16 +668,9 @@ export class LoggingHandler {
       });
     }
 
-    await this.sendLogEmbed(guildId, embed);
+    await this.sendLogEmbed(guildId, 'moderation', embed);
   }
 
-  public async setLogChannel(guildId: string, channelId: string | null): Promise<void> {
-    await db.query(
-      `INSERT INTO guild_settings (guild_id, log_channel) VALUES ($1, $2)
-       ON CONFLICT (guild_id) DO UPDATE SET log_channel = $2`,
-      [guildId, channelId]
-    );
-  }
 
   public async getLogEvents(guildId: string, limit: number = 50, type?: string): Promise<any[]> {
     let query = 'SELECT * FROM log_events WHERE guild_id = $1';

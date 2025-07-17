@@ -10,14 +10,8 @@ import {
 import { db } from '../database/connection';
 import { createEmbed, createSuccessEmbed, createErrorEmbed } from '../utils/helpers';
 import { colors, emojis } from '../utils/config';
+import { trivia, TriviaQuestion } from '../../data/trivia';
 
-interface TriviaQuestion {
-  question: string;
-  answers: string[];
-  correct: number;
-  category: string;
-  difficulty: string;
-}
 
 interface GameParticipant {
   userId: string;
@@ -28,8 +22,18 @@ interface GameParticipant {
 
 export class GameHandler {
   private static instance: GameHandler;
-  private triviaQuestions: TriviaQuestion[] = [];
+  private triviaQuestions: TriviaQuestion[] = trivia;
   private activeGames = new Map<string, any>();
+  private readonly difficultyColors = {
+    easy: 0x00ff00,
+    medium: 0xffa500,
+    hard: 0xff0000
+  };
+  private readonly difficultyPoints = {
+    easy: 100,
+    medium: 200,
+    hard: 300
+  };
 
   public static getInstance(): GameHandler {
     if (!GameHandler.instance) {
@@ -38,85 +42,17 @@ export class GameHandler {
     return GameHandler.instance;
   }
 
-  constructor() {
-    this.loadTriviaQuestions();
-  }
-
-  private loadTriviaQuestions(): void {
-    this.triviaQuestions = [
-      {
-        question: "What is the capital of France?",
-        answers: ["London", "Berlin", "Paris", "Madrid"],
-        correct: 2,
-        category: "Geography",
-        difficulty: "easy"
-      },
-      {
-        question: "Which planet is known as the Red Planet?",
-        answers: ["Venus", "Mars", "Jupiter", "Saturn"],
-        correct: 1,
-        category: "Science",
-        difficulty: "easy"
-      },
-      {
-        question: "What is the largest mammal in the world?",
-        answers: ["African Elephant", "Blue Whale", "Giraffe", "Hippopotamus"],
-        correct: 1,
-        category: "Nature",
-        difficulty: "easy"
-      },
-      {
-        question: "Who painted the Mona Lisa?",
-        answers: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michelangelo"],
-        correct: 2,
-        category: "Art",
-        difficulty: "medium"
-      },
-      {
-        question: "What is the chemical symbol for gold?",
-        answers: ["Go", "Gd", "Au", "Ag"],
-        correct: 2,
-        category: "Science",
-        difficulty: "medium"
-      },
-      {
-        question: "Which country has won the most FIFA World Cups?",
-        answers: ["Germany", "Argentina", "Italy", "Brazil"],
-        correct: 3,
-        category: "Sports",
-        difficulty: "medium"
-      },
-      {
-        question: "What is the smallest country in the world?",
-        answers: ["Monaco", "Vatican City", "San Marino", "Liechtenstein"],
-        correct: 1,
-        category: "Geography",
-        difficulty: "hard"
-      },
-      {
-        question: "Who wrote the novel '1984'?",
-        answers: ["Aldous Huxley", "George Orwell", "Ray Bradbury", "J.K. Rowling"],
-        correct: 1,
-        category: "Literature",
-        difficulty: "hard"
-      },
-      {
-        question: "What is the speed of light in vacuum?",
-        answers: ["299,792,458 m/s", "300,000,000 m/s", "299,000,000 m/s", "301,000,000 m/s"],
-        correct: 0,
-        category: "Physics",
-        difficulty: "hard"
-      }
-    ];
-  }
-
   public async startTriviaGame(
     guildId: string,
     channelId: string,
     hostId: string,
-    rounds: number = 10
+    rounds: number = 10,
+    category?: string,
+    difficulty?: string
   ): Promise<void> {
-    const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate a proper UUID for the game session
+    const result = await db.query('SELECT gen_random_uuid() as id');
+    const gameId = result.rows[0].id;
     
     if (this.activeGames.has(gameId)) {
       return;
@@ -138,8 +74,11 @@ export class GameHandler {
         timePerQuestion: 30000,
         pointsPerCorrect: 100,
         pointsPerSpeed: 50,
+        category: category || 'all',
+        difficulty: difficulty || 'all'
       },
       startTime: Date.now(),
+      usedQuestions: new Set<number>()
     };
 
     this.activeGames.set(gameId, gameSession);
@@ -150,12 +89,17 @@ export class GameHandler {
       [gameId, guildId, channelId, 'trivia', hostId, 'waiting', JSON.stringify(gameSession.settings)]
     );
 
+    const categoryText = category ? `**Category:** ${category}\n` : '';
+    const difficultyText = difficulty ? `**Difficulty:** ${difficulty}\n` : '';
+    
     const embed = createEmbed({
       title: `${emojis.game} Trivia Game Starting!`,
       description: `A trivia game has been started by <@${hostId}>\n\n` +
                    `**Rounds:** ${rounds}\n` +
+                   categoryText +
+                   difficultyText +
                    `**Time per question:** 30 seconds\n` +
-                   `**Points per correct answer:** 100\n\n` +
+                   `**Points:** Easy: 100, Medium: 200, Hard: 300\n\n` +
                    `Click the button below to join!`,
       color: colors.primary,
       footer: 'Game will start in 30 seconds',
@@ -264,13 +208,21 @@ export class GameHandler {
       return;
     }
 
-    const question = this.getRandomQuestion();
+    const question = this.getRandomQuestion(game.settings.category, game.settings.difficulty, game.usedQuestions);
+    if (!question) {
+      await this.endGame(gameId);
+      return;
+    }
     game.currentQuestion = question;
+    game.usedQuestions.add(this.triviaQuestions.indexOf(question));
 
+    const difficultyColor = this.difficultyColors[question.difficulty as keyof typeof this.difficultyColors] || colors.primary;
+    const pointsForQuestion = this.difficultyPoints[question.difficulty as keyof typeof this.difficultyPoints] || 100;
+    
     const embed = createEmbed({
       title: `${emojis.game} Question ${game.currentRound}/${game.totalRounds}`,
-      description: `**Category:** ${question.category}\n**Difficulty:** ${question.difficulty}\n\n${question.question}`,
-      color: colors.primary,
+      description: `**Category:** ${question.category}\n**Difficulty:** ${question.difficulty} (${pointsForQuestion} points)\n\n${question.question}`,
+      color: difficultyColor,
       footer: 'You have 30 seconds to answer',
     });
 
@@ -289,6 +241,7 @@ export class GameHandler {
       await channel.send({ embeds: [embed], components: [buttons] });
     }
 
+    game.questionStartTime = Date.now();
     game.questionTimeout = setTimeout(() => {
       this.revealAnswer(gameId);
     }, 30000);
@@ -327,7 +280,10 @@ export class GameHandler {
 
     if (isCorrect) {
       participant.correctAnswers++;
-      participant.score += game.settings.pointsPerCorrect;
+      const basePoints = this.difficultyPoints[question.difficulty as keyof typeof this.difficultyPoints] || 100;
+      // Add speed bonus - more points for faster answers
+      const timeBonus = Math.max(0, Math.floor((30000 - (Date.now() - game.questionStartTime)) / 1000) * 5);
+      participant.score += basePoints + timeBonus;
     }
 
     await interaction.reply({
@@ -412,9 +368,30 @@ export class GameHandler {
     this.activeGames.delete(gameId);
   }
 
-  private getRandomQuestion(): TriviaQuestion {
-    const randomIndex = Math.floor(Math.random() * this.triviaQuestions.length);
-    return this.triviaQuestions[randomIndex];
+  private getRandomQuestion(category?: string, difficulty?: string, usedQuestions?: Set<number>): TriviaQuestion | null {
+    let availableQuestions = this.triviaQuestions;
+    
+    // Filter by category if specified
+    if (category && category !== 'all') {
+      availableQuestions = availableQuestions.filter(q => q.category.toLowerCase() === category.toLowerCase());
+    }
+    
+    // Filter by difficulty if specified
+    if (difficulty && difficulty !== 'all') {
+      availableQuestions = availableQuestions.filter(q => q.difficulty.toLowerCase() === difficulty.toLowerCase());
+    }
+    
+    // Filter out used questions
+    if (usedQuestions) {
+      availableQuestions = availableQuestions.filter((_, index) => !usedQuestions.has(index));
+    }
+    
+    if (availableQuestions.length === 0) {
+      return null;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    return availableQuestions[randomIndex];
   }
 
   public async getGameStats(guildId: string): Promise<any> {
@@ -451,6 +428,59 @@ export class GameHandler {
       }
     }
     return false;
+  }
+
+  // Get available categories
+  public getAvailableCategories(): string[] {
+    const categories = new Set<string>();
+    this.triviaQuestions.forEach(q => categories.add(q.category));
+    return Array.from(categories).sort();
+  }
+
+  // Get available difficulties
+  public getAvailableDifficulties(): string[] {
+    const difficulties = new Set<string>();
+    this.triviaQuestions.forEach(q => difficulties.add(q.difficulty));
+    return Array.from(difficulties).sort();
+  }
+
+  // Get question count for category/difficulty
+  public getQuestionCount(category?: string, difficulty?: string): number {
+    let questions = this.triviaQuestions;
+    
+    if (category && category !== 'all') {
+      questions = questions.filter(q => q.category.toLowerCase() === category.toLowerCase());
+    }
+    
+    if (difficulty && difficulty !== 'all') {
+      questions = questions.filter(q => q.difficulty.toLowerCase() === difficulty.toLowerCase());
+    }
+    
+    return questions.length;
+  }
+
+  // Get trivia statistics
+  public getTriviaStats(): { totalQuestions: number; categories: string[]; difficulties: string[]; categoryStats: Record<string, number> } {
+    const categories = this.getAvailableCategories();
+    const difficulties = this.getAvailableDifficulties();
+    const categoryStats: Record<string, number> = {};
+    
+    categories.forEach(category => {
+      categoryStats[category] = this.getQuestionCount(category);
+    });
+    
+    return {
+      totalQuestions: this.triviaQuestions.length,
+      categories,
+      difficulties,
+      categoryStats
+    };
+  }
+
+  // Check if enough questions available for game
+  public canStartGame(rounds: number, category?: string, difficulty?: string): boolean {
+    const availableQuestions = this.getQuestionCount(category, difficulty);
+    return availableQuestions >= rounds;
   }
 }
 

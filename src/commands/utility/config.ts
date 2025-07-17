@@ -188,7 +188,7 @@ async function handleLogChannelConfig(interaction: any) {
     if (!interaction.guild) return;
 
     const channel = interaction.options.getChannel('channel');
-    await loggingHandler.setLogChannel(interaction.guild.id, channel?.id || null);
+    await loggingHandler.setGeneralLogChannel(interaction.guild.id, channel?.id || null);
     await interaction.reply({
       embeds: [createSuccessEmbed('Log Channel', 
         channel ? `Log channel set to ${channel}` : 'Logging disabled')],

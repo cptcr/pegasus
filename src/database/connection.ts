@@ -131,6 +131,9 @@ export class Database {
       );
       `,
       `
+      DROP TABLE IF EXISTS tickets CASCADE;
+      `,
+      `
       CREATE TABLE IF NOT EXISTS tickets (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         guild_id VARCHAR(20) NOT NULL,
@@ -152,7 +155,7 @@ export class Database {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         guild_id VARCHAR(20) NOT NULL,
         channel_id VARCHAR(20) NOT NULL,
-        message_id VARCHAR(20) NOT NULL,
+        message_id VARCHAR(20),
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         color VARCHAR(7) DEFAULT '#0099ff',
@@ -242,6 +245,190 @@ export class Database {
         language VARCHAR(10) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS automod_filters (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guild_id VARCHAR(20) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        action VARCHAR(50) NOT NULL,
+        enabled BOOLEAN DEFAULT true,
+        threshold INTEGER,
+        duration INTEGER,
+        priority INTEGER DEFAULT 1,
+        whitelist TEXT[],
+        blacklist TEXT[],
+        exempt_roles VARCHAR(20)[],
+        exempt_channels VARCHAR(20)[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      ALTER TABLE guild_settings 
+      ADD COLUMN IF NOT EXISTS welcome_enabled BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS welcome_card JSONB;
+      `,
+      `
+      DROP TABLE IF EXISTS giveaway_winners;
+      `,
+      `
+      DROP TABLE IF EXISTS giveaway_entries;
+      `,
+      `
+      DROP TABLE IF EXISTS giveaways;
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS giveaways (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guild_id VARCHAR(20) NOT NULL,
+        channel_id VARCHAR(20) NOT NULL,
+        message_id VARCHAR(20),
+        host_id VARCHAR(20) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        prize TEXT NOT NULL,
+        winner_count INTEGER DEFAULT 1,
+        end_time TIMESTAMP NOT NULL,
+        ended BOOLEAN DEFAULT false,
+        cancelled BOOLEAN DEFAULT false,
+        requirements JSONB DEFAULT '{}',
+        bonus_entries JSONB DEFAULT '{}',
+        blacklist VARCHAR(20)[],
+        whitelist VARCHAR(20)[],
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS giveaway_entries (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        giveaway_id UUID NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
+        user_id VARCHAR(20) NOT NULL,
+        entry_count INTEGER DEFAULT 1,
+        entry_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        bonus_reason TEXT,
+        UNIQUE(giveaway_id, user_id)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS giveaway_winners (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        giveaway_id UUID NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
+        user_id VARCHAR(20) NOT NULL,
+        claimed BOOLEAN DEFAULT false,
+        claim_time TIMESTAMP,
+        rerolled BOOLEAN DEFAULT false,
+        selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS log_channels (
+        guild_id VARCHAR(20) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        channel_id VARCHAR(20) NOT NULL,
+        enabled BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (guild_id, category)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS warning_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        warning_id UUID NOT NULL,
+        field_changed VARCHAR(50) NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        changed_by VARCHAR(20) NOT NULL,
+        changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reason TEXT
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS moderation_notes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guild_id VARCHAR(20) NOT NULL,
+        user_id VARCHAR(20) NOT NULL,
+        moderator_id VARCHAR(20) NOT NULL,
+        note TEXT NOT NULL,
+        internal BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS economy_users (
+        user_id VARCHAR(20) NOT NULL,
+        guild_id VARCHAR(20) NOT NULL,
+        coins BIGINT DEFAULT 0,
+        bank BIGINT DEFAULT 0,
+        bank_limit BIGINT DEFAULT 10000,
+        total_earned BIGINT DEFAULT 0,
+        total_spent BIGINT DEFAULT 0,
+        daily_streak INTEGER DEFAULT 0,
+        work_streak INTEGER DEFAULT 0,
+        last_daily DATE,
+        last_work TIMESTAMP,
+        multiplier DECIMAL(3,2) DEFAULT 1.00,
+        prestige INTEGER DEFAULT 0,
+        PRIMARY KEY (user_id, guild_id)
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS shop_items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guild_id VARCHAR(20) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        price BIGINT NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        data JSONB DEFAULT '{}',
+        stock INTEGER DEFAULT -1,
+        role_id VARCHAR(20),
+        requirements JSONB DEFAULT '{}',
+        enabled BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS user_inventory (
+        user_id VARCHAR(20) NOT NULL,
+        guild_id VARCHAR(20) NOT NULL,
+        item_id UUID NOT NULL,
+        quantity INTEGER DEFAULT 1,
+        acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, guild_id, item_id),
+        FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS automod_violations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guild_id VARCHAR(20) NOT NULL,
+        user_id VARCHAR(20) NOT NULL,
+        channel_id VARCHAR(20) NOT NULL,
+        message_id VARCHAR(20),
+        filter_id UUID NOT NULL,
+        filter_type VARCHAR(50) NOT NULL,
+        action_taken VARCHAR(50) NOT NULL,
+        content TEXT,
+        reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      `,
+      `
+      CREATE TABLE IF NOT EXISTS reminders (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR(20) NOT NULL,
+        guild_id VARCHAR(20),
+        channel_id VARCHAR(20),
+        message TEXT NOT NULL,
+        remind_at TIMESTAMP NOT NULL,
+        recurring BOOLEAN DEFAULT false,
+        interval_minutes INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       `,
     ];

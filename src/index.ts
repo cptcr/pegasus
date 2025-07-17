@@ -5,6 +5,7 @@ import { CommandHandler } from './handlers/commandHandler';
 import { EventHandler } from './handlers/eventHandler';
 import { reminders } from './handlers/reminders';
 import { db } from './database/connection';
+import { giveawayHandler } from './handlers/giveaway';
 
 declare global {
   var client: ExtendedClient;
@@ -67,6 +68,9 @@ async function main() {
     // Register commands after login
     client.once('ready', async () => {
       await commandHandler.registerCommands();
+      
+      // Initialize scheduled giveaways
+      await giveawayHandler.initializeScheduledGiveaways();
     });
 
     // Graceful shutdown

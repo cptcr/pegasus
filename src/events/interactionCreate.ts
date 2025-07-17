@@ -1,14 +1,15 @@
-import { Events, ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { Events, ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction, StringSelectMenuInteraction, AutocompleteInteraction } from 'discord.js';
 import { ExtendedClient } from '../types';
 import { createErrorEmbed } from '../utils/helpers';
 import { statsHandler } from '../handlers/stats';
 import { ticketHandler } from '../handlers/tickets';
 import { gameHandler } from '../handlers/games';
 import { reactionRolesHandler } from '../handlers/reactionRoles';
+import { giveawayHandler } from '../handlers/giveaway';
 
 export const event = {
   name: Events.InteractionCreate,
-  async execute(interaction: ChatInputCommandInteraction | ButtonInteraction | ModalSubmitInteraction | StringSelectMenuInteraction) {
+  async execute(interaction: ChatInputCommandInteraction | ButtonInteraction | ModalSubmitInteraction | StringSelectMenuInteraction | AutocompleteInteraction) {
     const client = interaction.client as ExtendedClient;
 
     if (interaction.isChatInputCommand()) {
@@ -44,6 +45,25 @@ export const event = {
 
     if (interaction.isButton()) {
       try {
+        // Handle giveaway button interactions
+        if (interaction.customId.startsWith('giveaway_enter_')) {
+          const giveawayId = interaction.customId.split('_')[2];
+          const result = await giveawayHandler.enterGiveaway(giveawayId, interaction.user.id, interaction.guild!.id);
+          
+          if (result.success) {
+            await interaction.reply({
+              content: `✅ ${result.message}`,
+              ephemeral: true
+            });
+          } else {
+            await interaction.reply({
+              content: `❌ ${result.message}`,
+              ephemeral: true
+            });
+          }
+          return;
+        }
+
         await ticketHandler.handleButtonInteraction(interaction);
         await gameHandler.handleButtonInteraction(interaction);
         await reactionRolesHandler.handleButtonInteraction(interaction);
@@ -65,6 +85,20 @@ export const event = {
         await ticketHandler.handleModalSubmit(interaction);
       } catch (error) {
         console.error('Error handling modal submit:', error);
+      }
+    }
+
+    if (interaction.isAutocomplete()) {
+      try {
+        const command = client.commands.get(interaction.commandName);
+        
+        if (!command || !command.autocomplete) {
+          return;
+        }
+
+        await command.autocomplete(interaction);
+      } catch (error) {
+        console.error('Error handling autocomplete:', error);
       }
     }
   },

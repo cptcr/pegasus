@@ -315,6 +315,155 @@ export const commandRegistry: Record<string, CommandMetadata> = {
     permissions: ['MANAGE_ROLES'],
     adminOnly: true,
     guildOnly: true
+  },
+
+  // Giveaway System
+  'giveaway': {
+    name: 'giveaway',
+    description: 'Create and manage server giveaways',
+    category: 'giveaways',
+    usage: '/giveaway <action>',
+    examples: [
+      '/giveaway create "Steam Game" "Random Steam Key" 7d 1',
+      '/giveaway list',
+      '/giveaway end 123',
+      '/giveaway reroll 123'
+    ],
+    permissions: ['MANAGE_GUILD'],
+    adminOnly: true,
+    guildOnly: true
+  },
+
+  // Polls System
+  'poll': {
+    name: 'poll',
+    description: 'Create interactive polls with multiple options',
+    category: 'utility',
+    usage: '/poll create <question> <options>',
+    examples: [
+      '/poll create "What\'s your favorite color?" "Red,Blue,Green"',
+      '/poll create "Best programming language?" "Python,JavaScript,Java" duration:1h',
+      '/poll end 123456789'
+    ],
+    guildOnly: true
+  },
+
+  // Verification System
+  'verification': {
+    name: 'verification',
+    description: 'Setup server verification system',
+    category: 'moderation',
+    usage: '/verification <action>',
+    examples: [
+      '/verification setup',
+      '/verification level medium',
+      '/verification bypass @user'
+    ],
+    permissions: ['ADMINISTRATOR'],
+    adminOnly: true,
+    guildOnly: true
+  },
+
+  // Logging System
+  'logging': {
+    name: 'logging',
+    description: 'Configure server event logging',
+    category: 'moderation',
+    usage: '/logging <action>',
+    examples: [
+      '/logging setup',
+      '/logging set moderation #mod-logs',
+      '/logging disable automod',
+      '/logging list'
+    ],
+    permissions: ['ADMINISTRATOR'],
+    adminOnly: true,
+    guildOnly: true
+  },
+
+  // Additional Economy Commands
+  'transfer': {
+    name: 'transfer',
+    description: 'Transfer coins to another user',
+    category: 'economy',
+    usage: '/transfer <user> <amount>',
+    examples: [
+      '/transfer @user 500',
+      '/transfer 123456789 1000'
+    ]
+  },
+  'deposit': {
+    name: 'deposit',
+    description: 'Deposit coins into your bank',
+    category: 'economy',
+    usage: '/deposit <amount>',
+    examples: [
+      '/deposit 1000',
+      '/deposit all'
+    ]
+  },
+  'withdraw': {
+    name: 'withdraw',
+    description: 'Withdraw coins from your bank',
+    category: 'economy',
+    usage: '/withdraw <amount>',
+    examples: [
+      '/withdraw 500',
+      '/withdraw all'
+    ]
+  },
+  'inventory': {
+    name: 'inventory',
+    description: 'View your inventory and manage items',
+    category: 'economy',
+    usage: '/inventory [user]',
+    examples: [
+      '/inventory',
+      '/inventory @user'
+    ]
+  },
+
+  // Moderation Enhancements
+  'timeout': {
+    name: 'timeout',
+    description: 'Timeout a user for a specified duration',
+    category: 'moderation',
+    usage: '/timeout <user> <duration> [reason]',
+    examples: [
+      '/timeout @user 1h Inappropriate behavior',
+      '/timeout 123456789 30m Spamming'
+    ],
+    permissions: ['MODERATE_MEMBERS'],
+    adminOnly: true,
+    guildOnly: true
+  },
+  'slowmode': {
+    name: 'slowmode',
+    description: 'Set channel slowmode',
+    category: 'moderation',
+    usage: '/slowmode <seconds>',
+    examples: [
+      '/slowmode 5',
+      '/slowmode 0',
+      '/slowmode 30'
+    ],
+    permissions: ['MANAGE_CHANNELS'],
+    adminOnly: true,
+    guildOnly: true
+  },
+  'purge': {
+    name: 'purge',
+    description: 'Delete multiple messages at once',
+    category: 'moderation',
+    usage: '/purge <amount> [user]',
+    examples: [
+      '/purge 10',
+      '/purge 50 @user',
+      '/purge 25'
+    ],
+    permissions: ['MANAGE_MESSAGES'],
+    adminOnly: true,
+    guildOnly: true
   }
 };
 
