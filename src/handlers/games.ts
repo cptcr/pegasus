@@ -10,7 +10,7 @@ import {
 import { db } from '../database/connection';
 import { createEmbed, createSuccessEmbed, createErrorEmbed } from '../utils/helpers';
 import { colors, emojis } from '../utils/config';
-import { trivia, TriviaQuestion } from '../../data/trivia';
+import { trivia, TriviaQuestion } from '../data/trivia';
 
 
 interface GameParticipant {
