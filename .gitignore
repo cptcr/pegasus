@@ -53,6 +53,5 @@ Thumbs.db
 desktop.ini
 
 # Project specific
-.claude/
 test-bot.js
 issues.md

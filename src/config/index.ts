@@ -203,7 +203,7 @@ export const config = {
   // Database connection string with SSL
   getDatabaseConfig: () => ({
     connectionString: env.DATABASE_URL,
-    ssl: env.DATABASE_SSL ? { rejectUnauthorized: false } : false,
+    ssl: false, // Pterodactyl servers don't use SSL for local connections
     max: env.DATABASE_MAX_CONNECTIONS,
     idleTimeoutMillis: env.DATABASE_IDLE_TIMEOUT,
     connectionTimeoutMillis: env.DATABASE_CONNECTION_TIMEOUT,

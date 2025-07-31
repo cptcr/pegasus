@@ -51,7 +51,7 @@ export class MonetizationHandler {
       
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bot ${config.token}`,
+          'Authorization': `Bot ${config.BOT_TOKEN}`,
           'Content-Type': 'application/json'
         }
       });

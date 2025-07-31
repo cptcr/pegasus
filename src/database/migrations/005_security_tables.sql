@@ -57,12 +57,12 @@ CREATE TABLE IF NOT EXISTS security_tokens (
 -- Create blocked users table (for security blacklist)
 CREATE TABLE IF NOT EXISTS blocked_users (
     user_id VARCHAR(20) NOT NULL,
-    guild_id VARCHAR(20),
+    guild_id VARCHAR(20) NOT NULL DEFAULT '0',
     reason TEXT NOT NULL,
     blocked_by VARCHAR(20) NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, COALESCE(guild_id, '0'))
+    PRIMARY KEY (user_id, guild_id)
 );
 
 -- Create rate limit overrides table

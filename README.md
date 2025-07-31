@@ -6,7 +6,7 @@ A comprehensive Discord bot built with TypeScript, Discord.js v14, and PostgreSQ
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pegasus-bot.git
+git clone https://github.com/cptcr/pegasus.git
 cd pegasus-bot
 
 # Configure environment

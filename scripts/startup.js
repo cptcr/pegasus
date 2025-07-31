@@ -111,19 +111,50 @@ async function checkDependencies() {
 async function setupDatabase() {
   logStep('DB', 'Setting up database...');
   
-  // Test database connection
+  // First, try to create the pegasus database if it doesn't exist
   const { Client } = require('pg');
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL
-  });
+  const url = new URL(process.env.DATABASE_URL);
+  const dbName = 'pegasus';
+  
+  // Connect to postgres database first
+  const postgresUrl = `${url.protocol}//${url.username}:${url.password}@${url.host}/postgres`;
+  const adminClient = new Client({ connectionString: postgresUrl });
+  
+  try {
+    await adminClient.connect();
+    logSuccess('Connected to PostgreSQL server');
+    
+    // Check if pegasus database exists
+    const result = await adminClient.query(
+      "SELECT 1 FROM pg_database WHERE datname = 'pegasus'"
+    );
+    
+    if (result.rows.length === 0) {
+      // Create pegasus database
+      await adminClient.query('CREATE DATABASE pegasus');
+      logSuccess('Created "pegasus" database');
+    } else {
+      logSuccess('Database "pegasus" already exists');
+    }
+  } catch (error) {
+    logWarning(`Could not create database: ${error.message}`);
+  } finally {
+    await adminClient.end();
+  }
+  
+  // Now connect to the pegasus database
+  const pegasusUrl = `${url.protocol}//${url.username}:${url.password}@${url.host}/pegasus`;
+  process.env.DATABASE_URL = pegasusUrl; // Update the DATABASE_URL for the bot
+  
+  const client = new Client({ connectionString: pegasusUrl });
   
   try {
     await client.connect();
-    logSuccess('Database connection successful');
+    logSuccess('Connected to pegasus database');
     await client.end();
   } catch (error) {
     logError(`Database connection failed: ${error.message}`);
-    logWarning('Please check your DATABASE_URL in .env file');
+    logWarning('Please check your PostgreSQL server is running');
     process.exit(1);
   }
   
@@ -165,8 +196,8 @@ async function startBot() {
   logSuccess('All checks passed. Starting bot...');
   log('');
   
-  // Start the bot
-  require('child_process').spawn('node', ['dist/index.js'], {
+  // Start the bot using ts-node
+  require('child_process').spawn('npx', ['ts-node', '--transpile-only', 'src/index.ts'], {
     stdio: 'inherit',
     shell: true
   });
