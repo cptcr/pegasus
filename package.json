@@ -9,7 +9,7 @@
     "build": "tsc && npm run copy-assets",
     "copy-assets": "node -e \"const fs = require('fs'); const path = require('path'); if (!fs.existsSync('dist/i18n')) fs.mkdirSync('dist/i18n', {recursive: true}); if (fs.existsSync('src/i18n/locales')) fs.cpSync('src/i18n/locales', 'dist/i18n/locales', {recursive: true});\"",
     "start": "node scripts/startup.js",
-    "start:prod": "node dist/index.js",
+    "start:prod": "node scripts/startup.js --prod",
     "dev": "ts-node src/index.ts",
     "watch": "nodemon --exec ts-node src/index.ts",
     "migrate": "ts-node src/database/migrate.ts",
@@ -17,7 +17,14 @@
     "migrate:status": "ts-node src/database/migrate.ts status",
     "backup": "ts-node src/utils/backup-cli.ts create",
     "restore": "ts-node src/utils/backup-cli.ts restore",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:prod:pm2": "node scripts/startup.js --prod --pm2",
+    "start:dev": "node scripts/startup.js --dev",
+    "prestart": "node scripts/startup.js --check-only",
+    "migrate:prod": "node scripts/startup.js --migrate-only --prod",
+    "setup:interactive": "node scripts/startup.js --interactive",
+    "health:check": "node scripts/startup.js --check-only --verbose",
+    "debug:verbose": "node scripts/startup.js --dev --verbose"
   },
   "keywords": [
     "discord",

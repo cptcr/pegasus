@@ -55,3 +55,8 @@ desktop.ini
 # Project specific
 test-bot.js
 issues.md
+
+# CLAUDE
+.claude/
+.claude/settings.local.json
+.claude/agents/
