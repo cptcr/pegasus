@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+*.js
+!scripts/*.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+backups/
+*.backup
+*.bak
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Project specific
+.claude/
+test-bot.js
+issues.md

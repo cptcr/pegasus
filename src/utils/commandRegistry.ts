@@ -11,6 +11,24 @@ export interface CommandMetadata {
 }
 
 export const commandRegistry: Record<string, CommandMetadata> = {
+  // Admin Commands
+  'security': {
+    name: 'security',
+    description: 'Manage bot security settings',
+    category: 'admin',
+    usage: '/security <subcommand>',
+    examples: [
+      '/security permissions view @user',
+      '/security permissions grant @role moderation.ban',
+      '/security audit @user',
+      '/security ratelimits',
+      '/security alerts'
+    ],
+    permissions: ['ADMINISTRATOR'],
+    adminOnly: true,
+    guildOnly: true
+  },
+  
   // Moderation Commands
   'ban': {
     name: 'ban',
@@ -462,6 +480,37 @@ export const commandRegistry: Record<string, CommandMetadata> = {
       '/purge 25'
     ],
     permissions: ['MANAGE_MESSAGES'],
+    adminOnly: true,
+    guildOnly: true
+  },
+
+  // Custom Commands (Guild-Installed)
+  'customcommand': {
+    name: 'customcommand',
+    description: 'Create and manage guild-installed custom commands (Premium Feature)',
+    category: 'premium',
+    usage: '/customcommand <action>',
+    examples: [
+      '/customcommand create rules "Server Rules" embed',
+      '/customcommand list',
+      '/customcommand delete rules',
+      '/customcommand info'
+    ],
+    permissions: ['MANAGE_GUILD'],
+    adminOnly: true,
+    guildOnly: true
+  },
+  'premium': {
+    name: 'premium',
+    description: 'Manage premium features (Bot Admin Only)',
+    category: 'admin',
+    usage: '/premium <action>',
+    examples: [
+      '/premium grant premium 30',
+      '/premium status',
+      '/premium revoke'
+    ],
+    permissions: ['ADMINISTRATOR'],
     adminOnly: true,
     guildOnly: true
   }

@@ -222,7 +222,7 @@ export class GameHandler {
     const embed = createEmbed({
       title: `${emojis.game} Question ${game.currentRound}/${game.totalRounds}`,
       description: `**Category:** ${question.category}\n**Difficulty:** ${question.difficulty} (${pointsForQuestion} points)\n\n${question.question}`,
-      color: difficultyColor,
+      color: `#${difficultyColor.toString(16).padStart(6, '0')}`,
       footer: 'You have 30 seconds to answer',
     });
 

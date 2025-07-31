@@ -8,6 +8,7 @@ export interface ExtendedClient extends Client {
 export interface Command {
   data: any; // More flexible to handle different builder types
   execute: (interaction: any) => Promise<any>; // More flexible return type
+  autocomplete?: (interaction: any) => Promise<any>; // For autocomplete handling
   cooldown?: number;
   permissions?: string[];
   category?: string;

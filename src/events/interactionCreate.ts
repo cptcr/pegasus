@@ -6,21 +6,63 @@ import { ticketHandler } from '../handlers/tickets';
 import { gameHandler } from '../handlers/games';
 import { reactionRolesHandler } from '../handlers/reactionRoles';
 import { giveawayHandler } from '../handlers/giveaway';
+import { dynamicCommandHandler } from '../handlers/dynamicCommands';
+import { guildCommandHandler } from '../handlers/guildCommands';
+import { security } from '../security/middleware';
+import { logger } from '../utils/logger';
+import * as subcommandModule from '../commands/utility/subcommand';
+import * as customcommandModule from '../commands/utility/customcommand';
 
 export const event = {
   name: Events.InteractionCreate,
   async execute(interaction: ChatInputCommandInteraction | ButtonInteraction | ModalSubmitInteraction | StringSelectMenuInteraction | AutocompleteInteraction) {
     const client = interaction.client as ExtendedClient;
 
+    // Skip security checks for autocomplete
+    if (!interaction.isAutocomplete()) {
+      // Apply security middleware
+      const securityCheck = await security.checkInteraction(interaction);
+      if (!securityCheck.allowed) {
+        if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+          await interaction.reply({
+            content: `🛡️ ${securityCheck.reason}`,
+            ephemeral: true
+          });
+        }
+        return;
+      }
+    }
+
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
 
-      if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
-      }
-
       try {
+        // First check if this is a guild-installed custom command
+        if (interaction.guild) {
+          const handled = await guildCommandHandler.execute(interaction);
+          if (handled) {
+            // Track command usage
+            await statsHandler.incrementCommandCount(interaction.guild.id);
+            return;
+          }
+        }
+
+        // Then check if this might be a dynamic custom subcommand (legacy)
+        if (interaction.guild && interaction.options.getSubcommand(false)) {
+          const handled = await dynamicCommandHandler.execute(interaction);
+          if (handled) {
+            // Track command usage
+            await statsHandler.incrementCommandCount(interaction.guild.id);
+            return;
+          }
+        }
+
+        // Finally, execute the regular command
+        if (!command) {
+          console.error(`No command matching ${interaction.commandName} was found.`);
+          return;
+        }
+
         await command.execute(interaction);
         
         // Track command usage
@@ -82,6 +124,18 @@ export const event = {
 
     if (interaction.isModalSubmit()) {
       try {
+        // Handle subcommand creation modals (legacy)
+        if (interaction.customId.startsWith('subcommand_create_')) {
+          await subcommandModule.handleModalSubmit(interaction);
+          return;
+        }
+
+        // Handle guild command creation modals
+        if (interaction.customId.startsWith('guildcommand_create_')) {
+          await customcommandModule.handleModalSubmit(interaction);
+          return;
+        }
+
         await ticketHandler.handleModalSubmit(interaction);
       } catch (error) {
         console.error('Error handling modal submit:', error);

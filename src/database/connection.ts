@@ -1,444 +1,310 @@
-import { Pool, Client } from 'pg';
-import { config } from '../utils/config';
-import { secureQuery } from '../handlers/security';
+import { Pool, Client, PoolConfig, QueryResult } from 'pg';
+import { config } from '../config';
+import { logger } from '../utils/logger';
+import { MigrationRunner } from './migrations';
+
+export interface QueryOptions {
+  timeout?: number;
+  throwOnError?: boolean;
+}
 
 export class Database {
   private pool: Pool;
   private static instance: Database;
-
+  private migrationRunner: MigrationRunner;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000; // Start with 1 second
+  
   private constructor() {
-    this.pool = new Pool({
-      connectionString: config.databaseUrl,
-      ssl: config.nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+    const poolConfig: PoolConfig = {
+      ...config.getDatabaseConfig(),
+      // Event handlers
+      log: (msg: string) => logger.debug('PostgreSQL', { message: msg }),
+      error: (err: Error) => logger.error('PostgreSQL pool error', err),
+    };
+    
+    this.pool = new Pool(poolConfig);
+    this.migrationRunner = new MigrationRunner(this.pool);
+    
+    // Set up event handlers
+    this.setupEventHandlers();
+  }
+  
+  private setupEventHandlers(): void {
+    this.pool.on('error', async (err) => {
+      logger.error('Unexpected database connection error', err);
+      await this.handleConnectionError();
     });
-
-    // Apply security wrapper to the pool
-    secureQuery(this.pool);
-
-    this.pool.on('error', (err) => {
-      console.error('Database connection error:', err);
+    
+    this.pool.on('connect', (client) => {
+      logger.debug('New database connection established');
+      this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
+    });
+    
+    this.pool.on('acquire', (client) => {
+      logger.trace('Database connection acquired from pool');
+    });
+    
+    this.pool.on('remove', (client) => {
+      logger.trace('Database connection removed from pool');
     });
   }
-
+  
+  private async handleConnectionError(): Promise<void> {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      logger.error('Max reconnection attempts reached, exiting...');
+      process.exit(1);
+    }
+    
+    this.reconnectAttempts++;
+    logger.info(`Attempting to reconnect to database (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    // Exponential backoff
+    await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
+    this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000); // Max 30 seconds
+    
+    try {
+      await this.pool.query('SELECT 1');
+      logger.info('Successfully reconnected to database');
+      this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
+    } catch (error) {
+      logger.error('Reconnection attempt failed', error as Error);
+      await this.handleConnectionError();
+    }
+  }
+  
   public static getInstance(): Database {
     if (!Database.instance) {
       Database.instance = new Database();
     }
     return Database.instance;
   }
-
-  public async query(text: string, params?: any[]): Promise<any> {
+  
+  public async query<T = any>(
+    text: string,
+    params?: any[],
+    options: QueryOptions = {}
+  ): Promise<QueryResult<T>> {
+    const start = Date.now();
     const client = await this.pool.connect();
+    
     try {
-      const result = await client.query(text, params);
+      // Set query timeout if specified
+      if (options.timeout) {
+        await client.query(`SET statement_timeout = ${options.timeout}`);
+      }
+      
+      const result = await client.query<T>(text, params);
+      const duration = Date.now() - start;
+      
+      // Log slow queries
+      if (duration > 100) {
+        logger.performance('Slow query detected', duration, {
+          query: text.slice(0, 100),
+          params: params?.length,
+        });
+      }
+      
       return result;
+    } catch (error) {
+      const duration = Date.now() - start;
+      logger.error('Query failed', error as Error, {
+        query: text.slice(0, 100),
+        params: params?.length,
+        duration,
+      });
+      
+      if (options.throwOnError !== false) {
+        throw error;
+      }
+      
+      // Return empty result if not throwing
+      return { rows: [], rowCount: 0, command: '', oid: 0, fields: [] };
     } finally {
+      if (options.timeout) {
+        await client.query('RESET statement_timeout');
+      }
       client.release();
     }
   }
-
-  public async transaction<T>(callback: (client: Client) => Promise<T>): Promise<T> {
+  
+  public async transaction<T>(
+    callback: (client: Client) => Promise<T>,
+    isolationLevel?: 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE'
+  ): Promise<T> {
     const client = await this.pool.connect();
+    const start = Date.now();
+    
     try {
       await client.query('BEGIN');
-      const result = await callback(client as any);
+      
+      if (isolationLevel) {
+        await client.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel}`);
+      }
+      
+      const result = await callback(client);
       await client.query('COMMIT');
+      
+      const duration = Date.now() - start;
+      logger.performance('Transaction completed', duration);
+      
       return result;
     } catch (error) {
       await client.query('ROLLBACK');
+      const duration = Date.now() - start;
+      
+      logger.error('Transaction failed', error as Error, { duration });
       throw error;
     } finally {
       client.release();
     }
   }
-
+  
+  public async batchInsert<T = any>(
+    table: string,
+    columns: string[],
+    values: any[][],
+    onConflict?: string
+  ): Promise<QueryResult<T>> {
+    if (values.length === 0) {
+      return { rows: [], rowCount: 0, command: 'INSERT', oid: 0, fields: [] };
+    }
+    
+    const placeholders = values.map((_, rowIndex) =>
+      `(${columns.map((_, colIndex) => `$${rowIndex * columns.length + colIndex + 1}`).join(', ')})`
+    ).join(', ');
+    
+    const flatValues = values.flat();
+    const conflictClause = onConflict ? ` ON CONFLICT ${onConflict}` : '';
+    
+    const query = `
+      INSERT INTO ${table} (${columns.join(', ')})
+      VALUES ${placeholders}
+      ${conflictClause}
+      RETURNING *
+    `;
+    
+    return this.query<T>(query, flatValues);
+  }
+  
+  public async upsert<T = any>(
+    table: string,
+    data: Record<string, any>,
+    conflictColumns: string[],
+    updateColumns?: string[]
+  ): Promise<QueryResult<T>> {
+    const columns = Object.keys(data);
+    const values = Object.values(data);
+    const updateCols = updateColumns || columns.filter(col => !conflictColumns.includes(col));
+    
+    const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+    const conflictClause = `(${conflictColumns.join(', ')})`;
+    const updateClause = updateCols.map(col => `${col} = EXCLUDED.${col}`).join(', ');
+    
+    const query = `
+      INSERT INTO ${table} (${columns.join(', ')})
+      VALUES (${placeholders})
+      ON CONFLICT ${conflictClause}
+      DO UPDATE SET ${updateClause}
+      RETURNING *
+    `;
+    
+    return this.query<T>(query, values);
+  }
+  
+  public async healthCheck(): Promise<boolean> {
+    try {
+      await this.query('SELECT 1', [], { timeout: 5000 });
+      return true;
+    } catch (error) {
+      logger.error('Health check failed', error as Error);
+      return false;
+    }
+  }
+  
+  public async getPoolStats() {
+    return {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+      waiting: this.pool.waitingCount,
+    };
+  }
+  
   public async close(): Promise<void> {
+    logger.info('Closing database connection pool');
     await this.pool.end();
   }
-
+  
   public async init(): Promise<void> {
-    await this.createTables();
-  }
-
-  private async createTables(): Promise<void> {
-    const queries = [
-      `
-      CREATE TABLE IF NOT EXISTS guild_settings (
-        guild_id VARCHAR(20) PRIMARY KEY,
-        prefix VARCHAR(10) DEFAULT '!',
-        mod_log_channel VARCHAR(20),
-        mute_role VARCHAR(20),
-        join_to_create_category VARCHAR(20),
-        join_to_create_channel VARCHAR(20),
-        ticket_category VARCHAR(20),
-        auto_role VARCHAR(20),
-        welcome_channel VARCHAR(20),
-        welcome_message TEXT,
-        leave_channel VARCHAR(20),
-        leave_message TEXT,
-        xp_enabled BOOLEAN DEFAULT true,
-        xp_rate INTEGER DEFAULT 15,
-        xp_cooldown INTEGER DEFAULT 60,
-        level_up_message TEXT,
-        level_up_channel VARCHAR(20),
-        log_channel VARCHAR(20),
-        anti_spam BOOLEAN DEFAULT false,
-        anti_spam_action VARCHAR(20) DEFAULT 'mute',
-        anti_spam_threshold INTEGER DEFAULT 5,
-        auto_mod BOOLEAN DEFAULT false,
-        filter_profanity BOOLEAN DEFAULT false,
-        filter_invites BOOLEAN DEFAULT false,
-        filter_links BOOLEAN DEFAULT false,
-        language VARCHAR(10) DEFAULT 'en',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS user_profiles (
-        user_id VARCHAR(20),
-        guild_id VARCHAR(20),
-        xp INTEGER DEFAULT 0,
-        level INTEGER DEFAULT 1,
-        total_xp INTEGER DEFAULT 0,
-        voice_time INTEGER DEFAULT 0,
-        message_count INTEGER DEFAULT 0,
-        warnings INTEGER DEFAULT 0,
-        reputation INTEGER DEFAULT 0,
-        coins INTEGER DEFAULT 0,
-        last_xp_gain TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_voice_join TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, guild_id)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS mod_actions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        user_id VARCHAR(20) NOT NULL,
-        moderator_id VARCHAR(20) NOT NULL,
-        action VARCHAR(20) NOT NULL,
-        reason TEXT,
-        duration INTEGER,
-        expires_at TIMESTAMP,
-        active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      DROP TABLE IF EXISTS tickets CASCADE;
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS tickets (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        user_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        panel_id UUID NOT NULL,
-        subject VARCHAR(255) NOT NULL,
-        status VARCHAR(20) DEFAULT 'open',
-        priority VARCHAR(20) DEFAULT 'medium',
-        assigned_to VARCHAR(20),
-        closed_by VARCHAR(20),
-        closed_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS ticket_panels (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        message_id VARCHAR(20),
-        title VARCHAR(255) NOT NULL,
-        description TEXT NOT NULL,
-        color VARCHAR(7) DEFAULT '#0099ff',
-        category VARCHAR(20) NOT NULL,
-        support_roles TEXT[] DEFAULT '{}',
-        max_tickets INTEGER DEFAULT 1,
-        cooldown INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS temp_channels (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        owner_id VARCHAR(20) NOT NULL,
-        parent_id VARCHAR(20) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS game_sessions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        game_type VARCHAR(20) NOT NULL,
-        host_id VARCHAR(20) NOT NULL,
-        participants TEXT[] DEFAULT '{}',
-        scores JSONB DEFAULT '{}',
-        status VARCHAR(20) DEFAULT 'waiting',
-        current_question JSONB,
-        settings JSONB DEFAULT '{}',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS guild_stats (
-        guild_id VARCHAR(20),
-        total_messages INTEGER DEFAULT 0,
-        total_commands INTEGER DEFAULT 0,
-        total_voice_time INTEGER DEFAULT 0,
-        total_members INTEGER DEFAULT 0,
-        active_members INTEGER DEFAULT 0,
-        new_members INTEGER DEFAULT 0,
-        left_members INTEGER DEFAULT 0,
-        banned_members INTEGER DEFAULT 0,
-        kicked_members INTEGER DEFAULT 0,
-        muted_members INTEGER DEFAULT 0,
-        warned_members INTEGER DEFAULT 0,
-        tickets_created INTEGER DEFAULT 0,
-        tickets_closed INTEGER DEFAULT 0,
-        date DATE DEFAULT CURRENT_DATE,
-        PRIMARY KEY (guild_id, date)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS log_events (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        user_id VARCHAR(20),
-        channel_id VARCHAR(20),
-        role_id VARCHAR(20),
-        data JSONB NOT NULL,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS voice_sessions (
-        user_id VARCHAR(20),
-        guild_id VARCHAR(20),
-        channel_id VARCHAR(20),
-        join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        leave_time TIMESTAMP,
-        duration INTEGER,
-        afk BOOLEAN DEFAULT false,
-        muted BOOLEAN DEFAULT false,
-        deafened BOOLEAN DEFAULT false,
-        PRIMARY KEY (user_id, guild_id, join_time)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS user_languages (
-        user_id VARCHAR(20) PRIMARY KEY,
-        language VARCHAR(10) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS automod_filters (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        action VARCHAR(50) NOT NULL,
-        enabled BOOLEAN DEFAULT true,
-        threshold INTEGER,
-        duration INTEGER,
-        priority INTEGER DEFAULT 1,
-        whitelist TEXT[],
-        blacklist TEXT[],
-        exempt_roles VARCHAR(20)[],
-        exempt_channels VARCHAR(20)[],
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      ALTER TABLE guild_settings 
-      ADD COLUMN IF NOT EXISTS welcome_enabled BOOLEAN DEFAULT false,
-      ADD COLUMN IF NOT EXISTS welcome_card JSONB;
-      `,
-      `
-      DROP TABLE IF EXISTS giveaway_winners;
-      `,
-      `
-      DROP TABLE IF EXISTS giveaway_entries;
-      `,
-      `
-      DROP TABLE IF EXISTS giveaways;
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS giveaways (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        message_id VARCHAR(20),
-        host_id VARCHAR(20) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        prize TEXT NOT NULL,
-        winner_count INTEGER DEFAULT 1,
-        end_time TIMESTAMP NOT NULL,
-        ended BOOLEAN DEFAULT false,
-        cancelled BOOLEAN DEFAULT false,
-        requirements JSONB DEFAULT '{}',
-        bonus_entries JSONB DEFAULT '{}',
-        blacklist VARCHAR(20)[],
-        whitelist VARCHAR(20)[],
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS giveaway_entries (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        giveaway_id UUID NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
-        user_id VARCHAR(20) NOT NULL,
-        entry_count INTEGER DEFAULT 1,
-        entry_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        bonus_reason TEXT,
-        UNIQUE(giveaway_id, user_id)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS giveaway_winners (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        giveaway_id UUID NOT NULL REFERENCES giveaways(id) ON DELETE CASCADE,
-        user_id VARCHAR(20) NOT NULL,
-        claimed BOOLEAN DEFAULT false,
-        claim_time TIMESTAMP,
-        rerolled BOOLEAN DEFAULT false,
-        selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS log_channels (
-        guild_id VARCHAR(20) NOT NULL,
-        category VARCHAR(50) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        enabled BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (guild_id, category)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS warning_history (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        warning_id UUID NOT NULL,
-        field_changed VARCHAR(50) NOT NULL,
-        old_value TEXT,
-        new_value TEXT,
-        changed_by VARCHAR(20) NOT NULL,
-        changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        reason TEXT
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS moderation_notes (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        user_id VARCHAR(20) NOT NULL,
-        moderator_id VARCHAR(20) NOT NULL,
-        note TEXT NOT NULL,
-        internal BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS economy_users (
-        user_id VARCHAR(20) NOT NULL,
-        guild_id VARCHAR(20) NOT NULL,
-        coins BIGINT DEFAULT 0,
-        bank BIGINT DEFAULT 0,
-        bank_limit BIGINT DEFAULT 10000,
-        total_earned BIGINT DEFAULT 0,
-        total_spent BIGINT DEFAULT 0,
-        daily_streak INTEGER DEFAULT 0,
-        work_streak INTEGER DEFAULT 0,
-        last_daily DATE,
-        last_work TIMESTAMP,
-        multiplier DECIMAL(3,2) DEFAULT 1.00,
-        prestige INTEGER DEFAULT 0,
-        PRIMARY KEY (user_id, guild_id)
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS shop_items (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price BIGINT NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        data JSONB DEFAULT '{}',
-        stock INTEGER DEFAULT -1,
-        role_id VARCHAR(20),
-        requirements JSONB DEFAULT '{}',
-        enabled BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS user_inventory (
-        user_id VARCHAR(20) NOT NULL,
-        guild_id VARCHAR(20) NOT NULL,
-        item_id UUID NOT NULL,
-        quantity INTEGER DEFAULT 1,
-        acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, guild_id, item_id),
-        FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS automod_violations (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        guild_id VARCHAR(20) NOT NULL,
-        user_id VARCHAR(20) NOT NULL,
-        channel_id VARCHAR(20) NOT NULL,
-        message_id VARCHAR(20),
-        filter_id UUID NOT NULL,
-        filter_type VARCHAR(50) NOT NULL,
-        action_taken VARCHAR(50) NOT NULL,
-        content TEXT,
-        reason TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-      `
-      CREATE TABLE IF NOT EXISTS reminders (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR(20) NOT NULL,
-        guild_id VARCHAR(20),
-        channel_id VARCHAR(20),
-        message TEXT NOT NULL,
-        remind_at TIMESTAMP NOT NULL,
-        recurring BOOLEAN DEFAULT false,
-        interval_minutes INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      `,
-    ];
-
-    for (const query of queries) {
-      await this.query(query);
+    try {
+      // Test connection
+      await this.query('SELECT 1');
+      logger.info('Database connection established');
+      
+      // Run migrations
+      await this.migrationRunner.initialize();
+      await this.migrationRunner.migrate();
+      
+      // Create initial tables if migrations are not set up
+      await this.createTables();
+      
+      logger.info('Database initialization complete');
+    } catch (error) {
+      logger.error('Database initialization failed', error as Error);
+      throw error;
     }
-
-    console.log('Database tables created successfully');
+  }
+  
+  private async createTables(): Promise<void> {
+    // This is kept for backward compatibility
+    // New tables should be added via migrations
+    const queries = [
+      // Add any legacy table creation queries here if needed
+    ];
+    
+    for (const query of queries) {
+      try {
+        await this.query(query);
+      } catch (error) {
+        // Ignore errors for existing tables
+        logger.debug('Table creation query failed (likely already exists)', { error });
+      }
+    }
+  }
+  
+  // Utility methods for common operations
+  public async exists(table: string, conditions: Record<string, any>): Promise<boolean> {
+    const whereClause = Object.keys(conditions)
+      .map((key, i) => `${key} = $${i + 1}`)
+      .join(' AND ');
+    
+    const result = await this.query(
+      `SELECT EXISTS(SELECT 1 FROM ${table} WHERE ${whereClause})`,
+      Object.values(conditions)
+    );
+    
+    return result.rows[0].exists;
+  }
+  
+  public async count(table: string, conditions?: Record<string, any>): Promise<number> {
+    let query = `SELECT COUNT(*) FROM ${table}`;
+    let params: any[] = [];
+    
+    if (conditions && Object.keys(conditions).length > 0) {
+      const whereClause = Object.keys(conditions)
+        .map((key, i) => `${key} = $${i + 1}`)
+        .join(' AND ');
+      query += ` WHERE ${whereClause}`;
+      params = Object.values(conditions);
+    }
+    
+    const result = await this.query(query, params);
+    return parseInt(result.rows[0].count);
   }
 }
 
+// Export singleton instance
 export const db = Database.getInstance();

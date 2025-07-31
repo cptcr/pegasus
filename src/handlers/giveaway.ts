@@ -1,12 +1,11 @@
 import { TextChannel, ButtonBuilder, ActionRowBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember } from 'discord.js';
-import { Database } from '../database/connection';
+import { db } from '../database/connection';
 import { Giveaway, GiveawayEntry, GiveawayWinner, GiveawayRequirements, GiveawayBonusEntries } from '../types';
 import { createEmbed, createSuccessEmbed, createErrorEmbed } from '../utils/helpers';
-import { colors, emojis } from '../utils/config';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 import { economyHandler } from './economy';
 import { xpHandler } from './xp';
-
-const db = Database.getInstance();
 
 export class GiveawayHandler {
   private activeGiveaways = new Map<string, NodeJS.Timeout>();
@@ -21,14 +20,18 @@ export class GiveawayHandler {
     winnerCount: number = 1,
     description?: string,
     requirements?: GiveawayRequirements,
-    bonusEntries?: GiveawayBonusEntries
+    bonusEntries?: GiveawayBonusEntries,
+    embedConfig?: any
   ): Promise<string | null> {
     try {
       const endTime = new Date(Date.now() + duration);
       
       const result = await db.query(
-        `INSERT INTO giveaways (guild_id, channel_id, host_id, title, description, prize, winner_count, end_time, requirements, bonus_entries)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        `INSERT INTO giveaways (
+          guild_id, channel_id, host_id, title, description, prize, 
+          winner_count, end_time, requirements, bonus_entries, embed_config
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+        RETURNING id`,
         [
           guildId, 
           channelId, 
@@ -39,32 +42,39 @@ export class GiveawayHandler {
           winnerCount, 
           endTime,
           JSON.stringify(requirements || {}),
-          JSON.stringify(bonusEntries || {})
+          JSON.stringify(bonusEntries || {}),
+          JSON.stringify(embedConfig || {})
         ]
       );
 
       const giveawayId = result.rows[0].id;
 
-      // Create and send giveaway embed
-      const embed = this.createGiveawayEmbed({
-        id: giveawayId,
-        guildId,
-        channelId,
-        hostId,
-        title,
-        description,
-        prize,
-        winnerCount,
-        endTime,
-        ended: false,
-        cancelled: false,
-        requirements: requirements || {},
-        bonusEntries: bonusEntries || {},
-        blacklist: [],
-        whitelist: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+      // Post the giveaway message
+      await this.postGiveawayMessage(giveawayId, channelId);
+
+      // Schedule automatic ending
+      this.scheduleGiveawayEnd(giveawayId, duration);
+
+      return giveawayId;
+    } catch (error) {
+      logger.error('Error creating giveaway', error as Error);
+      return null;
+    }
+  }
+
+  public async postGiveawayMessage(giveawayId: string, channelId: string): Promise<void> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) return;
+
+      const guild = global.client?.guilds.cache.get(giveaway.guildId);
+      if (!guild) return;
+
+      const channel = guild.channels.cache.get(channelId) as TextChannel;
+      if (!channel) return;
+
+      // Create embed from config or default
+      const embed = this.createGiveawayEmbed(giveaway);
 
       const button = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
@@ -73,12 +83,6 @@ export class GiveawayHandler {
             .setLabel('🎉 Enter Giveaway')
             .setStyle(ButtonStyle.Success)
         );
-
-      const guild = global.client?.guilds.cache.get(guildId);
-      if (!guild) return null;
-
-      const channel = guild.channels.cache.get(channelId) as TextChannel;
-      if (!channel) return null;
 
       const message = await channel.send({
         embeds: [embed],
@@ -91,13 +95,9 @@ export class GiveawayHandler {
         [message.id, giveawayId]
       );
 
-      // Schedule automatic ending
-      this.scheduleGiveawayEnd(giveawayId, duration);
-
-      return giveawayId;
+      logger.info('Giveaway message posted', { giveawayId, messageId: message.id });
     } catch (error) {
-      console.error('Error creating giveaway:', error);
-      return null;
+      logger.error('Error posting giveaway message', error as Error);
     }
   }
 
@@ -155,10 +155,25 @@ export class GiveawayHandler {
 
       // Insert entry
       await db.query(
-        `INSERT INTO giveaway_entries (giveaway_id, user_id, entry_count, bonus_reason)
-         VALUES ($1, $2, $3, $4)`,
-        [giveawayId, userId, totalEntries, bonusEntries.reasons.join(', ') || null]
+        `INSERT INTO giveaway_entries (giveaway_id, user_id, entry_count, bonus_reason, entry_metadata)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          giveawayId, 
+          userId, 
+          totalEntries, 
+          bonusEntries.reasons.join(', ') || null,
+          JSON.stringify({
+            enteredAt: new Date(),
+            memberSince: member.joinedAt,
+            roles: member.roles.cache.map(r => r.id),
+          })
+        ]
       );
+
+      // Update entry count on the giveaway message
+      await this.updateEntryCount(giveaway);
+
+      logger.info('User entered giveaway', { giveawayId, userId, totalEntries });
 
       return { 
         success: true, 
@@ -166,7 +181,7 @@ export class GiveawayHandler {
         entryCount: totalEntries
       };
     } catch (error) {
-      console.error('Error entering giveaway:', error);
+      logger.error('Error entering giveaway', error as Error);
       return { success: false, message: 'An error occurred while entering the giveaway.' };
     }
   }
@@ -249,9 +264,16 @@ export class GiveawayHandler {
         this.activeGiveaways.delete(giveawayId);
       }
 
+      logger.audit('GIVEAWAY_ENDED', 'system', giveaway.guildId, {
+        giveawayId,
+        winners,
+        participants: entries.rows.length,
+        totalEntries: weightedEntries.length,
+      });
+
       return { success: true, winners, message: `Giveaway ended! ${winners.length} winner(s) selected.` };
     } catch (error) {
-      console.error('Error ending giveaway:', error);
+      logger.error('Error ending giveaway', error as Error);
       return { success: false, message: 'An error occurred while ending the giveaway.' };
     }
   }
@@ -279,8 +301,8 @@ export class GiveawayHandler {
 
       const entries = await db.query(
         `SELECT user_id, entry_count FROM giveaway_entries 
-         WHERE giveaway_id = $1 AND user_id NOT IN (${previousWinnerIds.map((_: any, i: number) => `$${i + 2}`).join(', ')})`,
-        [giveawayId, ...previousWinnerIds]
+         WHERE giveaway_id = $1 AND user_id != ALL($2)`,
+        [giveawayId, previousWinnerIds]
       );
 
       if (entries.rows.length === 0) {
@@ -323,9 +345,15 @@ export class GiveawayHandler {
       // Update the giveaway message with new winners
       await this.updateGiveawayMessage(giveaway, newWinners, true);
 
+      logger.audit('GIVEAWAY_REROLLED', 'system', giveaway.guildId, {
+        giveawayId,
+        newWinners,
+        rerollCount,
+      });
+
       return { success: true, winners: newWinners, message: `Reroll complete! ${newWinners.length} new winner(s) selected.` };
     } catch (error) {
-      console.error('Error rerolling giveaway:', error);
+      logger.error('Error rerolling giveaway', error as Error);
       return { success: false, message: 'An error occurred while rerolling the giveaway.' };
     }
   }
@@ -410,11 +438,54 @@ export class GiveawayHandler {
     return { count: bonusCount, reasons };
   }
 
-  private createGiveawayEmbed(giveaway: Giveaway, winners?: string[], isReroll: boolean = false): EmbedBuilder {
+  private createGiveawayEmbed(giveaway: Giveaway & { embed_config?: any }, winners?: string[], isReroll: boolean = false): EmbedBuilder {
+    // Check if custom embed config exists
+    if (giveaway.embed_config && Object.keys(giveaway.embed_config).length > 0) {
+      const embed = new EmbedBuilder();
+      const embedConfig = giveaway.embed_config;
+      
+      if (embedConfig.title) embed.setTitle(embedConfig.title);
+      if (embedConfig.description) {
+        // Replace placeholders
+        let description = embedConfig.description;
+        description = description.replace('{prize}', giveaway.prize);
+        description = description.replace('{winners}', giveaway.winnerCount.toString());
+        description = description.replace('{time}', giveaway.ended ? 'Ended' : `<t:${Math.floor(giveaway.endTime.getTime() / 1000)}:R>`);
+        embed.setDescription(description);
+      }
+      if (embedConfig.color) embed.setColor(embedConfig.color);
+      if (embedConfig.thumbnail) embed.setThumbnail(embedConfig.thumbnail);
+      if (embedConfig.image) embed.setImage(embedConfig.image);
+      if (embedConfig.footer) embed.setFooter(embedConfig.footer);
+      if (embedConfig.author) embed.setAuthor(embedConfig.author);
+      if (embedConfig.fields) embed.addFields(embedConfig.fields);
+      if (embedConfig.timestamp) embed.setTimestamp();
+      
+      // Add winners if ended
+      if (giveaway.ended && winners) {
+        if (winners.length > 0) {
+          embed.addFields([
+            { 
+              name: isReroll ? '🔄 New Winners' : '🎉 Winners', 
+              value: winners.map(id => `<@${id}>`).join('\n'), 
+              inline: false 
+            }
+          ]);
+        } else {
+          embed.addFields([
+            { name: '😔 No Winners', value: 'No eligible participants', inline: false }
+          ]);
+        }
+      }
+      
+      return embed;
+    }
+    
+    // Default embed
     const embed = new EmbedBuilder()
-      .setTitle(`${emojis.gift} ${giveaway.title}`)
+      .setTitle(`${config.getEmoji('gift')} ${giveaway.title}`)
       .setDescription(giveaway.description || `React with 🎉 to enter!`)
-      .setColor(giveaway.ended ? colors.success as any : colors.primary as any)
+      .setColor(giveaway.ended ? config.getColor('success') as any : config.getColor('primary') as any)
       .addFields([
         { name: '🎁 Prize', value: giveaway.prize, inline: true },
         { name: '👑 Winners', value: giveaway.winnerCount.toString(), inline: true },
@@ -442,7 +513,7 @@ export class GiveawayHandler {
     return embed;
   }
 
-  private async updateGiveawayMessage(giveaway: Giveaway, winners: string[], isReroll: boolean = false): Promise<void> {
+  private async updateGiveawayMessage(giveaway: Giveaway & { embed_config?: any }, winners: string[], isReroll: boolean = false): Promise<void> {
     if (!giveaway.messageId) return;
 
     try {
@@ -475,11 +546,41 @@ export class GiveawayHandler {
         });
       }
     } catch (error) {
-      console.error('Error updating giveaway message:', error);
+      logger.error('Error updating giveaway message', error as Error);
     }
   }
 
-  private scheduleGiveawayEnd(giveawayId: string, duration: number): void {
+  private async updateEntryCount(giveaway: Giveaway): Promise<void> {
+    if (!giveaway.messageId) return;
+
+    try {
+      const entryCount = await db.count('giveaway_entries', { giveaway_id: giveaway.id });
+      
+      const guild = global.client?.guilds.cache.get(giveaway.guildId);
+      if (!guild) return;
+
+      const channel = guild.channels.cache.get(giveaway.channelId) as TextChannel;
+      if (!channel) return;
+
+      const message = await channel.messages.fetch(giveaway.messageId);
+      if (!message) return;
+
+      // Update the button with entry count
+      const button = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`giveaway_enter_${giveaway.id}`)
+            .setLabel(`🎉 Enter Giveaway (${entryCount} entries)`)
+            .setStyle(ButtonStyle.Success)
+        );
+
+      await message.edit({ components: [button] });
+    } catch (error) {
+      logger.error('Error updating entry count', error as Error);
+    }
+  }
+
+  public scheduleGiveawayEnd(giveawayId: string, duration: number): void {
     const timeout = setTimeout(async () => {
       await this.endGiveaway(giveawayId);
       this.activeGiveaways.delete(giveawayId);
@@ -488,7 +589,7 @@ export class GiveawayHandler {
     this.activeGiveaways.set(giveawayId, timeout);
   }
 
-  public async getGiveaway(giveawayId: string): Promise<Giveaway | null> {
+  public async getGiveaway(giveawayId: string): Promise<(Giveaway & { embed_config?: any }) | null> {
     try {
       const result = await db.query(
         'SELECT * FROM giveaways WHERE id = $1',
@@ -515,11 +616,12 @@ export class GiveawayHandler {
         bonusEntries: row.bonus_entries || {},
         blacklist: row.blacklist || [],
         whitelist: row.whitelist || [],
+        embed_config: row.embed_config || {},
         createdAt: new Date(row.created_at),
         updatedAt: new Date(row.updated_at)
       };
     } catch (error) {
-      console.error('Error getting giveaway:', error);
+      logger.error('Error getting giveaway', error as Error);
       return null;
     }
   }
@@ -555,7 +657,7 @@ export class GiveawayHandler {
         updatedAt: new Date(row.updated_at)
       }));
     } catch (error) {
-      console.error('Error getting guild giveaways:', error);
+      logger.error('Error getting guild giveaways', error as Error);
       return [];
     }
   }
@@ -578,8 +680,34 @@ export class GiveawayHandler {
           await this.endGiveaway(giveaway.id);
         }
       }
+      
+      logger.info(`Initialized ${activeGiveaways.rows.length} scheduled giveaways`);
     } catch (error) {
-      console.error('Error initializing scheduled giveaways:', error);
+      logger.error('Error initializing scheduled giveaways', error as Error);
+    }
+  }
+  
+  public async getGiveawayStats(guildId: string): Promise<any> {
+    try {
+      const stats = await db.query(`
+        SELECT 
+          COUNT(*) as total_giveaways,
+          COUNT(CASE WHEN ended = true THEN 1 END) as ended_giveaways,
+          COUNT(CASE WHEN ended = false AND cancelled = false THEN 1 END) as active_giveaways,
+          COUNT(CASE WHEN cancelled = true THEN 1 END) as cancelled_giveaways,
+          SUM(winner_count) as total_winners_selected,
+          (SELECT COUNT(DISTINCT user_id) FROM giveaway_entries WHERE giveaway_id IN 
+            (SELECT id FROM giveaways WHERE guild_id = $1)) as unique_participants,
+          (SELECT COUNT(*) FROM giveaway_entries WHERE giveaway_id IN 
+            (SELECT id FROM giveaways WHERE guild_id = $1)) as total_entries
+        FROM giveaways
+        WHERE guild_id = $1
+      `, [guildId]);
+      
+      return stats.rows[0];
+    } catch (error) {
+      logger.error('Error getting giveaway stats', error as Error);
+      return null;
     }
   }
 }
