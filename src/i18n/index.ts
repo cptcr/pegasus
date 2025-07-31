@@ -24,7 +24,7 @@ export class I18nHandler {
   private userLanguages: UserLanguageCache = {};
   private guildLanguages: GuildLanguageCache = {};
   private defaultLocale = 'en';
-  private supportedLocales = ['en', 'es', 'fr', 'de'];
+  private supportedLocales = ['en', 'de', 'es', 'fr', 'nl'];
 
   public static getInstance(): I18nHandler {
     if (!I18nHandler.instance) {
