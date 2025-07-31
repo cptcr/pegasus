@@ -8,10 +8,9 @@ import { reminders } from './handlers/reminders';
 import { db } from './database/connection';
 import { giveawayHandler } from './handlers/giveaway';
 import { monetizationHandler } from './handlers/monetization';
-import { createHealthCheckServer } from './utils/healthCheck';
 import { BackupManager } from './utils/backup';
 import { MetricsCollector } from './utils/metrics';
-import { setupMonitoring } from './monitoring/dashboard';
+import { UnifiedServer } from './utils/unifiedServer';
 
 declare global {
   var client: ExtendedClient;
@@ -23,6 +22,9 @@ async function main() {
       nodeVersion: process.version,
       environment: config.NODE_ENV,
     });
+    
+    // Create unified server instance
+    let unifiedServer: UnifiedServer | null = null;
     
     // Create client
     const client = new Client({
@@ -101,10 +103,13 @@ async function main() {
       logger.info('Reminder system initialized');
     }
     
-    // Start health check server
-    if (config.HEALTH_CHECK_PORT) {
-      await createHealthCheckServer();
-    }
+    // Start unified server (health check + monitoring dashboard on same port)
+    unifiedServer = new UnifiedServer(client as any, config.DYNAMIC_PORT);
+    const serverPort = await unifiedServer.start();
+    logger.info(`Unified API server started on port ${serverPort}`);
+    
+    // Export the port for other services to use
+    process.env.PEGASUS_API_PORT = serverPort.toString();
     
     // Start metrics collection
     if (config.ENABLE_PROMETHEUS) {
@@ -114,13 +119,6 @@ async function main() {
     // Start backup system
     if (config.ENABLE_AUTO_BACKUP) {
       await backupManager.start();
-    }
-    
-    // Start monitoring dashboard
-    if (config.ENABLE_MONITORING_DASHBOARD) {
-      const dashboard = setupMonitoring(client as any);
-      await dashboard.start();
-      logger.info('Monitoring dashboard started on port 3001');
     }
 
     // Login to Discord

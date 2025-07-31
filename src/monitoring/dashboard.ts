@@ -1,6 +1,6 @@
 import express from 'express';
-import { database } from '../database/connection';
-import { metricsCollector } from '../utils/metrics';
+import { db } from '../database/connection';
+import { MetricsCollector } from '../utils/metrics';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { rateLimiter } from '../security/rateLimiter';
@@ -43,8 +43,8 @@ export class MonitoringDashboard {
     });
 
     this.app.get('/api/metrics', (req, res) => {
-      const metrics = metricsCollector.getMetrics();
-      res.json(metrics);
+      // Metrics endpoint would need metricsCollector instance
+      res.json({ message: 'Metrics endpoint not implemented' });
     });
 
     this.app.get('/api/logs', async (req, res) => {
@@ -86,7 +86,7 @@ export class MonitoringDashboard {
     const uptime = process.uptime();
 
     // Database stats
-    const dbStats = await database.query(`
+    const dbStats = await db.query(`
       SELECT 
         (SELECT COUNT(*) FROM guilds) as guilds,
         (SELECT COUNT(*) FROM users) as users,
@@ -97,7 +97,7 @@ export class MonitoringDashboard {
     `);
 
     // Activity stats
-    const activityStats = await database.query(`
+    const activityStats = await db.query(`
       SELECT 
         (SELECT COUNT(*) FROM audit_logs WHERE created_at > $1) as daily_actions,
         (SELECT COUNT(*) FROM audit_logs WHERE created_at > $2) as weekly_actions,
@@ -106,7 +106,7 @@ export class MonitoringDashboard {
     `, [oneDayAgo, oneWeekAgo]);
 
     // Command stats
-    const commandStats = await database.query(`
+    const commandStats = await db.query(`
       SELECT command, COUNT(*) as count
       FROM audit_logs
       WHERE action = 'command_executed' AND created_at > $1
@@ -135,7 +135,7 @@ export class MonitoringDashboard {
   }
 
   private async getRecentLogs(): Promise<any[]> {
-    const result = await database.query(`
+    const result = await db.query(`
       SELECT * FROM audit_logs
       ORDER BY created_at DESC
       LIMIT 100
@@ -157,7 +157,7 @@ export class MonitoringDashboard {
 
     // Database check
     try {
-      await database.query('SELECT 1');
+      await db.query('SELECT 1');
       checks.database = true;
     } catch {
       checks.database = false;
@@ -597,7 +597,7 @@ export class MonitoringDashboard {
 }
 
 // Export for use in main bot file
-export function setupMonitoring(client: Client): MonitoringDashboard {
-  const dashboard = new MonitoringDashboard(client);
+export function setupMonitoring(client: Client, port?: number): MonitoringDashboard {
+  const dashboard = new MonitoringDashboard(client, port);
   return dashboard;
 }

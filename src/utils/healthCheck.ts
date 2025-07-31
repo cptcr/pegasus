@@ -24,7 +24,8 @@ interface HealthStatus {
   version: string;
 }
 
-export async function createHealthCheckServer(): Promise<void> {
+export async function createHealthCheckServer(port?: number): Promise<void> {
+  const actualPort = port || config.HEALTH_CHECK_PORT;
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     if (req.url === '/health' && req.method === 'GET') {
       const health = await getHealthStatus();
@@ -49,8 +50,8 @@ export async function createHealthCheckServer(): Promise<void> {
     }
   });
   
-  server.listen(config.HEALTH_CHECK_PORT, () => {
-    logger.info(`Health check server listening on port ${config.HEALTH_CHECK_PORT}`);
+  server.listen(actualPort, () => {
+    logger.info(`Health check server listening on port ${actualPort}`);
   });
   
   // Graceful shutdown

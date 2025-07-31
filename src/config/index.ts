@@ -58,6 +58,7 @@ const envSchema = z.object({
   HEALTH_CHECK_PORT: z.string().default('3000').transform(Number),
   ENABLE_PROMETHEUS: z.enum(['true', 'false']).default('false').transform(val => val === 'true'),
   ENABLE_MONITORING_DASHBOARD: z.enum(['true', 'false']).default('false').transform(val => val === 'true'),
+  DYNAMIC_PORT: z.string().optional().transform((val) => val ? Number(val) : undefined),
   
   // Webhook URLs (optional)
   ERROR_WEBHOOK_URL: z.string().url().optional(),

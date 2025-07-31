@@ -6,9 +6,14 @@ Pegasus Bot provides several internal APIs for monitoring, health checks, and me
 
 ## Base URLs
 
-- **Health Check API**: `http://localhost:3000`
-- **Metrics API**: `http://localhost:9090`
-- **Monitoring Dashboard**: `http://localhost:3001`
+The bot now uses a unified API server that automatically finds the next available port in the range 2000-9000. All endpoints are served from the same port:
+
+- **Unified API Server**: `http://localhost:[DYNAMIC_PORT]`
+  - Health Check endpoints: `/health`, `/ready`, `/metrics`
+  - Monitoring Dashboard: `/`
+  - Dashboard API: `/api/*`
+
+The actual port used is logged at startup and stored in the `PEGASUS_API_PORT` environment variable.
 
 ## Authentication
 
@@ -455,6 +460,6 @@ curl http://localhost:9090/metrics
 ## Support
 
 For API support and questions:
-- Discord: [discord.gg/yourserver](https://discord.gg/yourserver)
-- Email: api-support@yourdomain.com
-- GitHub Issues: [github.com/yourorg/pegasus-bot/issues](https://github.com/yourorg/pegasus-bot/issues)
+- Discord: [discord.gg/vaultscope](https://discord.gg/vaultscope)
+- Email: cptcr@proton.me
+- GitHub Issues: [github.com/yourorg/pegasus-bot/issues](https://github.com/cptcr/pegasus/issues)
