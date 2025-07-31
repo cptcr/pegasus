@@ -1,4 +1,4 @@
-import { TextChannel, ButtonBuilder, ActionRowBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember } from 'discord.js';
+import { TextChannel, ButtonBuilder, ActionRowBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import { db } from '../database/connection';
 import { Giveaway, GiveawayEntry, GiveawayWinner, GiveawayRequirements, GiveawayBonusEntries } from '../types';
 import { createEmbed, createSuccessEmbed, createErrorEmbed } from '../utils/helpers';
@@ -76,17 +76,26 @@ export class GiveawayHandler {
       // Create embed from config or default
       const embed = this.createGiveawayEmbed(giveaway);
 
-      const button = new ActionRowBuilder<ButtonBuilder>()
+      // Create enhanced button layout with enter and info buttons
+      const entryCount = await this.getGiveawayEntryCount(giveawayId);
+      const publicButtons = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
           new ButtonBuilder()
             .setCustomId(`giveaway_enter_${giveawayId}`)
-            .setLabel('🎉 Enter Giveaway')
-            .setStyle(ButtonStyle.Success)
+            .setLabel(`🎉 Enter Giveaway (${entryCount} entries)`)
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`giveaway_info_${giveawayId}`)
+            .setLabel('ℹ️ Details')
+            .setStyle(ButtonStyle.Secondary)
         );
+
+      // Create admin management select menu (only visible to admins via separate command)
+      const components = [publicButtons];
 
       const message = await channel.send({
         embeds: [embed],
-        components: [button],
+        components,
       });
 
       // Update giveaway with message ID
@@ -170,8 +179,8 @@ export class GiveawayHandler {
         ]
       );
 
-      // Update entry count on the giveaway message
-      await this.updateEntryCount(giveaway);
+      // Update entry count on the giveaway message with real-time updates
+      await this.updateGiveawayMessageRealtime(giveawayId);
 
       logger.info('User entered giveaway', { giveawayId, userId, totalEntries });
 
@@ -684,6 +693,542 @@ export class GiveawayHandler {
       logger.info(`Initialized ${activeGiveaways.rows.length} scheduled giveaways`);
     } catch (error) {
       logger.error('Error initializing scheduled giveaways', error as Error);
+    }
+  }
+
+  public async leaveGiveaway(giveawayId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get giveaway details
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      if (giveaway.ended || giveaway.cancelled) {
+        return { success: false, message: 'This giveaway has already ended.' };
+      }
+
+      // Check if user is entered
+      const existingEntry = await db.query(
+        'SELECT id FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+
+      if (existingEntry.rows.length === 0) {
+        return { success: false, message: 'You are not entered in this giveaway.' };
+      }
+
+      // Remove entry
+      await db.query(
+        'DELETE FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+
+      // Update entry count on the giveaway message with real-time updates
+      await this.updateGiveawayMessageRealtime(giveawayId);
+
+      logger.info('User left giveaway', { giveawayId, userId });
+
+      return { 
+        success: true, 
+        message: 'Successfully left the giveaway.'
+      };
+    } catch (error) {
+      logger.error('Error leaving giveaway', error as Error);
+      return { success: false, message: 'An error occurred while leaving the giveaway.' };
+    }
+  }
+
+  public async isUserEntered(giveawayId: string, userId: string): Promise<boolean> {
+    try {
+      const result = await db.query(
+        'SELECT id FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Error checking user entry status', error as Error);
+      return false;
+    }
+  }
+
+  public async getGiveawayEntryCount(giveawayId: string): Promise<number> {
+    try {
+      const result = await db.query(
+        'SELECT COUNT(*) as count FROM giveaway_entries WHERE giveaway_id = $1',
+        [giveawayId]
+      );
+      return parseInt(result.rows[0].count) || 0;
+    } catch (error) {
+      logger.error('Error getting giveaway entry count', error as Error);
+      return 0;
+    }
+  }
+
+  public async getUserEntry(giveawayId: string, userId: string): Promise<GiveawayEntry | null> {
+    try {
+      const result = await db.query(
+        'SELECT * FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+      
+      if (result.rows.length === 0) return null;
+      
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        giveawayId: row.giveaway_id,
+        userId: row.user_id,
+        entryCount: row.entry_count,
+        entryTime: new Date(row.entry_time || row.created_at),
+        bonusReason: row.bonus_reason
+      };
+    } catch (error) {
+      logger.error('Error getting user entry', error as Error);
+      return null;
+    }
+  }
+
+  public async getGiveawayEntries(giveawayId: string): Promise<GiveawayEntry[]> {
+    try {
+      const result = await db.query(
+        'SELECT * FROM giveaway_entries WHERE giveaway_id = $1 ORDER BY entry_count DESC, created_at ASC',
+        [giveawayId]
+      );
+      
+      return result.rows.map((row: any) => ({
+        id: row.id,
+        giveawayId: row.giveaway_id,
+        userId: row.user_id,
+        entryCount: row.entry_count,
+        entryTime: new Date(row.entry_time || row.created_at),
+        bonusReason: row.bonus_reason
+      }));
+    } catch (error) {
+      logger.error('Error getting giveaway entries', error as Error);
+      return [];
+    }
+  }
+
+  public async getGiveawayWinners(giveawayId: string): Promise<GiveawayWinner[]> {
+    try {
+      const result = await db.query(
+        'SELECT * FROM giveaway_winners WHERE giveaway_id = $1 AND rerolled = false ORDER BY selected_at ASC',
+        [giveawayId]
+      );
+      
+      return result.rows.map((row: any) => ({
+        id: row.id,
+        giveawayId: row.giveaway_id,
+        userId: row.user_id,
+        claimed: row.claimed || false,
+        claimTime: row.claim_time ? new Date(row.claim_time) : undefined,
+        rerolled: row.rerolled || false,
+        selectedAt: new Date(row.selected_at || row.created_at)
+      }));
+    } catch (error) {
+      logger.error('Error getting giveaway winners', error as Error);
+      return [];
+    }
+  }
+
+  public async cancelGiveaway(giveawayId: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      if (giveaway.ended || giveaway.cancelled) {
+        return { success: false, message: 'This giveaway has already ended or been cancelled.' };
+      }
+
+      // Mark giveaway as cancelled
+      await db.query(
+        'UPDATE giveaways SET cancelled = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [giveawayId]
+      );
+
+      // Update the giveaway message
+      await this.updateCancelledGiveawayMessage(giveaway, reason);
+
+      // Clear scheduled end
+      if (this.activeGiveaways.has(giveawayId)) {
+        clearTimeout(this.activeGiveaways.get(giveawayId)!);
+        this.activeGiveaways.delete(giveawayId);
+      }
+
+      logger.audit('GIVEAWAY_CANCELLED', 'system', giveaway.guildId, {
+        giveawayId,
+        reason: reason || 'No reason provided'
+      });
+
+      return { success: true, message: 'Giveaway has been cancelled successfully.' };
+    } catch (error) {
+      logger.error('Error cancelling giveaway', error as Error);
+      return { success: false, message: 'An error occurred while cancelling the giveaway.' };
+    }
+  }
+
+  public async updateGiveawayDetails(
+    giveawayId: string, 
+    updates: Partial<Pick<Giveaway, 'title' | 'description' | 'prize' | 'winnerCount'>>
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      if (giveaway.ended) {
+        return { success: false, message: 'Cannot edit an ended giveaway.' };
+      }
+
+      const updateFields = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (updates.title !== undefined) {
+        updateFields.push(`title = $${paramIndex++}`);
+        values.push(updates.title);
+      }
+
+      if (updates.description !== undefined) {
+        updateFields.push(`description = $${paramIndex++}`);
+        values.push(updates.description);
+      }
+
+      if (updates.prize !== undefined) {
+        updateFields.push(`prize = $${paramIndex++}`);
+        values.push(updates.prize);
+      }
+
+      if (updates.winnerCount !== undefined) {
+        updateFields.push(`winner_count = $${paramIndex++}`);
+        values.push(updates.winnerCount);
+      }
+
+      if (updateFields.length === 0) {
+        return { success: false, message: 'No valid updates provided.' };
+      }
+
+      updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+      values.push(giveawayId);
+
+      await db.query(
+        `UPDATE giveaways SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+        values
+      );
+
+      // Refresh and update the message
+      const updatedGiveaway = await this.getGiveaway(giveawayId);
+      if (updatedGiveaway && updatedGiveaway.messageId) {
+        await this.updateGiveawayMessage(updatedGiveaway, []);
+      }
+
+      logger.audit('GIVEAWAY_UPDATED', 'system', giveaway.guildId, {
+        giveawayId,
+        updates
+      });
+
+      return { success: true, message: 'Giveaway details updated successfully.' };
+    } catch (error) {
+      logger.error('Error updating giveaway details', error as Error);
+      return { success: false, message: 'An error occurred while updating the giveaway.' };
+    }
+  }
+
+  public async addUserEntry(giveawayId: string, userId: string, entryCount: number = 1, reason?: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      if (giveaway.ended || giveaway.cancelled) {
+        return { success: false, message: 'Cannot add entries to an ended or cancelled giveaway.' };
+      }
+
+      // Check if user already has an entry
+      const existingEntry = await db.query(
+        'SELECT entry_count FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+
+      if (existingEntry.rows.length > 0) {
+        // Update existing entry
+        await db.query(
+          'UPDATE giveaway_entries SET entry_count = entry_count + $1, bonus_reason = $2, updated_at = CURRENT_TIMESTAMP WHERE giveaway_id = $3 AND user_id = $4',
+          [entryCount, reason, giveawayId, userId]
+        );
+      } else {
+        // Create new entry
+        await db.query(
+          `INSERT INTO giveaway_entries (giveaway_id, user_id, entry_count, bonus_reason, entry_metadata)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            giveawayId, 
+            userId, 
+            entryCount, 
+            reason,
+            JSON.stringify({
+              enteredAt: new Date(),
+              addedManually: true
+            })
+          ]
+        );
+      }
+
+      // Update entry count on the giveaway message
+      await this.updateEntryCount(giveaway);
+
+      logger.info('User entry added manually', { giveawayId, userId, entryCount, reason });
+
+      return { success: true, message: `Added ${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} for user.` };
+    } catch (error) {
+      logger.error('Error adding user entry', error as Error);
+      return { success: false, message: 'An error occurred while adding the entry.' };
+    }
+  }
+
+  public async removeUserEntry(giveawayId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      const result = await db.query(
+        'DELETE FROM giveaway_entries WHERE giveaway_id = $1 AND user_id = $2',
+        [giveawayId, userId]
+      );
+
+      if (result.rowCount === 0) {
+        return { success: false, message: 'User entry not found.' };
+      }
+
+      // Update entry count on the giveaway message
+      await this.updateEntryCount(giveaway);
+
+      logger.info('User entry removed manually', { giveawayId, userId });
+
+      return { success: true, message: 'User entry removed successfully.' };
+    } catch (error) {
+      logger.error('Error removing user entry', error as Error);
+      return { success: false, message: 'An error occurred while removing the entry.' };
+    }
+  }
+
+  public async updateGiveawayRequirements(giveawayId: string, requirements: GiveawayRequirements): Promise<{ success: boolean; message: string }> {
+    try {
+      const giveaway = await this.getGiveaway(giveawayId);
+      if (!giveaway) {
+        return { success: false, message: 'Giveaway not found.' };
+      }
+
+      if (giveaway.ended) {
+        return { success: false, message: 'Cannot edit requirements for an ended giveaway.' };
+      }
+
+      await db.query(
+        'UPDATE giveaways SET requirements = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [JSON.stringify(requirements), giveawayId]
+      );
+
+      logger.audit('GIVEAWAY_REQUIREMENTS_UPDATED', 'system', giveaway.guildId, {
+        giveawayId,
+        requirements
+      });
+
+      return { success: true, message: 'Giveaway requirements updated successfully.' };
+    } catch (error) {
+      logger.error('Error updating giveaway requirements', error as Error);
+      return { success: false, message: 'An error occurred while updating requirements.' };
+    }
+  }
+
+  private async updateCancelledGiveawayMessage(giveaway: Giveaway & { embed_config?: any }, reason?: string): Promise<void> {
+    if (!giveaway.messageId) return;
+
+    try {
+      const guild = global.client?.guilds.cache.get(giveaway.guildId);
+      if (!guild) return;
+
+      const channel = guild.channels.cache.get(giveaway.channelId) as TextChannel;
+      if (!channel) return;
+
+      const message = await channel.messages.fetch(giveaway.messageId);
+      if (!message) return;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🚫 ${giveaway.title}`)
+        .setDescription(giveaway.description || 'This giveaway has been cancelled.')
+        .setColor(0x95a5a6)
+        .addFields([
+          { name: '🎁 Prize', value: giveaway.prize, inline: true },
+          { name: '👑 Winners', value: giveaway.winnerCount.toString(), inline: true },
+          { name: '🚫 Status', value: 'Cancelled', inline: true }
+        ]);
+
+      if (reason) {
+        embed.addFields([{ name: '📝 Reason', value: reason, inline: false }]);
+      }
+
+      embed.setFooter({ text: `Hosted by ${giveaway.hostId} • ID: ${giveaway.id}` });
+
+      await message.edit({
+        embeds: [embed],
+        components: [] // Remove all buttons
+      });
+
+    } catch (error) {
+      logger.error('Error updating cancelled giveaway message', error as Error);
+    }
+  }
+
+  /**
+   * Create admin management panel components for a giveaway
+   */
+  public createAdminManagementComponents(giveawayId: string, giveaway: Giveaway): ActionRowBuilder<StringSelectMenuBuilder>[] {
+    const managementOptions = [];
+
+    // Always available options
+    managementOptions.push(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📊 View Entries')
+        .setDescription('View all giveaway participants')
+        .setValue('view_entries')
+        .setEmoji('📊'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📥 Export Data')
+        .setDescription('Export participant data as CSV')
+        .setValue('export_data')
+        .setEmoji('📥')
+    );
+
+    // Options available only for active giveaways
+    if (!giveaway.ended && !giveaway.cancelled) {
+      managementOptions.push(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('✏️ Edit Details')
+          .setDescription('Edit title, description, prize, winners')
+          .setValue('edit_details')
+          .setEmoji('✏️'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('📋 Edit Requirements')
+          .setDescription('Change entry requirements')
+          .setValue('edit_requirements')
+          .setEmoji('📋'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('👥 Manage Entries')
+          .setDescription('Add or remove specific user entries')
+          .setValue('manage_entries')
+          .setEmoji('👥'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('⏰ End Early')
+          .setDescription('End the giveaway now and select winners')
+          .setValue('end_early')
+          .setEmoji('⏰'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🗑️ Cancel Giveaway')
+          .setDescription('Cancel the giveaway (no winners)')
+          .setValue('cancel_giveaway')
+          .setEmoji('🗑️')
+      );
+    }
+
+    // Options available only for ended giveaways
+    if (giveaway.ended) {
+      managementOptions.push(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('🔄 Reroll Winners')
+          .setDescription('Select new winners')
+          .setValue('reroll')
+          .setEmoji('🔄')
+      );
+    }
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`giveaway_manage_${giveawayId}`)
+      .setPlaceholder('⚙️ Select a management action...')
+      .addOptions(managementOptions)
+      .setMinValues(1)
+      .setMaxValues(1);
+
+    return [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)];
+  }
+
+  /**
+   * Create enhanced giveaway buttons with leave option
+   */
+  public async createGiveawayButtons(giveawayId: string, showLeaveButton: boolean = false): Promise<ActionRowBuilder<ButtonBuilder>[]> {
+    const entryCount = await this.getGiveawayEntryCount(giveawayId);
+    
+    const buttons = [
+      new ButtonBuilder()
+        .setCustomId(`giveaway_enter_${giveawayId}`)
+        .setLabel(`🎉 Enter (${entryCount})`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`giveaway_info_${giveawayId}`)
+        .setLabel('ℹ️ Info')
+        .setStyle(ButtonStyle.Secondary)
+    ];
+
+    if (showLeaveButton) {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`giveaway_leave_${giveawayId}`)
+          .setLabel('👋 Leave')
+          .setStyle(ButtonStyle.Danger)
+      );
+    }
+
+    return [new ActionRowBuilder<ButtonBuilder>().addComponents(buttons)];
+  }
+
+  /**
+   * Update giveaway message with real-time entry count
+   */
+  public async updateGiveawayMessageRealtime(giveawayId: string): Promise<void> {
+    const giveaway = await this.getGiveaway(giveawayId);
+    if (!giveaway || !giveaway.messageId || giveaway.ended) return;
+
+    try {
+      const guild = global.client?.guilds.cache.get(giveaway.guildId);
+      if (!guild) return;
+
+      const channel = guild.channels.cache.get(giveaway.channelId) as TextChannel;
+      if (!channel) return;
+
+      const message = await channel.messages.fetch(giveaway.messageId);
+      if (!message) return;
+
+      // Get current entry count
+      const entryCount = await this.getGiveawayEntryCount(giveawayId);
+      
+      // Update embed with current stats
+      const embed = this.createGiveawayEmbed(giveaway);
+      
+      // Add entry count field
+      if (entryCount > 0) {
+        embed.addFields([{
+          name: '📊 Current Entries',
+          value: entryCount.toString(),
+          inline: true
+        }]);
+      }
+
+      // Update buttons with current entry count
+      const buttons = await this.createGiveawayButtons(giveawayId);
+
+      await message.edit({
+        embeds: [embed],
+        components: buttons
+      });
+
+    } catch (error) {
+      logger.error('Error updating giveaway message realtime', error as Error);
     }
   }
   

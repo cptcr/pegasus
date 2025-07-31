@@ -1,4 +1,5 @@
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { XPHandler } from './handlers/xp';
 import { ExtendedClient } from './types';
 import { config } from './config';
 import { logger } from './utils/logger';

@@ -86,7 +86,10 @@
     "nsfw_only": "This command can only be used in NSFW channels.",
     "owner_only": "This command can only be used by the bot owner.",
     "premium_only": "This feature is only available for premium servers.",
-    "max_limit_reached": "Maximum limit reached."
+    "max_limit_reached": "Maximum limit reached.",
+    "unknown_action": "Unknown action selected.",
+    "loading_entries": "Error loading giveaway entries.",
+    "export_failed": "Failed to export giveaway data."
   },
   "moderation": {
     "ban": {
@@ -590,7 +593,7 @@
     "snooze": "Snooze",
     "snooze_success": "Reminder snoozed for {time}."
   },
-  "giveaways": {
+  "giveaway": {
     "created": "Giveaway created successfully!",
     "ended": "Giveaway Ended",
     "winners": "Winners",
@@ -603,9 +606,26 @@
     "ended_at": "Ended at",
     "requirements_not_met": "You don't meet the requirements to enter this giveaway.",
     "already_entered": "You have already entered this giveaway.",
-    "entered": "You have entered the giveaway!",
-    "left": "You have left the giveaway.",
-    "not_entered": "You haven't entered this giveaway.",
+    "entered": {
+      "title": "🎉 Entry Successful!",
+      "description": "Successfully entered! You have {entryCount} {entryCount, plural, one {entry} other {entries}}."
+    },
+    "left": {
+      "title": "👋 Left Giveaway",
+      "description": "You have successfully left the giveaway."
+    },
+    "entry_failed": {
+      "title": "❌ Entry Failed",
+      "description": "Failed to enter the giveaway."
+    },
+    "leave_failed": {
+      "title": "❌ Failed to Leave",
+      "description": "Failed to leave the giveaway."
+    },
+    "not_found": "Giveaway not found.",
+    "not_ended": "This giveaway has not ended yet.",
+    "already_ended": "This giveaway has already ended.",
+    "already_ended_or_cancelled": "This giveaway has already ended or been cancelled.",
     "prize": "Prize",
     "duration": "Duration",
     "winner_count": "Winner Count",
@@ -618,17 +638,164 @@
     "booster_bonus": "Server Booster Bonus",
     "role_bonus": "Role Bonus",
     "level_bonus": "Level Bonus",
-    "reroll": "Reroll",
-    "rerolled": "Giveaway Rerolled",
-    "new_winners": "New Winners",
-    "cancelled": "Giveaway Cancelled",
-    "cancel_reason": "This giveaway has been cancelled by the host.",
-    "list": "Active Giveaways",
-    "no_active": "No active giveaways.",
-    "details": "Giveaway Details",
-    "participants": "Participants",
-    "time_remaining": "Time Remaining",
-    "expired": "Expired"
+    "button": {
+      "enter": "Enter Giveaway",
+      "leave": "Leave Giveaway",
+      "info": "Info"
+    },
+    "status": {
+      "title": "Entry Status",
+      "entered": "You are currently entered in this giveaway.",
+      "not_entered": "You are not entered in this giveaway.",
+      "ended": "Ended"
+    },
+    "fields": {
+      "prize": "🎁 Prize",
+      "winners": "👑 Winners",
+      "entries": "📊 Entries",
+      "ends": "⏰ Ends",
+      "host": "👤 Host",
+      "your_entries": "🎯 Your Entries",
+      "requirements": "📋 Requirements"
+    },
+    "no_description": "No description provided.",
+    "footer": "ID: {id}",
+    "requirements": {
+      "min_level": "Level {level}+",
+      "account_age": "Account {days}+ days old",
+      "join_age": "Joined {days}+ days ago",
+      "roles": "Specific roles required"
+    },
+    "reroll": {
+      "success": {
+        "title": "🔄 Giveaway Rerolled",
+        "description": "**New Winners ({count}):** {winners}\n\n{reason}"
+      },
+      "error": {
+        "title": "Invalid Reroll Count",
+        "count_range": "Reroll count must be between 1 and 20.",
+        "failed": {
+          "title": "Reroll Failed"
+        }
+      },
+      "modal": {
+        "title": "Reroll Giveaway",
+        "count_label": "Number of Winners to Reroll",
+        "count_placeholder": "Enter number (default: 1)",
+        "reason_label": "Reason for Reroll",
+        "reason_placeholder": "Optional: Explain why you are rerolling"
+      }
+    },
+    "edit": {
+      "success": {
+        "title": "✅ Giveaway Updated",
+        "description": "Giveaway details updated successfully."
+      },
+      "error": {
+        "title": "Invalid Title",
+        "title_length": "Title must be at least 3 characters long.",
+        "prize_required": "Prize is required.",
+        "winner_count": "Winner count must be between 1 and 100."
+      },
+      "modal": {
+        "title": "Edit Giveaway Details",
+        "title_label": "Title",
+        "description_label": "Description",
+        "prize_label": "Prize",
+        "winners_label": "Number of Winners"
+      }
+    },
+    "end": {
+      "success": {
+        "title": "🎉 Giveaway Ended",
+        "description": "**Winners ({count}):** {winners}"
+      },
+      "error": {
+        "title": "End Failed"
+      }
+    },
+    "cancel": {
+      "success": {
+        "title": "🗑️ Giveaway Cancelled",
+        "description": "Giveaway has been cancelled successfully."
+      },
+      "error": {
+        "title": "Cancel Failed"
+      }
+    },
+    "confirm_end": "Confirm End",
+    "confirm_cancel": "Confirm Cancel",
+    "action_cancelled": "✅ Action cancelled.",
+    "end_confirmation": {
+      "title": "⚠️ End Giveaway Early",
+      "description": "Are you sure you want to end \"{title}\" early?\n\nThis action cannot be undone and winners will be selected immediately."
+    },
+    "cancel_confirmation": {
+      "title": "🗑️ Cancel Giveaway",
+      "description": "Are you sure you want to cancel \"{title}\"?\n\nThis action cannot be undone and no winners will be selected."
+    },
+    "requirements": {
+      "success": {
+        "title": "✅ Requirements Updated",
+        "description": "**New Requirements:**\n{requirements}"
+      },
+      "error": {
+        "title": "Invalid Requirements",
+        "level": "Minimum level must be between 0 and 1000.",
+        "account_age": "Account age must be between 0 and 3650 days.",
+        "join_age": "Join age must be between 0 and 3650 days.",
+        "failed": {
+          "title": "Update Failed"
+        }
+      },
+      "modal": {
+        "title": "Edit Requirements",
+        "min_level": "Minimum Level (0 = no requirement)",
+        "account_age": "Min Account Age (days, 0 = no requirement)",
+        "join_age": "Min Join Age (days, 0 = no requirement)"
+      }
+    },
+    "manage_entries": {
+      "success": {
+        "title": "✅ Entry Management",
+        "description": "**Action:** {action}\n**User:** {user}\n**Result:** {result}\n{reason}"
+      },
+      "error": {
+        "title": "Invalid Action",
+        "action": "Action must be either \"add\" or \"remove\".",
+        "user_id": "User ID must be a valid Discord user ID.",
+        "entry_count": "Entry count must be between 1 and 100.",
+        "user_not_found": "The specified user could not be found.",
+        "failed": {
+          "title": "Action Failed"
+        }
+      },
+      "modal": {
+        "title": "Manage Entries",
+        "action": "Action (add/remove)",
+        "user_id": "User ID",
+        "entry_count": "Entry Count (for add action)",
+        "reason": "Reason"
+      }
+    },
+    "entries": {
+      "title": "📊 Entries for {title}",
+      "stats": "**Participants:** {participants}\n**Total Entries:** {totalEntries}",
+      "top_participants": "🏆 Top Participants",
+      "none": "None",
+      "showing_top": "Showing top 20 of {total} participants",
+      "export": "Export All",
+      "no_entries": {
+        "title": "📊 No Entries",
+        "description": "This giveaway has no entries yet."
+      }
+    },
+    "export": {
+      "success": {
+        "title": "📁 Data Exported",
+        "description": "Exported data for {participants} participants and {winners} winners."
+      }
+    }
   },
   "polls": {
     "created": "Poll created successfully!",

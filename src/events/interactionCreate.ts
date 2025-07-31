@@ -3,6 +3,7 @@ import { ExtendedClient } from '../types';
 import { createErrorEmbed } from '../utils/helpers';
 import { statsHandler } from '../handlers/stats';
 import { ticketHandler } from '../handlers/tickets';
+import { ticketAnalytics } from '../handlers/ticketAnalytics';
 import { gameHandler } from '../handlers/games';
 import { reactionRolesHandler } from '../handlers/reactionRoles';
 import { giveawayHandler } from '../handlers/giveaway';
@@ -106,7 +107,16 @@ export const event = {
           return;
         }
 
-        await ticketHandler.handleButtonInteraction(interaction);
+        // Handle ticket system button interactions
+        if (interaction.customId.startsWith('ticket_') || interaction.customId.startsWith('analytics_')) {
+          if (interaction.customId.startsWith('analytics_')) {
+            await ticketAnalytics.handleAnalyticsButtons(interaction);
+          } else {
+            await ticketHandler.handleButtonInteraction(interaction);
+          }
+          return;
+        }
+
         await gameHandler.handleButtonInteraction(interaction);
         await reactionRolesHandler.handleButtonInteraction(interaction);
       } catch (error) {
@@ -116,6 +126,16 @@ export const event = {
 
     if (interaction.isStringSelectMenu()) {
       try {
+        // Handle ticket system select menu interactions
+        if (interaction.customId.startsWith('ticket_') || interaction.customId.startsWith('analytics_')) {
+          if (interaction.customId.startsWith('analytics_')) {
+            await ticketAnalytics.handlePeriodSelection(interaction);
+          } else {
+            await ticketHandler.handleSelectMenuInteraction(interaction);
+          }
+          return;
+        }
+
         await reactionRolesHandler.handleSelectMenuInteraction(interaction);
       } catch (error) {
         console.error('Error handling select menu interaction:', error);
@@ -136,7 +156,12 @@ export const event = {
           return;
         }
 
-        await ticketHandler.handleModalSubmit(interaction);
+        // Handle ticket system modal submissions
+        if (interaction.customId.startsWith('ticket_')) {
+          await ticketHandler.handleModalSubmit(interaction);
+          await ticketHandler.handleAdditionalModals(interaction);
+          return;
+        }
       } catch (error) {
         console.error('Error handling modal submit:', error);
       }
