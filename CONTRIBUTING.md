@@ -1,206 +1,162 @@
 # Contributing to Pegasus Discord Bot
 
-We love your input! We want to make contributing to Pegasus Discord Bot as easy and transparent as possible, whether it's:
+First off, thank you for considering contributing to Pegasus! It's people like you that make Pegasus such a great tool. We welcome contributions from everyone, regardless of their experience level.
 
-- Reporting a bug
-- Discussing the current state of the code
-- Submitting a fix
-- Proposing new features
-- Becoming a maintainer
+## 📋 Table of Contents
 
-## Development Process
+- [Code of Conduct](#code-of-conduct)
+- [Getting Started](#getting-started)
+- [How Can I Contribute?](#how-can-i-contribute)
+- [Development Setup](#development-setup)
+- [Style Guidelines](#style-guidelines)
+- [Commit Guidelines](#commit-guidelines)
+- [Pull Request Process](#pull-request-process)
+- [Community](#community)
 
-We use GitHub to host code, to track issues and feature requests, as well as accept pull requests.
+## 📜 Code of Conduct
 
-1. Fork the repo and create your branch from `develop`.
-2. If you've added code that should be tested, add tests.
-3. If you've changed APIs, update the documentation.
-4. Ensure the test suite passes.
-5. Make sure your code follows the existing style.
-6. Issue that pull request!
+This project and everyone participating in it is governed by the [Pegasus Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
 
-## Setting Up Development Environment
+## 🚀 Getting Started
 
-1. **Clone the repository**
+Before you begin:
+- Have you read the [code of conduct](CODE_OF_CONDUCT.md)?
+- Check if your issue/idea has already been [reported](https://github.com/cptcr/pegasus/issues)
+- Check if your idea fits with the scope and aims of the project
+
+## 🤝 How Can I Contribute?
+
+### Reporting Bugs
+
+Before creating bug reports, please check the existing issues as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+
+- **Use a clear and descriptive title**
+- **Describe the exact steps to reproduce the problem**
+- **Provide specific examples to demonstrate the steps**
+- **Describe the behavior you observed after following the steps**
+- **Explain which behavior you expected to see instead and why**
+- **Include screenshots and animated GIFs if possible**
+- **Include your environment details** (OS, Node.js version, etc.)
+
+### Suggesting Enhancements
+
+Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, please include:
+
+- **Use a clear and descriptive title**
+- **Provide a step-by-step description of the suggested enhancement**
+- **Provide specific examples to demonstrate the steps**
+- **Describe the current behavior** and **explain which behavior you expected to see instead**
+- **Explain why this enhancement would be useful**
+
+### Your First Code Contribution
+
+Unsure where to begin contributing? You can start by looking through these issues:
+
+- Issues labeled `good first issue` - issues which should only require a few lines of code
+- Issues labeled `help wanted` - issues which need extra attention
+- Issues labeled `documentation` - issues related to improving documentation
+
+## 💻 Development Setup
+
+1. **Fork the repository**
    ```bash
-   git clone https://github.com/yourusername/pegasus-bot.git
-   cd pegasus-bot
+   # Click the 'Fork' button on the GitHub repository page
    ```
 
-2. **Install dependencies**
+2. **Clone your fork**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/pegasus.git
+   cd pegasus
+   ```
+
+3. **Add upstream remote**
+   ```bash
+   git remote add upstream https://github.com/cptcr/pegasus.git
+   ```
+
+4. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+5. **Create a branch**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
+   git checkout -b feature/your-feature-name
+   # or
+   git checkout -b fix/your-bug-fix
    ```
 
-4. **Set up PostgreSQL database**
-   ```bash
-   # Using Docker
-   docker run -d \
-     --name pegasus-postgres \
-     -e POSTGRES_USER=pegasus \
-     -e POSTGRES_PASSWORD=your_password \
-     -e POSTGRES_DB=pegasus \
-     -p 5432:5432 \
-     postgres:15
-   ```
+6. **Set up your development environment**
+   - Copy `.env.example` to `.env`
+   - Fill in your development bot token and database credentials
+   - Set up a local PostgreSQL database
 
-5. **Run database migrations**
-   ```bash
-   npm run migrate
-   ```
-
-6. **Start development server**
+7. **Run the development server**
    ```bash
    npm run dev
    ```
 
-## Code Style Guide
+## 📝 Style Guidelines
 
-### TypeScript
+### TypeScript Style Guide
 
-- Use TypeScript for all new code
-- Enable strict mode in tsconfig.json
-- Use explicit types instead of `any` when possible
-- Prefer interfaces over type aliases for object shapes
+We use TypeScript for all code. Please follow these guidelines:
 
-### Naming Conventions
+- Use 2 spaces for indentation
+- Use semicolons
+- Use single quotes for strings (except to avoid escaping)
+- Use `const` by default, `let` when reassignment is needed, never `var`
+- Prefer arrow functions over function expressions
+- Use meaningful variable and function names
+- Add JSDoc comments for functions and complex logic
 
-- **Files**: Use camelCase for file names (e.g., `giveawayHandler.ts`)
-- **Classes**: Use PascalCase (e.g., `GiveawayHandler`)
-- **Functions/Variables**: Use camelCase (e.g., `createGiveaway`)
-- **Constants**: Use UPPER_SNAKE_CASE (e.g., `MAX_RETRIES`)
-- **Interfaces**: Prefix with 'I' is optional, but be consistent
-
-### Code Organization
-
-```
-src/
-├── commands/        # Discord slash commands
-├── events/          # Discord event handlers
-├── handlers/        # Business logic handlers
-├── utils/           # Utility functions
-├── database/        # Database related code
-├── types/           # TypeScript type definitions
-├── config/          # Configuration management
-├── security/        # Security middleware and validators
-└── monitoring/      # Monitoring and metrics
+Example:
+```typescript
+/**
+ * Calculates user XP for the next level
+ * @param currentLevel - The user's current level
+ * @param baseXP - The base XP required for level 1
+ * @returns The XP required for the next level
+ */
+const calculateNextLevelXP = (currentLevel: number, baseXP: number): number => {
+  return baseXP * Math.pow(1.5, currentLevel);
+};
 ```
 
-### Best Practices
+### File Structure
 
-1. **Error Handling**
-   ```typescript
-   try {
-     await riskyOperation();
-   } catch (error) {
-     logger.error('Operation failed', error as Error, { context });
-     // Handle error appropriately
-   }
-   ```
+- Commands go in `src/commands/{category}/{commandName}.ts`
+- Event handlers go in `src/events/{eventName}.ts`
+- Utility functions go in `src/utils/{utilityName}.ts`
+- Database schemas go in `src/database/schema/{schemaName}.ts`
+- Services go in `src/services/{serviceName}.ts`
 
-2. **Async/Await**
-   - Always use async/await instead of callbacks
-   - Handle Promise rejections properly
+### Internationalization (i18n)
 
-3. **Database Queries**
-   - Use parameterized queries to prevent SQL injection
-   - Use transactions for multi-step operations
-   - Always close connections properly
+All user-facing strings must support internationalization:
 
-4. **Security**
-   - Validate all user inputs
-   - Use the security middleware for commands
-   - Never log sensitive information
-   - Follow the principle of least privilege
+```typescript
+// Good
+await interaction.reply(i18n.t('commands.xp.rank.response', { 
+  level: userLevel, 
+  xp: currentXP 
+}));
 
-## Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
+// Bad
+await interaction.reply(`You are level ${userLevel} with ${currentXP} XP!`);
 ```
 
-### Writing Tests
+Remember to add translations for all supported languages:
+- English (en)
+- German (de)
+- Spanish (es)
+- French (fr)
 
-1. **Unit Tests**: Test individual functions and classes
-   ```typescript
-   describe('GiveawayHandler', () => {
-     it('should create a giveaway successfully', async () => {
-       // Test implementation
-     });
-   });
-   ```
+## 📤 Commit Guidelines
 
-2. **Integration Tests**: Test interactions between components
-   ```typescript
-   describe('Giveaway Command', () => {
-     it('should handle /giveaway create', async () => {
-       // Test implementation
-     });
-   });
-   ```
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-3. **Test Guidelines**
-   - Write tests for all new features
-   - Maintain at least 80% code coverage
-   - Use descriptive test names
-   - Mock external dependencies
-   - Test error cases
-
-## Pull Request Process
-
-1. **Before Submitting**
-   - Run `npm run lint` to check code style
-   - Run `npm run typecheck` to check TypeScript
-   - Run `npm test` to ensure tests pass
-   - Update documentation if needed
-
-2. **PR Description Template**
-   ```markdown
-   ## Description
-   Brief description of changes
-
-   ## Type of Change
-   - [ ] Bug fix
-   - [ ] New feature
-   - [ ] Breaking change
-   - [ ] Documentation update
-
-   ## Testing
-   - [ ] Tests pass locally
-   - [ ] Added new tests
-   - [ ] Tested manually
-
-   ## Checklist
-   - [ ] Code follows style guidelines
-   - [ ] Self-reviewed code
-   - [ ] Updated documentation
-   - [ ] No new warnings
-   ```
-
-3. **Review Process**
-   - PRs require at least one review
-   - Address all feedback
-   - Keep PRs focused and small
-   - Update PR based on feedback
-
-## Commit Message Guidelines
-
-We follow the Conventional Commits specification:
+### Commit Message Format
 
 ```
 <type>(<scope>): <subject>
@@ -211,86 +167,86 @@ We follow the Conventional Commits specification:
 ```
 
 ### Types
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `perf`: Performance improvements
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that don't affect the code's meaning
+- **refactor**: Code change that neither fixes a bug nor adds a feature
+- **perf**: Code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **chore**: Changes to the build process or auxiliary tools
 
 ### Examples
-```
-feat(giveaway): add custom embed builder
-fix(security): resolve rate limiting issue
+
+```bash
+feat(xp): add voice channel XP multiplier configuration
+fix(tickets): resolve issue with ticket panel not loading
 docs(readme): update installation instructions
-test(handler): add unit tests for giveaway handler
+refactor(database): optimize user query performance
 ```
 
-## Reporting Bugs
+## 🔄 Pull Request Process
 
-### Security Vulnerabilities
+1. **Ensure your code follows the style guidelines**
+2. **Update the README.md** with details of changes to the interface, if applicable
+3. **Add or update tests** as appropriate
+4. **Update documentation** for any changed functionality
+5. **Ensure all tests pass**
+   ```bash
+   npm test
+   npm run lint
+   npm run typecheck
+   ```
+6. **Update translations** for all supported languages if you've added new user-facing strings
+7. **Make sure your commits follow the commit guidelines**
+8. **Submit the pull request**
 
-**Do not report security vulnerabilities through public GitHub issues.**
+### Pull Request Template
 
-Email security@yourdomain.com with:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+When creating a PR, please use this template:
 
-### Bug Reports
+```markdown
+## Description
+Brief description of what this PR does
 
-Use GitHub Issues with the bug report template:
+## Type of Change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
 
-1. **Title**: Clear and descriptive
-2. **Description**: What happened vs what you expected
-3. **Steps to Reproduce**: Detailed steps
-4. **Environment**: Node version, OS, etc.
-5. **Logs**: Relevant error messages
-6. **Screenshots**: If applicable
+## Testing
+- [ ] I have tested this code locally
+- [ ] I have added tests that prove my fix/feature works
+- [ ] All new and existing tests pass
 
-## Feature Requests
+## Checklist
+- [ ] My code follows the style guidelines
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] I have added translations for all supported languages
+- [ ] My changes generate no new warnings
+```
 
-Use GitHub Issues with the feature request template:
+## 🌟 Recognition
 
-1. **Problem**: What problem does this solve?
-2. **Solution**: Your proposed solution
-3. **Alternatives**: Other solutions considered
-4. **Additional Context**: Any other relevant information
+Contributors who make significant contributions will be:
+- Added to the contributors list
+- Mentioned in release notes
+- Given credit in the project documentation
 
-## Code of Conduct
+## 💬 Community
 
-### Our Pledge
+- **Discord**: Join our [support server](https://discord.gg/vaultscope)
+- **GitHub Discussions**: Participate in [discussions](https://github.com/cptcr/pegasus/discussions)
+- **Issues**: Check our [issue tracker](https://github.com/cptcr/pegasus/issues)
 
-We pledge to make participation in our project a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+## ❓ Questions?
 
-### Our Standards
+Feel free to ask questions in:
+- Our [Discord server](https://discord.gg/vaultscope)
+- GitHub Discussions
+- By creating an issue with the `question` label
 
-**Positive behaviors:**
-- Using welcoming and inclusive language
-- Being respectful of differing viewpoints
-- Gracefully accepting constructive criticism
-- Focusing on what is best for the community
-- Showing empathy towards other community members
-
-**Unacceptable behaviors:**
-- Trolling, insulting/derogatory comments, and personal attacks
-- Public or private harassment
-- Publishing others' private information
-- Conduct which could reasonably be considered inappropriate
-
-### Enforcement
-
-Project maintainers will remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned with this Code of Conduct.
-
-## Questions?
-
-- Join our Discord server: [discord.gg/yourserver](https://discord.gg/yourserver)
-- Check the documentation: [docs.yourdomain.com](https://docs.yourdomain.com)
-- Email: support@yourdomain.com
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
+Thank you for contributing to Pegasus! 🚀

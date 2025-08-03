@@ -1,223 +1,265 @@
 # Pegasus Discord Bot
 
-A comprehensive Discord bot built with TypeScript, Discord.js v14, and PostgreSQL. Features advanced giveaway management, moderation tools, economy system, and much more.
+<div align="center">
+  <img src="https://img.shields.io/badge/Discord.js-v14-blue?style=for-the-badge&logo=discord" alt="Discord.js">
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
+</div>
 
-## 🚀 Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/cptcr/pegasus.git
-cd pegasus-bot
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start the bot (handles everything automatically)
-npm start
-```
-
-That's it! The startup script will automatically:
-- ✓ Check Node.js version compatibility
-- ✓ Install dependencies if needed
-- ✓ Validate environment configuration
-- ✓ Set up and migrate the database
-- ✓ Build the TypeScript project
-- ✓ Start the bot
-
-## 📋 Requirements
-
-- Node.js 18.0 or higher
-- npm 8.0 or higher
-- PostgreSQL 14.0 or higher
-- Discord Bot Token
-- Discord Application Client ID
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
-
-```env
-# Discord Configuration
-BOT_TOKEN=your_bot_token_here
-CLIENT_ID=your_client_id_here
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/pegasus
-
-# Optional Features
-ENABLE_PREMIUM=true
-ENABLE_ANALYTICS=true
-ENABLE_AUTO_BACKUP=false
-
-# Security
-ENCRYPTION_KEY=base64_encoded_32_byte_key
-
-# Optional API Keys
-STEAM_API_KEY=your_steam_api_key
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### First Time Setup
-
-1. **Create a Discord Application**
-   - Go to https://discord.com/developers/applications
-   - Create a new application
-   - Go to Bot section and create a bot
-   - Copy the bot token
-
-2. **Set up PostgreSQL**
-   ```bash
-   # Using Docker (optional)
-   docker run -d --name postgres \
-     -e POSTGRES_PASSWORD=yourpassword \
-     -e POSTGRES_DB=pegasus \
-     -p 5432:5432 \
-     postgres:15
-   ```
-
-3. **Configure the bot**
-   - Copy `.env.example` to `.env`
-   - Add your bot token and database URL
-   - Configure optional features
-
-4. **Run the bot**
-   ```bash
-   npm start
-   ```
-
-## 🎮 Features
-
-### Core Systems
-- **Advanced Giveaway System** - Interactive embed builder, requirements, bonus entries, templates
-- **Moderation Tools** - Automod, warnings, temporary punishments, audit logging
-- **Economy System** - Virtual currency, shop, inventory, daily rewards
-- **XP & Leveling** - Message/voice tracking, level roles, leaderboards
-- **Ticket System** - Categories, priorities, transcripts, auto-close
-- **Custom Commands** - Per-guild commands with permissions
-- **Multi-language Support** - Full i18n implementation
-
-### Security & Infrastructure
-- **Permission System** - Granular role-based permissions
-- **Rate Limiting** - Command and API rate limits
-- **Input Validation** - SQL injection protection, sanitization
-- **Audit Logging** - Track all administrative actions
-- **Encryption** - Secure storage of sensitive data
-- **Backup System** - Automated backups with retention
-
-### Monitoring & Maintenance
-- **Health Checks** - `/health` endpoint for monitoring
-- **Metrics Export** - Prometheus-compatible metrics
-- **Error Tracking** - Comprehensive error logging
-- **Performance Monitoring** - Command execution tracking
-- **Resource Management** - Memory and connection pooling
-
-## 📝 Available Commands
-
-### Setup Commands
-```bash
-npm start          # Start the bot (handles all setup)
-npm run dev        # Start in development mode
-npm run migrate    # Run database migrations manually
-npm run backup     # Create a manual backup
-npm run restore    # Restore from backup
-```
-
-### Maintenance Commands
-```bash
-npm run typecheck     # Check TypeScript types
-npm run migrate:status # Check migration status
-npm run migrate:rollback # Rollback last migration
-```
-
-## 🔍 Troubleshooting
-
-### Bot won't start
-1. Check Node.js version: `node --version` (must be 18+)
-2. Verify `.env` file exists and has correct values
-3. Test database connection: `psql DATABASE_URL`
-4. Check bot token is valid
-5. Look for error messages in console
-
-### Database connection issues
-1. Verify PostgreSQL is running
-2. Check DATABASE_URL format: `postgresql://user:pass@host:port/db`
-3. Ensure database exists and user has permissions
-4. Try connecting with psql client
-
-### Missing dependencies
-```bash
-# Force reinstall all dependencies
-rm -rf node_modules package-lock.json
-npm install
-```
-
-## 🚀 Deployment
-
-### Production Deployment
-
-1. **Server Requirements**
-   - Ubuntu 20.04+ or similar Linux distribution
-   - 2GB+ RAM recommended
-   - PostgreSQL 14+ installed
-   - Node.js 18+ installed
-   - PM2 for process management
-
-2. **Deployment Steps**
-   ```bash
-   # Install PM2 globally
-   npm install -g pm2
-
-   # Clone and setup
-   git clone https://github.com/yourusername/pegasus-bot.git
-   cd pegasus-bot
-   cp .env.example .env
-   # Configure .env with production values
-
-   # Start with PM2
-   pm2 start npm --name "pegasus-bot" -- start
-   pm2 save
-   pm2 startup
-   ```
-
-3. **Nginx Reverse Proxy** (optional)
-   ```nginx
-   server {
-       listen 80;
-       server_name bot.yourdomain.com;
-
-       location /health {
-           proxy_pass http://localhost:3000;
-           proxy_http_version 1.1;
-           proxy_set_header Upgrade $http_upgrade;
-           proxy_set_header Connection 'upgrade';
-           proxy_set_header Host $host;
-           proxy_cache_bypass $http_upgrade;
-       }
-   }
-   ```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## 📄 License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Discord Server**: [Join our community](https://discord.gg/yourserver)
-- **Documentation**: [Wiki](https://github.com/yourusername/pegasus-bot/wiki)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/pegasus-bot/issues)
-
-## 🙏 Acknowledgments
-
-- Built with [Discord.js](https://discord.js.org/)
-- Database powered by [PostgreSQL](https://www.postgresql.org/)
-- TypeScript for type safety
-- All our contributors and supporters
+<div align="center">
+  <h3>A powerful, feature-rich Discord bot built with TypeScript and Discord.js</h3>
+  <p>
+    <a href="https://discord.gg/vaultscope">Support Server</a> •
+    <a href="https://cptcr.dev">Developer</a> •
+    <a href="#features">Features</a> •
+    <a href="#installation">Installation</a> •
+    <a href="#configuration">Configuration</a>
+  </p>
+</div>
 
 ---
 
-Made with ❤️ by the Pegasus Bot Team
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+
+## ✨ Features
+
+Pegasus is a comprehensive Discord bot that offers a wide range of features to enhance your server experience:
+
+### 🛡️ Moderation & Security
+- **Advanced Warning System**: Create, edit, and track warnings with customizable levels and automation rules
+- **Comprehensive Moderation Tools**: Ban, kick, timeout, and manage users efficiently
+- **Blacklist System**: Manage user blacklists with ease
+- **Auto-moderation**: Automated actions based on warning levels
+
+### 🎉 Engagement & Entertainment
+- **Giveaway System**: Create and manage giveaways with advanced features like re-entry and requirement-based entries
+- **Economy System**: Complete economy with daily rewards, comprehensive gambling games, shops, work, and robbery mechanics
+- **XP & Leveling System**: Track user activity with customizable XP rewards and role rewards
+- **Interactive Games**: Multiple gambling games including dice, coinflip, slots, blackjack, and roulette
+
+### 🎫 Support & Management
+- **Advanced Ticket System**: Create support panels, manage tickets with claiming, closing, and freezing capabilities
+- **Multi-language Support**: Full support for German, English, Spanish, and French
+- **Customizable Configuration**: Extensive configuration options for all systems
+
+### 🛠️ Utility
+- **User Information**: Avatar, banner, and detailed user/server information commands
+- **Server Management**: Welcome/goodbye messages, auto-roles, and server configuration
+- **Steam Integration**: View Steam profiles and game information
+
+## 🔧 Tech Stack
+
+- **Language**: TypeScript
+- **Framework**: Discord.js v14
+- **Database**: PostgreSQL with Drizzle ORM
+- **Multi-language**: i18n with support for 4 languages (DE, EN, ES, FR)
+- **Architecture**: Modular command and event handling system
+
+## 📦 Prerequisites
+
+Before installing Pegasus, ensure you have the following:
+
+- Node.js 18.0.0 or higher
+- PostgreSQL 14 or higher
+- npm or yarn package manager
+- A Discord Bot Token ([Create one here](https://discord.com/developers/applications))
+
+## 🚀 Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/cptcr/pegasus.git
+   cd pegasus
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   # Discord Configuration
+   DISCORD_TOKEN=your_bot_token_here
+   CLIENT_ID=your_client_id_here
+   GUILD_ID=your_development_guild_id # Optional, for guild-specific commands
+   
+   # Database Configuration
+   DATABASE_URL=postgresql://user:password@localhost:5432/pegasus
+   
+   # Optional Configuration
+   NODE_ENV=development
+   LOG_LEVEL=info
+   ```
+
+4. **Set up the database**
+   ```bash
+   # Run database migrations
+   npm run db:migrate
+   # or
+   yarn db:migrate
+   ```
+
+5. **Build the project**
+   ```bash
+   npm run build
+   # or
+   yarn build
+   ```
+
+6. **Start the bot**
+   ```bash
+   # Production
+   npm start
+   # or
+   yarn start
+   
+   # Development (with hot reload)
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+## ⚙️ Configuration
+
+### Initial Setup
+
+After inviting the bot to your server, use the following commands to configure it:
+
+1. **Set server language**: `/config lang`
+2. **Configure XP system**: `/config xp`
+3. **Set up economy**: `/config eco`
+4. **Configure welcome messages**: `/config welcome`
+5. **Set up auto-roles**: `/config autorole`
+
+### Database Schema
+
+Pegasus uses Drizzle ORM with PostgreSQL. The database schema is automatically managed through migrations. Key tables include:
+
+- `users` - User data and preferences
+- `guilds` - Server configurations
+- `warnings` - Warning system data
+- `tickets` - Support ticket information
+- `giveaways` - Active and past giveaways
+- `economy` - User balances and transactions
+- `xp_data` - XP and leveling information
+
+## 📝 Commands
+
+### Warning System
+- `/warn` - Display all warning commands
+- `/warn create` - Issue a warning to a user
+- `/warn edit` - Edit an existing warning
+- `/warn lookup` - Look up a specific warning
+- `/warn view` - View all warnings for a user
+- `/warn automation create` - Create warning automation rules
+- `/warn automation view` - View all automations
+- `/warn automation delete` - Delete an automation
+
+### Moderation
+- `/moderation ban` - Ban a user
+- `/moderation kick` - Kick a user
+- `/moderation timeout` - Timeout a user
+- `/moderation reset-xp` - Reset a user's XP
+
+### Giveaways
+- `/gw start` - Start a customizable giveaway
+- `/gw end` - End an active giveaway
+- `/gw configure` - Configure an active giveaway
+- `/gw reroll` - Reroll giveaway winners
+- `/gw simple` - Create a simple giveaway
+
+### Economy
+- `/eco balance` - Check your balance
+- `/eco daily` - Claim daily rewards
+- `/eco gamble dice` - Roll dice against the dealer
+- `/eco gamble coinflip` - Flip a coin (heads or tails)
+- `/eco gamble slots` - Play the slot machine
+- `/eco gamble blackjack` - Play blackjack against the dealer
+- `/eco gamble roulette` - Play roulette with various betting options
+- `/eco shop view` - View available shop items
+- `/eco shop buy` - Purchase items from the shop
+- `/eco shop inventory` - View your purchased items
+- `/eco work` - Work for rewards
+- `/eco rob` - Attempt to rob another user
+
+### Tickets
+- `/ticket panel create` - Create a support panel
+- `/ticket panel load` - Load a saved panel
+- `/ticket panel delete` - Delete a panel
+- `/ticket claim` - Claim a ticket
+- `/ticket close` - Close a ticket
+
+### XP System
+- `/xp rank` - View your rank
+- `/xp leaderboard` - View server leaderboard
+- `/xp configuration` - View XP configuration
+- `/xp card` - Customize your rank card
+
+### Utility
+- `/utils avatar` - View user avatar
+- `/utils banner` - View user banner
+- `/utils steam` - View Steam profile
+- `/utils userinfo` - Get user information
+- `/utils whois` - Detailed user lookup
+- `/utils roleinfo` - Get role information
+- `/utils serverinfo` - Get server information
+- `/utils help` - Get help with commands
+- `/utils support` - Get support server link
+
+### Configuration
+- `/config xp` - Configure XP system
+- `/config eco` - Configure economy
+- `/config lang` - Set server language
+- `/config welcome` - Configure welcome messages
+- `/config autorole` - Configure auto-roles
+- `/config goodbye` - Configure goodbye messages
+
+### Language
+- `/language available` - View available languages
+- `/language current` - View current language
+- `/language set` - Set your preferred language
+
+### Blacklist
+- `/blacklist user` - Blacklist a user
+- `/blacklist view` - View blacklisted users
+- `/blacklist remove` - Remove from blacklist
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 💬 Support
+
+- **Support Server**: [discord.gg/vaultscope](https://discord.gg/vaultscope)
+- **Developer**: [cptcr.dev](https://cptcr.dev)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/cptcr/pegasus/issues)
+
+## 🔒 Security
+
+For security concerns, please refer to our [Security Policy](SECURITY.md).
+
+---
+
+<div align="center">
+  <p>Made with ❤️ by <a href="https://cptcr.dev">cptcr</a></p>
+</div>
