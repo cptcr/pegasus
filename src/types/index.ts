@@ -1,258 +1,112 @@
-import { Client, Collection, SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, SelectMenuInteraction, ModalSubmitInteraction, VoiceState, GuildMember, User, TextChannel, VoiceChannel, CategoryChannel, Role, Guild } from 'discord.js';
+export * from './command';
 
-export interface ExtendedClient extends Client {
-  commands: Collection<string, Command>;
-  config: BotConfig;
+// Database types
+export interface Guild {
+  id: string;
+  prefix?: string;
+  language?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Command {
-  data: any; // More flexible to handle different builder types
-  execute: (interaction: any) => Promise<any>; // More flexible return type
-  autocomplete?: (interaction: any) => Promise<any>; // For autocomplete handling
-  cooldown?: number;
-  permissions?: string[];
-  category?: string;
+export interface User {
+  id: string;
+  globalName?: string;
+  username: string;
+  discriminator: string;
+  avatar?: string;
+  bot: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface BotConfig {
-  token: string;
-  clientId: string;
-  databaseUrl: string;
-  nodeEnv: string;
+export interface Member {
+  userId: string;
+  guildId: string;
+  nickname?: string;
+  joinedAt: Date;
+  xp: number;
+  level: number;
+  messages: number;
+  voiceMinutes: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface GuildSettings {
   guildId: string;
-  prefix: string;
-  modLogChannel?: string;
-  muteRole?: string;
-  joinToCreateCategory?: string;
-  joinToCreateChannel?: string;
-  ticketCategory?: string;
-  autoRole?: string;
+  welcomeEnabled: boolean;
   welcomeChannel?: string;
   welcomeMessage?: string;
-  leaveChannel?: string;
-  leaveMessage?: string;
+  goodbyeEnabled: boolean;
+  goodbyeChannel?: string;
+  goodbyeMessage?: string;
+  logsEnabled: boolean;
+  logsChannel?: string;
   xpEnabled: boolean;
   xpRate: number;
-  xpCooldown: number;
   levelUpMessage?: string;
   levelUpChannel?: string;
-  logChannel?: string;
-  antiSpam: boolean;
-  antiSpamAction: string;
-  antiSpamThreshold: number;
-  autoMod: boolean;
-  filterProfanity: boolean;
-  filterInvites: boolean;
-  filterLinks: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface UserProfile {
-  userId: string;
-  guildId: string;
-  xp: number;
-  level: number;
-  totalXp: number;
-  voiceTime: number;
-  messageCount: number;
-  warnings: number;
-  reputation: number;
-  coins: number;
-  lastXpGain: Date;
-  lastVoiceJoin?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ModAction {
-  id: string;
+export interface ModCase {
+  id: number;
   guildId: string;
   userId: string;
   moderatorId: string;
-  action: 'ban' | 'kick' | 'mute' | 'warn' | 'unmute' | 'unban';
+  type: ModActionType;
   reason?: string;
   duration?: number;
   expiresAt?: Date;
-  active: boolean;
   createdAt: Date;
 }
 
-export interface Ticket {
-  id: string;
-  guildId: string;
-  userId: string;
-  channelId: string;
-  panelId: string;
-  subject: string;
-  status: 'open' | 'closed' | 'pending';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  assignedTo?: string;
-  closedBy?: string;
-  closedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TicketPanel {
-  id: string;
-  guildId: string;
-  channelId: string;
-  messageId: string;
-  title: string;
-  description: string;
-  color: string;
-  category: string;
-  supportRoles: string[];
-  maxTickets: number;
-  cooldown: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface TempChannel {
-  id: string;
-  guildId: string;
-  channelId: string;
-  ownerId: string;
-  parentId: string;
-  createdAt: Date;
-}
-
-export interface GameSession {
-  id: string;
-  guildId: string;
-  channelId: string;
-  gameType: 'trivia' | 'math' | 'wordchain' | 'riddle';
-  hostId: string;
-  participants: string[];
-  scores: Record<string, number>;
-  status: 'waiting' | 'active' | 'ended';
-  currentQuestion?: any;
-  settings: any;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface GuildStats {
-  guildId: string;
-  totalMessages: number;
-  totalCommands: number;
-  totalVoiceTime: number;
-  totalMembers: number;
-  activeMembers: number;
-  newMembers: number;
-  leftMembers: number;
-  bannedMembers: number;
-  kickedMembers: number;
-  mutedMembers: number;
-  warnedMembers: number;
-  ticketsCreated: number;
-  ticketsClosed: number;
-  date: Date;
-}
-
-export interface LogEvent {
-  id: string;
-  guildId: string;
-  type: string;
-  userId?: string;
-  channelId?: string;
-  roleId?: string;
-  data: any;
-  timestamp: Date;
-}
-
-export interface VoiceSession {
-  userId: string;
-  guildId: string;
-  channelId: string;
-  joinTime: Date;
-  leaveTime?: Date;
-  duration?: number;
-  afk: boolean;
-  muted: boolean;
-  deafened: boolean;
+export enum ModActionType {
+  Warn = 'warn',
+  Mute = 'mute',
+  Kick = 'kick',
+  Ban = 'ban',
+  Unmute = 'unmute',
+  Unban = 'unban',
+  Timeout = 'timeout',
 }
 
 export interface Giveaway {
   id: string;
   guildId: string;
   channelId: string;
-  messageId?: string;
+  messageId: string;
   hostId: string;
-  title: string;
-  description?: string;
   prize: string;
+  description?: string;
   winnerCount: number;
   endTime: Date;
   ended: boolean;
-  cancelled: boolean;
-  requirements: GiveawayRequirements;
-  bonusEntries: GiveawayBonusEntries;
-  blacklist: string[];
-  whitelist: string[];
+  winners?: string[];
+  participants: string[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface GiveawayRequirements {
-  minLevel?: number;
-  requiredRoles?: string[];
-  minAccountAge?: number;
-  minJoinAge?: number;
-  inviteCount?: number;
-  mustBeInVoice?: boolean;
-  customRequirements?: string[];
-}
-
-export interface GiveawayBonusEntries {
-  roles?: { [roleId: string]: number };
-  boosts?: number;
-  invites?: number;
-  level?: { [level: number]: number };
-}
-
-export interface GiveawayEntry {
-  id: string;
-  giveawayId: string;
-  userId: string;
-  entryCount: number;
-  entryTime: Date;
-  bonusReason?: string;
-}
-
-export interface GiveawayWinner {
-  id: string;
-  giveawayId: string;
-  userId: string;
-  claimed: boolean;
-  claimTime?: Date;
-  rerolled: boolean;
-  selectedAt: Date;
-}
-
-export interface WarningHistory {
-  id: string;
-  warningId: string;
-  fieldChanged: string;
-  oldValue?: string;
-  newValue?: string;
-  changedBy: string;
-  changedAt: Date;
-  reason?: string;
-}
-
-export interface ModerationNote {
+export interface Ticket {
   id: string;
   guildId: string;
+  channelId: string;
   userId: string;
-  moderatorId: string;
-  note: string;
-  internal: boolean;
+  category: string;
+  status: TicketStatus;
+  claimedBy?: string;
+  closedBy?: string;
+  closedAt?: Date;
+  transcript?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export enum TicketStatus {
+  Open = 'open',
+  Claimed = 'claimed',
+  Closed = 'closed',
 }

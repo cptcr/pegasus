@@ -1,1022 +1,1185 @@
 {
   "common": {
-    "error": "Error",
+    "error": "An error occurred",
     "success": "Success",
-    "warning": "Warning",
-    "info": "Info",
-    "loading": "Loading...",
+    "cancelled": "Cancelled",
+    "timeout": "This interaction has timed out",
+    "noPermission": "You don't have permission to use this command",
+    "botNoPermission": "I don't have the required permissions to execute this command",
+    "guildOnly": "This command can only be used in a server",
+    "ownerOnly": "This command can only be used by the bot owner",
+    "cooldown": "Please wait {{time}} before using this command again",
+    "invalidUser": "Invalid user",
+    "invalidChannel": "Invalid channel",
+    "invalidRole": "Invalid role",
     "yes": "Yes",
     "no": "No",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "none": "None",
-    "unknown": "Unknown",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "create": "Create",
-    "update": "Update",
-    "view": "View",
-    "back": "Back",
-    "next": "Next",
-    "previous": "Previous",
-    "page": "Page",
-    "total": "Total",
-    "user": "User",
-    "server": "Server",
-    "channel": "Channel",
-    "role": "Role",
-    "member": "Member",
-    "admin": "Admin",
-    "moderator": "Moderator",
-    "bot": "Bot",
-    "online": "Online",
-    "offline": "Offline",
-    "away": "Away",
-    "dnd": "Do Not Disturb",
-    "level": "Level",
-    "rank": "Rank",
-    "xp": "XP",
-    "coins": "Coins",
-    "time": "Time",
-    "duration": "Duration",
-    "reason": "Reason",
-    "status": "Status",
-    "category": "Category",
-    "description": "Description",
-    "title": "Title",
-    "message": "Message",
-    "id": "ID",
-    "name": "Name",
-    "value": "Value",
-    "type": "Type",
-    "date": "Date",
-    "active": "Active",
-    "inactive": "Inactive",
-    "public": "Public",
-    "private": "Private"
-  },
-  "errors": {
-    "generic": "An error occurred. Please try again.",
-    "permission_denied": "You don't have permission to use this command.",
-    "user_not_found": "User not found.",
-    "channel_not_found": "Channel not found.",
-    "role_not_found": "Role not found.",
-    "guild_only": "This command can only be used in a server.",
-    "bot_missing_permissions": "I don't have the required permissions to perform this action.",
-    "invalid_user": "Please provide a valid user.",
-    "invalid_channel": "Please provide a valid channel.",
-    "invalid_role": "Please provide a valid role.",
-    "invalid_duration": "Please provide a valid duration.",
-    "invalid_number": "Please provide a valid number.",
-    "invalid_url": "Please provide a valid URL.",
-    "invalid_color": "Please provide a valid hex color code.",
-    "cooldown": "You are on cooldown. Please wait {time} before using this command again.",
-    "missing_arguments": "Please provide all required arguments.",
-    "database_error": "A database error occurred. Please try again later.",
-    "api_error": "An API error occurred. Please try again later.",
-    "rate_limited": "Rate limited. Please try again later.",
-    "feature_disabled": "This feature is currently disabled.",
-    "maintenance_mode": "The bot is currently under maintenance. Please try again later.",
-    "insufficient_permissions": "You don't have sufficient permissions for this action.",
-    "command_disabled": "This command is disabled in this server.",
-    "dm_only": "This command can only be used in direct messages.",
-    "nsfw_only": "This command can only be used in NSFW channels.",
-    "owner_only": "This command can only be used by the bot owner.",
-    "premium_only": "This feature is only available for premium servers.",
-    "max_limit_reached": "Maximum limit reached.",
-    "unknown_action": "Unknown action selected.",
-    "loading_entries": "Error loading giveaway entries.",
-    "export_failed": "Failed to export giveaway data."
-  },
-  "moderation": {
-    "ban": {
-      "success": "Successfully banned {user}.",
-      "success_temp": "Successfully banned {user} for {duration}.",
-      "error_self": "You cannot ban yourself.",
-      "error_owner": "You cannot ban the server owner.",
-      "error_hierarchy": "You cannot ban this user due to role hierarchy.",
-      "error_bot_hierarchy": "I cannot ban this user due to role hierarchy.",
-      "already_banned": "This user is already banned.",
-      "dm_message": "You have been banned from **{server}**\\n\\n**Reason:** {reason}",
-      "dm_message_temp": "You have been banned from **{server}** for {duration}\\n\\n**Reason:** {reason}",
-      "log_title": "User Banned",
-      "log_description": "{emoji} **{user}** has been banned from the server.",
-      "unban_success": "Successfully unbanned {user}.",
-      "unban_error": "Failed to unban user.",
-      "not_banned": "This user is not banned."
-    },
-    "kick": {
-      "success": "Successfully kicked {user}.",
-      "error_self": "You cannot kick yourself.",
-      "error_owner": "You cannot kick the server owner.",
-      "error_hierarchy": "You cannot kick this user due to role hierarchy.",
-      "error_bot_hierarchy": "I cannot kick this user due to role hierarchy.",
-      "dm_message": "You have been kicked from **{server}**\\n\\n**Reason:** {reason}",
-      "log_title": "User Kicked",
-      "log_description": "{emoji} **{user}** has been kicked from the server."
-    },
-    "mute": {
-      "success": "Successfully muted {user} for {duration}.",
-      "error_self": "You cannot mute yourself.",
-      "error_hierarchy": "You cannot mute this user due to role hierarchy.",
-      "error_bot_hierarchy": "I cannot mute this user due to role hierarchy.",
-      "already_muted": "This user is already muted.",
-      "dm_message": "You have been muted in **{server}** for {duration}\\n\\n**Reason:** {reason}",
-      "log_title": "User Muted",
-      "log_description": "{emoji} **{user}** has been muted.",
-      "duration_updated": "Mute duration updated to {duration}."
-    },
-    "unmute": {
-      "success": "Successfully unmuted {user}.",
-      "error_not_muted": "This user is not muted.",
-      "log_title": "User Unmuted",
-      "log_description": "{emoji} **{user}** has been unmuted."
-    },
-    "warn": {
-      "success": "Successfully warned {user}.",
-      "success_with_id": "Successfully warned {user}.\\n\\n**Warning ID:** {id}\\n**Reason:** {reason}\\n**Severity:** {severity}",
-      "error_self": "You cannot warn yourself.",
-      "dm_message": "You have been warned in **{server}**\\n\\n**Reason:** {reason}\\n**Warning Count:** {count}",
-      "log_title": "User Warned",
-      "log_description": "{emoji} **{user}** has been warned.",
-      "edit_success": "Warning updated successfully.",
-      "edit_history": "Edit History",
-      "remove_success": "Warning removed successfully.",
-      "list_title": "Warnings for {user}",
-      "no_warnings": "{user} has no warnings.",
-      "severity": {
-        "low": "Low",
-        "medium": "Medium", 
-        "high": "High",
-        "critical": "Critical"
-      },
-      "evidence": "Evidence",
-      "warning_id": "Warning ID",
-      "edit_reason": "Edit Reason",
-      "history_count": "Edits",
-      "created_at": "Created",
-      "updated_at": "Updated",
-      "removed": "Removed",
-      "note_added": "Moderation note added successfully."
-    },
-    "timeout": {
-      "success": "Successfully timed out {user} for {duration}.",
-      "remove_success": "Successfully removed timeout from {user}.",
-      "error_hierarchy": "You cannot timeout this user due to role hierarchy.",
-      "already_timed_out": "This user is already timed out.",
-      "not_timed_out": "This user is not timed out."
-    },
-    "slowmode": {
-      "set": "Slowmode set to {duration} seconds.",
-      "disabled": "Slowmode disabled.",
-      "invalid_duration": "Slowmode duration must be between 0 and 21600 seconds (6 hours)."
-    },
-    "purge": {
-      "success": "Successfully deleted {count} messages.",
-      "no_messages": "No messages found to delete.",
-      "too_old": "Cannot delete messages older than 14 days.",
-      "invalid_count": "Message count must be between 1 and 100."
-    }
-  },
-  "automod": {
-    "violation_dm": "Your message was removed for violating the {type} filter in **{server}**.\\n\\n**Action taken:** {action}",
-    "filter_created": "AutoMod filter created successfully!",
-    "filter_updated": "Filter updated successfully.",
-    "filter_deleted": "Filter deleted successfully.",
-    "filter_not_found": "Filter not found.",
-    "violations_cleared": "Violations cleared successfully.",
-    "no_violations": "No violations found.",
-    "filter_list": "AutoMod Filters",
-    "no_filters": "No automod filters configured.",
-    "filter_details": "Filter Details",
-    "filter_enabled": "Filter enabled.",
-    "filter_disabled": "Filter disabled.",
-    "violation_logged": "AutoMod violation logged.",
-    "exemption_added": "Exemption added successfully.",
-    "exemption_removed": "Exemption removed successfully.",
-    "types": {
-      "profanity": "Profanity",
-      "spam": "Spam",
-      "links": "Links",
-      "invites": "Discord Invites",
-      "caps": "Excessive Caps",
-      "mentions": "Mass Mentions",
-      "zalgo": "Zalgo Text",
-      "custom": "Custom Words",
-      "repeated": "Repeated Text",
-      "emojis": "Excessive Emojis"
-    },
-    "actions": {
-      "delete": "Delete Message",
-      "warn": "Warn User",
-      "mute": "Mute User",
-      "kick": "Kick User",
-      "ban": "Ban User",
-      "timeout": "Timeout User"
-    }
-  },
-  "economy": {
-    "balance": {
-      "title": "{user}'s Balance",
-      "wallet": "Wallet",
-      "bank": "Bank",
-      "net_worth": "Net Worth",
-      "statistics": "Statistics",
-      "total_earned": "Total Earned",
-      "total_spent": "Total Spent",
-      "daily_streak": "Daily Streak",
-      "work_streak": "Work Streak",
-      "multiplier": "Multiplier",
-      "prestige": "Prestige",
-      "bank_limit": "Bank Limit",
-      "rank": "Economy Rank"
-    },
-    "daily": {
-      "claimed": "Daily Reward Claimed!",
-      "received": "You received **{amount}** coins!",
-      "streak": "Daily Streak",
-      "cooldown": "You can claim your daily reward again in {time}.",
-      "tip": "Claim daily for {days} more day(s) to maximize your streak!",
-      "streak_bonus": "Streak bonus: +{amount} coins",
-      "lost_streak": "You lost your daily streak! Start a new one tomorrow."
-    },
-    "work": {
-      "complete": "Work Complete!",
-      "earned": "You earned **{amount}** coins!",
-      "streak": "Work Streak",
-      "cooldown": "You can work again in {time}.",
-      "next_work": "Available in 4 hours",
-      "streak_bonus": "Streak Bonus",
-      "jobs": {
-        "programmer": "You wrote some code and debugged a few issues.",
-        "teacher": "You taught a class and graded some papers.",
-        "doctor": "You helped patients and saved lives.",
-        "chef": "You cooked delicious meals for customers.",
-        "artist": "You created beautiful artwork.",
-        "musician": "You performed music for an audience.",
-        "writer": "You wrote articles and stories.",
-        "mechanic": "You fixed cars and machinery.",
-        "farmer": "You harvested crops and tended to animals.",
-        "scientist": "You conducted experiments and research."
-      }
-    },
-    "transfer": {
-      "success": "Successfully transferred {amount} coins to {user}.",
-      "insufficient_funds": "You don't have enough coins to transfer.",
-      "invalid_amount": "Please specify a valid amount to transfer.",
-      "self_transfer": "You cannot transfer coins to yourself.",
-      "min_amount": "Minimum transfer amount is {amount} coins.",
-      "max_amount": "Maximum transfer amount is {amount} coins.",
-      "tax_applied": "Transfer tax of {tax} coins applied."
-    },
-    "deposit": {
-      "success": "Successfully deposited {amount} coins to your bank.",
-      "insufficient_funds": "You don't have enough coins to deposit.",
-      "bank_full": "Your bank is full! Current limit: {limit} coins.",
-      "invalid_amount": "Please specify a valid amount to deposit."
-    },
-    "withdraw": {
-      "success": "Successfully withdrew {amount} coins from your bank.",
-      "insufficient_funds": "You don't have enough coins in your bank.",
-      "invalid_amount": "Please specify a valid amount to withdraw."
-    },
-    "gamble": {
-      "won": "You Won!",
-      "lost": "You Lost!",
-      "insufficient_funds": "You don't have enough coins to make this bet.",
-      "winnings": "Winnings",
-      "result": "Result",
-      "multiplier": "Multiplier",
-      "min_bet": "Minimum bet is {amount} coins.",
-      "max_bet": "Maximum bet is {amount} coins.",
-      "cooldown": "You can gamble again in {time}.",
-      "coinflip": {
-        "description": "The coin landed on **{result}**!",
-        "heads": "Heads",
-        "tails": "Tails"
-      },
-      "dice": {
-        "perfect": "Perfect roll! You got a **{roll}**!",
-        "good": "Nice roll! You got a **{roll}**!",
-        "bad": "You rolled a **{roll}**. Better luck next time!"
-      },
-      "slots": {
-        "jackpot": "**JACKPOT!** {slots}\\nThree of a kind!",
-        "win": "**WIN!** {slots}\\nTwo matching symbols!",
-        "lose": "{slots}\\nNo matching symbols."
-      }
-    },
-    "shop": {
-      "title": "Server Shop",
-      "empty": "No items are currently available in the shop.",
-      "purchase_success": "Purchase Successful!",
-      "purchase_failed": "Purchase Failed",
-      "item_added": "Item Added",
-      "item_removed": "Item Removed",
-      "not_enough_stock": "Insufficient stock",
-      "requirements_not_met": "Requirements not met",
-      "item_details": "Item Details",
-      "price": "Price",
-      "stock": "Stock",
-      "requirements": "Requirements",
-      "description": "Description",
-      "unlimited": "Unlimited",
-      "out_of_stock": "Out of Stock",
-      "buy": "Buy",
-      "owned": "Owned"
-    },
-    "inventory": {
-      "title": "{user}'s Inventory",
-      "empty": "Your inventory is empty.",
-      "item_count": "x{count}",
-      "use": "Use",
-      "sell": "Sell",
-      "gift": "Gift",
-      "item_used": "Used {item}.",
-      "item_sold": "Sold {item} for {amount} coins.",
-      "item_gifted": "Gifted {item} to {user}."
-    },
-    "leaderboard": {
-      "title": "Economy Leaderboard",
-      "richest": "Richest Users",
-      "your_rank": "Your Rank",
-      "net_worth": "Net Worth"
-    }
-  },
-  "xp": {
-    "rank": {
-      "title": "{user}'s Rank",
-      "rank": "Rank",
-      "level": "Level",
-      "total_xp": "Total XP",
-      "progress": "Progress to Next Level",
-      "statistics": "Statistics",
-      "voice_time": "Voice Time",
-      "messages": "Messages",
-      "reputation": "Reputation",
-      "coins": "Coins",
-      "xp_needed": "XP needed for next level",
-      "next_level": "Next Level",
-      "progress_bar": "Progress"
-    },
-    "leaderboard": {
-      "title": "XP Leaderboard",
-      "description": "Top {count} users in **{server}**",
-      "your_rank": "Your Rank",
-      "no_users": "No users found in the leaderboard.",
-      "level_filter": "Level {level}+ only",
-      "voice_leaderboard": "Voice Time Leaderboard",
-      "message_leaderboard": "Message Count Leaderboard"
-    },
-    "level_up": {
-      "title": "Level Up!",
-      "message": "{user} has reached level **{level}**! {emoji}",
-      "reward": "Level Reward",
-      "role_reward": "You've been granted the {role} role!",
-      "coin_reward": "You've earned {amount} coins!"
-    },
-    "settings": {
-      "xp_enabled": "XP system has been {status}.",
-      "level_up_messages": "Level up messages have been {status}.",
-      "xp_rate": "XP rate set to {rate}.",
-      "xp_cooldown": "XP cooldown set to {cooldown} seconds.",
-      "voice_xp": "Voice XP has been {status}.",
-      "message_xp": "Message XP has been {status}."
-    },
-    "rewards": {
-      "added": "Level reward added for level {level}.",
-      "removed": "Level reward removed for level {level}.",
-      "list": "Level Rewards",
-      "no_rewards": "No level rewards configured.",
-      "role_reward": "Role: {role}",
-      "coin_reward": "Coins: {amount}"
-    }
-  },
-  "tickets": {
-    "created": "Ticket Created",
-    "creation_message": "Your ticket has been created: {channel}",
-    "closed": "Ticket Closed",
-    "close_message": "This ticket has been closed by {user}",
-    "claimed": "Ticket Claimed",
-    "claim_message": "This ticket has been claimed by {user}",
-    "unclaimed": "Ticket Unclaimed",
-    "unclaim_message": "This ticket has been unclaimed by {user}",
-    "panel_created": "Ticket panel created successfully!",
-    "panel_deployed": "Ticket panel deployed successfully!",
-    "max_tickets": "You have reached the maximum number of open tickets.",
-    "not_found": "Ticket not found.",
-    "no_permission": "You do not have permission to manage this ticket.",
-    "close_button": "Close Ticket",
-    "claim_button": "Claim Ticket",
-    "unclaim_button": "Unclaim Ticket",
-    "transcript": "Ticket Transcript",
-    "transcript_saved": "Ticket transcript saved.",
-    "delete_button": "Delete Ticket",
-    "deleted": "Ticket deleted successfully.",
-    "reopen": "Ticket reopened by {user}.",
-    "add_user": "{user} has been added to the ticket.",
-    "remove_user": "{user} has been removed from the ticket.",
-    "priority": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High",
-      "urgent": "Urgent"
-    },
-    "status": {
-      "open": "Open",
-      "claimed": "Claimed",
-      "closed": "Closed",
-      "deleted": "Deleted"
-    },
-    "stats": {
-      "title": "Ticket Statistics",
-      "total": "Total Tickets",
-      "open": "Open Tickets",
-      "closed": "Closed Tickets",
-      "average_response": "Average Response Time",
-      "average_resolution": "Average Resolution Time"
-    }
-  },
-  "welcome": {
-    "setup_success": "Welcome messages have been {status}.",
-    "dm_setup_success": "DM welcome messages have been {status}.",
-    "card_setup_success": "Welcome cards have been {status}.",
-    "embed_setup_success": "Welcome embeds have been {status}.",
-    "autorole_setup_success": "Autoroles have been {status}.",
-    "test_complete": "{type} message test sent!",
-    "test_failed": "Failed to send test message. Check your configuration.",
-    "placeholders": "Available Placeholders",
-    "message_set": "Welcome message set successfully.",
-    "dm_message_set": "Welcome DM message set successfully.",
-    "leave_message_set": "Leave message set successfully.",
-    "channel_set": "Welcome channel set to {channel}.",
-    "leave_channel_set": "Leave channel set to {channel}.",
-    "autorole_added": "Autorole {role} added successfully.",
-    "autorole_removed": "Autorole {role} removed successfully.",
-    "card_enabled": "Welcome cards enabled.",
-    "card_disabled": "Welcome cards disabled.",
-    "embed_enabled": "Welcome embeds enabled.",
-    "embed_disabled": "Welcome embeds disabled."
-  },
-  "reactionroles": {
-    "panel_created": "Reaction role panel created successfully!",
-    "role_added": "Role {role} has been added to the panel!",
-    "panel_deployed": "Reaction role panel has been deployed successfully!",
-    "panel_deleted": "Panel deleted successfully.",
-    "role_added_user": "Added the {role} role.",
-    "role_removed_user": "Removed the {role} role.",
-    "no_panels": "No reaction role panels found.",
-    "deploy_failed": "Failed to deploy panel. Make sure the panel exists and has roles added.",
-    "permission_error": "I cannot assign this role because it is higher than or equal to my highest role.",
-    "requirements_not_met": "Failed to add role. Check requirements or role limits.",
-    "panel_list": "Reaction Role Panels",
-    "panel_info": "Panel Information",
-    "role_count": "Roles",
-    "message_id": "Message ID",
-    "type": {
-      "reaction": "Reaction Roles",
-      "button": "Button Roles", 
-      "dropdown": "Dropdown Roles"
-    },
-    "mode": {
-      "toggle": "Toggle",
-      "add_only": "Add Only",
-      "remove_only": "Remove Only"
-    },
-    "max_roles": "Maximum Roles",
-    "required_roles": "Required Roles",
-    "blacklisted_roles": "Blacklisted Roles"
-  },
-  "steam": {
-    "game_info": "Steam Game Information",
-    "app_not_found": "Game not found on Steam.",
-    "price": "Price",
-    "release_date": "Release Date",
-    "developer": "Developer",
-    "publisher": "Publisher",
-    "genres": "Genres",
-    "platforms": "Platforms",
-    "reviews": "Reviews",
-    "free": "Free",
-    "coming_soon": "Coming Soon",
-    "early_access": "Early Access",
-    "positive": "Positive",
-    "negative": "Negative",
-    "mixed": "Mixed",
-    "windows": "Windows",
-    "mac": "Mac",
-    "linux": "Linux",
-    "metacritic_score": "Metacritic Score",
-    "achievements": "Achievements",
-    "dlc_count": "DLC Count",
-    "categories": "Categories",
-    "tags": "Tags",
-    "on_sale": "On Sale",
-    "discount": "Discount"
-  },
-  "language": {
-    "set_user": "Your language has been set to **{language}**.",
-    "set_guild": "Server language has been set to **{language}**.",
-    "current_user": "Your current language is **{language}**.",
-    "current_guild": "Server language is **{language}**.",
-    "invalid": "Invalid language. Available languages: {languages}",
-    "available": "Available Languages",
-    "reset_user": "Your language has been reset to server default.",
-    "reset_guild": "Server language has been reset to English.",
-    "list_title": "Language Settings",
-    "user_preference": "Your Language",
-    "server_default": "Server Default",
-    "fallback": "Fallback Language",
-    "coverage": "Translation Coverage",
-    "contributors": "Translation Contributors",
-    "help_translate": "Help us translate the bot to your language!",
-    "language_names": {
-      "en": "English",
-      "es": "Español",
-      "fr": "Français",
-      "de": "Deutsch",
-      "it": "Italiano",
-      "pt": "Português",
-      "pt-BR": "Português (Brasil)",
-      "ru": "Русский",
-      "ja": "日本語",
-      "ko": "한국어",
-      "zh": "中文",
-      "zh-TW": "中文 (繁體)",
-      "ar": "العربية",
-      "hi": "हिन्दी",
-      "tr": "Türkçe",
-      "pl": "Polski",
-      "nl": "Nederlands",
-      "sv": "Svenska",
-      "no": "Norsk",
-      "da": "Dansk",
-      "fi": "Suomi",
-      "cs": "Čeština",
-      "hu": "Magyar",
-      "ro": "Română",
-      "bg": "Български",
-      "hr": "Hrvatski",
-      "sk": "Slovenčina",
-      "sl": "Slovenščina",
-      "et": "Eesti",
-      "lv": "Latviešu",
-      "lt": "Lietuvių",
-      "el": "Ελληνικά",
-      "he": "עברית",
-      "th": "ไทย",
-      "vi": "Tiếng Việt",
-      "id": "Bahasa Indonesia",
-      "ms": "Bahasa Melayu",
-      "tl": "Filipino",
-      "uk": "Українська"
-    }
-  },
-  "reminders": {
-    "set": "Reminder set for {time}!",
-    "invalid_time": "Invalid time format. Use formats like '1h30m', '2d', '30s'.",
-    "max_duration": "Reminder duration cannot exceed 1 year.",
-    "min_duration": "Reminder duration must be at least 1 minute.",
-    "reminder_dm": "⏰ **Reminder**\\n\\n{message}\\n\\n*Set {time} ago*",
-    "list_title": "Your Reminders",
-    "no_reminders": "You have no active reminders.",
-    "cancelled": "Reminder cancelled successfully.",
-    "not_found": "Reminder not found.",
-    "limit_reached": "You can only have {limit} active reminders.",
-    "time_up": "⏰ Time's up! Your reminder: {message}",
-    "private": "Private",
-    "channel_reminder": "Channel Reminder",
-    "recurring": "Recurring",
-    "snooze": "Snooze",
-    "snooze_success": "Reminder snoozed for {time}."
-  },
-  "giveaway": {
-    "created": "Giveaway created successfully!",
-    "ended": "Giveaway Ended",
-    "winners": "Winners",
-    "no_winners": "No valid participants",
-    "winner_dm": "🎉 Congratulations! You won **{prize}** in {server}!",
-    "enter": "Enter Giveaway",
-    "entries": "entries",
-    "hosted_by": "Hosted by",
-    "ends": "Ends",
-    "ended_at": "Ended at",
-    "requirements_not_met": "You don't meet the requirements to enter this giveaway.",
-    "already_entered": "You have already entered this giveaway.",
-    "entered": {
-      "title": "🎉 Entry Successful!",
-      "description": "Successfully entered! You have {entryCount} {entryCount, plural, one {entry} other {entries}}."
-    },
-    "left": {
-      "title": "👋 Left Giveaway",
-      "description": "You have successfully left the giveaway."
-    },
-    "entry_failed": {
-      "title": "❌ Entry Failed",
-      "description": "Failed to enter the giveaway."
-    },
-    "leave_failed": {
-      "title": "❌ Failed to Leave",
-      "description": "Failed to leave the giveaway."
-    },
-    "not_found": "Giveaway not found.",
-    "not_ended": "This giveaway has not ended yet.",
-    "already_ended": "This giveaway has already ended.",
-    "already_ended_or_cancelled": "This giveaway has already ended or been cancelled.",
-    "prize": "Prize",
-    "duration": "Duration",
-    "winner_count": "Winner Count",
-    "requirements": "Requirements",
-    "bonus_entries": "Bonus Entries",
-    "min_level": "Minimum Level",
-    "required_roles": "Required Roles",
-    "min_account_age": "Minimum Account Age",
-    "min_join_age": "Minimum Server Join Age",
-    "booster_bonus": "Server Booster Bonus",
-    "role_bonus": "Role Bonus",
-    "level_bonus": "Level Bonus",
-    "button": {
-      "enter": "Enter Giveaway",
-      "leave": "Leave Giveaway",
-      "info": "Info"
-    },
-    "status": {
-      "title": "Entry Status",
-      "entered": "You are currently entered in this giveaway.",
-      "not_entered": "You are not entered in this giveaway.",
-      "ended": "Ended"
-    },
-    "fields": {
-      "prize": "🎁 Prize",
-      "winners": "👑 Winners",
-      "entries": "📊 Entries",
-      "ends": "⏰ Ends",
-      "host": "👤 Host",
-      "your_entries": "🎯 Your Entries",
-      "requirements": "📋 Requirements"
-    },
-    "no_description": "No description provided.",
-    "footer": "ID: {id}",
-    "requirements": {
-      "min_level": "Level {level}+",
-      "account_age": "Account {days}+ days old",
-      "join_age": "Joined {days}+ days ago",
-      "roles": "Specific roles required"
-    },
-    "reroll": {
-      "success": {
-        "title": "🔄 Giveaway Rerolled",
-        "description": "**New Winners ({count}):** {winners}\n\n{reason}"
-      },
-      "error": {
-        "title": "Invalid Reroll Count",
-        "count_range": "Reroll count must be between 1 and 20.",
-        "failed": {
-          "title": "Reroll Failed"
-        }
-      },
-      "modal": {
-        "title": "Reroll Giveaway",
-        "count_label": "Number of Winners to Reroll",
-        "count_placeholder": "Enter number (default: 1)",
-        "reason_label": "Reason for Reroll",
-        "reason_placeholder": "Optional: Explain why you are rerolling"
-      }
-    },
-    "edit": {
-      "success": {
-        "title": "✅ Giveaway Updated",
-        "description": "Giveaway details updated successfully."
-      },
-      "error": {
-        "title": "Invalid Title",
-        "title_length": "Title must be at least 3 characters long.",
-        "prize_required": "Prize is required.",
-        "winner_count": "Winner count must be between 1 and 100."
-      },
-      "modal": {
-        "title": "Edit Giveaway Details",
-        "title_label": "Title",
-        "description_label": "Description",
-        "prize_label": "Prize",
-        "winners_label": "Number of Winners"
-      }
-    },
-    "end": {
-      "success": {
-        "title": "🎉 Giveaway Ended",
-        "description": "**Winners ({count}):** {winners}"
-      },
-      "error": {
-        "title": "End Failed"
-      }
-    },
-    "cancel": {
-      "success": {
-        "title": "🗑️ Giveaway Cancelled",
-        "description": "Giveaway has been cancelled successfully."
-      },
-      "error": {
-        "title": "Cancel Failed"
-      }
-    },
-    "confirm_end": "Confirm End",
-    "confirm_cancel": "Confirm Cancel",
-    "action_cancelled": "✅ Action cancelled.",
-    "end_confirmation": {
-      "title": "⚠️ End Giveaway Early",
-      "description": "Are you sure you want to end \"{title}\" early?\n\nThis action cannot be undone and winners will be selected immediately."
-    },
-    "cancel_confirmation": {
-      "title": "🗑️ Cancel Giveaway",
-      "description": "Are you sure you want to cancel \"{title}\"?\n\nThis action cannot be undone and no winners will be selected."
-    },
-    "requirements": {
-      "success": {
-        "title": "✅ Requirements Updated",
-        "description": "**New Requirements:**\n{requirements}"
-      },
-      "error": {
-        "title": "Invalid Requirements",
-        "level": "Minimum level must be between 0 and 1000.",
-        "account_age": "Account age must be between 0 and 3650 days.",
-        "join_age": "Join age must be between 0 and 3650 days.",
-        "failed": {
-          "title": "Update Failed"
-        }
-      },
-      "modal": {
-        "title": "Edit Requirements",
-        "min_level": "Minimum Level (0 = no requirement)",
-        "account_age": "Min Account Age (days, 0 = no requirement)",
-        "join_age": "Min Join Age (days, 0 = no requirement)"
-      }
-    },
-    "manage_entries": {
-      "success": {
-        "title": "✅ Entry Management",
-        "description": "**Action:** {action}\n**User:** {user}\n**Result:** {result}\n{reason}"
-      },
-      "error": {
-        "title": "Invalid Action",
-        "action": "Action must be either \"add\" or \"remove\".",
-        "user_id": "User ID must be a valid Discord user ID.",
-        "entry_count": "Entry count must be between 1 and 100.",
-        "user_not_found": "The specified user could not be found.",
-        "failed": {
-          "title": "Action Failed"
-        }
-      },
-      "modal": {
-        "title": "Manage Entries",
-        "action": "Action (add/remove)",
-        "user_id": "User ID",
-        "entry_count": "Entry Count (for add action)",
-        "reason": "Reason"
-      }
-    },
-    "entries": {
-      "title": "📊 Entries for {title}",
-      "stats": "**Participants:** {participants}\n**Total Entries:** {totalEntries}",
-      "top_participants": "🏆 Top Participants",
-      "none": "None",
-      "showing_top": "Showing top 20 of {total} participants",
-      "export": "Export All",
-      "no_entries": {
-        "title": "📊 No Entries",
-        "description": "This giveaway has no entries yet."
-      }
-    },
-    "export": {
-      "success": {
-        "title": "📁 Data Exported",
-        "description": "Exported data for {participants} participants and {winners} winners."
-      }
-    }
-  },
-  "polls": {
-    "created": "Poll created successfully!",
-    "ended": "Poll ended.",
-    "results": "Poll Results",
-    "total_votes": "Total votes",
-    "no_votes": "No votes cast",
-    "voted": "You have voted for option {option}!",
-    "already_voted": "You have already voted in this poll.",
-    "invalid_option": "Invalid poll option.",
-    "anonymous": "Anonymous Poll",
-    "public": "Public Poll",
-    "multiple_choice": "Multiple Choice",
-    "single_choice": "Single Choice",
-    "vote": "Vote",
-    "change_vote": "Change Vote",
-    "remove_vote": "Remove Vote",
-    "vote_changed": "Your vote has been changed.",
-    "vote_removed": "Your vote has been removed.",
-    "poll_closed": "This poll has been closed.",
-    "option": "Option",
-    "percentage": "Percentage",
-    "end_time": "Ends"
-  },
-  "verification": {
-    "verify_prompt": "Please complete the verification to access the server.",
-    "verify_button": "Verify",
-    "captcha_prompt": "Please solve the captcha below:",
-    "verified": "You have been verified successfully!",
-    "verification_failed": "Verification failed. Please try again.",
-    "already_verified": "You are already verified.",
-    "timeout": "Verification timed out. Please try again.",
-    "invalid_captcha": "Invalid captcha. Please try again.",
-    "welcome_verified": "Welcome to {server}! You are now verified.",
-    "rules_accepted": "You have accepted the server rules.",
-    "age_verified": "Age verification completed.",
-    "email_verification": "Email verification required.",
-    "phone_verification": "Phone verification required.",
-    "manual_verification": "Manual verification pending.",
-    "verification_level": {
-      "none": "No Verification",
-      "low": "Low - Email verification",
-      "medium": "Medium - Phone verification", 
-      "high": "High - Manual verification",
-      "highest": "Highest - Manual approval"
-    }
-  },
-  "logging": {
-    "set_category": "Log channel for **{category}** has been set to {channel}.",
-    "disable_category": "Logging for **{category}** has been disabled.",
-    "list_title": "Log Channel Configuration",
-    "enabled_categories": "Enabled Categories",
-    "disabled_categories": "Disabled Categories",
-    "using_default": "Using Default Channel",
-    "no_channels": "No log channels configured.",
-    "categories": {
-      "moderation": "Moderation Actions",
-      "message": "Message Events",
-      "member": "Member Events", 
-      "voice": "Voice Events",
-      "channel": "Channel Events",
-      "role": "Role Events",
-      "server": "Server Events",
-      "automod": "Auto Moderation",
-      "economy": "Economy Transactions",
-      "tickets": "Ticket Events",
-      "giveaways": "Giveaway Events"
-    },
-    "events": {
-      "message_delete": "Message Deleted",
-      "message_edit": "Message Edited",
-      "member_join": "Member Joined",
-      "member_leave": "Member Left",
-      "member_update": "Member Updated",
-      "voice_join": "Voice Channel Joined",
-      "voice_leave": "Voice Channel Left",
-      "voice_move": "Voice Channel Moved",
-      "channel_create": "Channel Created",
-      "channel_delete": "Channel Deleted",
-      "role_create": "Role Created",
-      "role_delete": "Role Deleted",
-      "ban_add": "Member Banned",
-      "ban_remove": "Member Unbanned"
-    }
-  },
-  "config": {
-    "prefix_set": "Command prefix has been set to `{prefix}`.",
-    "prefix_reset": "Command prefix has been reset to default.",
-    "feature_enabled": "{feature} has been enabled.",
-    "feature_disabled": "{feature} has been disabled.",
-    "setting_updated": "{setting} has been updated to {value}.",
-    "settings_list": "Server Configuration",
-    "current_settings": "Current Settings",
-    "default_value": "Default",
-    "reset_settings": "Settings reset to default.",
-    "import_settings": "Settings imported successfully.",
-    "export_settings": "Settings exported successfully.",
-    "invalid_setting": "Invalid setting. Available settings: {settings}",
-    "permission_role": "Permission Role",
-    "mod_role": "Moderator Role",
-    "admin_role": "Admin Role",
-    "mute_role": "Mute Role",
-    "features": {
-      "economy": "Economy System",
-      "xp": "XP System",
-      "automod": "Auto Moderation",
-      "logging": "Event Logging",
-      "welcome": "Welcome Messages",
-      "leveling": "Level Rewards",
-      "tickets": "Ticket System",
-      "giveaways": "Giveaway System",
-      "polls": "Poll System",
-      "reminders": "Reminder System"
-    }
+    "noReasonProvided": "No reason provided",
+    "seconds": "seconds",
+    "hours": "hours",
+    "disable": "Disable",
+    "enable": "Enable",
+    "notYourButton": "You cannot use this button",
+    "featureNotImplemented": "This feature is not yet implemented"
   },
   "commands": {
     "ping": {
-      "description": "Check bot latency and response time",
-      "pong": "Pong!",
-      "bot_latency": "Bot Latency",
-      "api_latency": "API Latency",
-      "status": "Status",
-      "excellent": "Excellent",
-      "good": "Good",
-      "poor": "Poor",
-      "uptime": "Uptime",
-      "shard": "Shard",
-      "websocket": "WebSocket Latency"
+      "description": "Check the bot's latency",
+      "response": "Pong! Latency: {{latency}}ms | API Latency: {{apiLatency}}ms"
     },
     "help": {
-      "description": "Get help with bot commands",
-      "title": "Bot Help",
-      "categories": "Command Categories",
+      "description": "Get help with commands",
+      "title": "Help Menu",
+      "commandInfo": "Command Information",
       "usage": "Usage",
-      "permissions": "Required Permissions",
       "cooldown": "Cooldown",
-      "examples": "Examples",
-      "aliases": "Aliases",
-      "category": {
+      "cooldownValue": "{{seconds}} seconds",
+      "permissions": "Required Permissions",
+      "category": "Category",
+      "noDescription": "No description available",
+      "menuFooter": "Use /utils help <command> for detailed command info",
+      "commandFooter": "<> = required, [] = optional",
+      "commandNotFound": "Command not found",
+      "commandName": "Command",
+      "subcommands": "Subcommands",
+      "categories": {
+        "utility": "Utility",
         "moderation": "Moderation",
         "economy": "Economy",
-        "fun": "Fun & Games",
-        "utility": "Utility",
-        "xp": "Leveling",
-        "music": "Music",
-        "admin": "Administration",
-        "info": "Information"
-      },
-      "command_not_found": "Command not found.",
-      "no_description": "No description available.",
-      "dm_help": "Help information sent to your DMs!",
-      "dm_failed": "Failed to send DM. Here's the help information:",
-      "support_server": "Support Server",
-      "invite_bot": "Invite Bot",
-      "dashboard": "Web Dashboard"
+        "xp": "XP System",
+        "giveaways": "Giveaways",
+        "tickets": "Tickets",
+        "fun": "Fun",
+        "admin": "Admin"
+      }
     },
-    "stats": {
-      "title": "Bot Statistics",
-      "guild_count": "Servers",
-      "user_count": "Users",
-      "command_count": "Commands Used",
-      "uptime": "Uptime",
-      "memory_usage": "Memory Usage",
-      "response_time": "Response Time",
-      "database_status": "Database",
-      "api_status": "API Status",
-      "shard_info": "Shard Information",
-      "version": "Version",
-      "last_restart": "Last Restart",
-      "developer": "Developer",
-      "library": "Library",
-      "node_version": "Node.js Version"
+    "utils": {
+      "description": "Utility commands for various information",
+      "avatar": {
+        "title": "{{user}}'s Avatar",
+        "footer": "Avatar URL"
+      },
+      "banner": {
+        "title": "{{user}}'s Banner",
+        "footer": "Banner URL",
+        "noBanner": "{{user}} doesn't have a banner",
+        "error": "Failed to fetch banner"
+      },
+      "steam": {
+        "notFound": "Steam profile not found",
+        "error": "Failed to fetch Steam profile",
+        "status": "Status",
+        "visibility": "Visibility",
+        "created": "Created",
+        "playing": "Currently Playing",
+        "realName": "Real Name",
+        "country": "Country",
+        "unknown": "Unknown",
+        "footer": "Steam Profile",
+        "statusOffline": "Offline",
+        "statusOnline": "Online",
+        "statusBusy": "Busy",
+        "statusAway": "Away",
+        "statusSnooze": "Snooze",
+        "statusLookingToTrade": "Looking to Trade",
+        "statusLookingToPlay": "Looking to Play",
+        "visibilityPrivate": "Private",
+        "visibilityFriendsOnly": "Friends Only",
+        "visibilityPublic": "Public"
+      },
+      "userinfo": {
+        "title": "User Information - {{user}}",
+        "username": "Username",
+        "id": "User ID",
+        "bot": "Bot",
+        "created": "Account Created",
+        "joined": "Joined Server",
+        "nickname": "Nickname",
+        "roles": "Roles",
+        "permissions": "Key Permissions",
+        "badges": "Badges",
+        "footer": "User Info"
+      },
+      "whois": {
+        "title": "User Lookup",
+        "tag": "Tag",
+        "inServer": "In This Server",
+        "notFound": "User not found",
+        "footer": "User ID Lookup"
+      },
+      "roleinfo": {
+        "title": "Role Information - {{role}}",
+        "name": "Name",
+        "id": "Role ID",
+        "color": "Color",
+        "position": "Position",
+        "mentionable": "Mentionable",
+        "hoisted": "Hoisted",
+        "created": "Created",
+        "members": "Members",
+        "permissions": "Permissions",
+        "footer": "Role Info"
+      },
+      "serverinfo": {
+        "title": "Server Information",
+        "name": "Name",
+        "id": "Server ID",
+        "owner": "Owner",
+        "created": "Created",
+        "members": "Members",
+        "membersValue": "Total: {{total}}\nHumans: {{humans}}\nBots: {{bots}}",
+        "channels": "Channels",
+        "channelsValue": "Total: {{total}}\nText: {{text}}\nVoice: {{voice}}\nCategories: {{categories}}",
+        "roles": "Roles",
+        "emojis": "Emojis",
+        "boosts": "Server Boosts",
+        "boostsValue": "Level {{level}} ({{boosts}} boosts)",
+        "description": "Description",
+        "features": "Features",
+        "footer": "Server Info"
+      },
+      "support": {
+        "title": "Support Server",
+        "description": "Need help with Pegasus? Join our support server!",
+        "link": "Support Server Link",
+        "footer": "Pegasus Support"
+      }
+    },
+    "economy": {
+      "description": "Economy system commands",
+      "balance": {
+        "description": "Check your or another user's balance",
+        "title": "{{symbol}} Balance",
+        "userBalance": "**{{user}}'s Balance**",
+        "wallet": "Wallet",
+        "bank": "Bank",
+        "netWorth": "Net Worth",
+        "statistics": "Statistics",
+        "totalEarned": "Total Earned: {{symbol}} {{amount}}",
+        "totalSpent": "Total Spent: {{symbol}} {{amount}}",
+        "totalGambled": "Total Gambled: {{symbol}} {{amount}}",
+        "recentTransactions": "Recent Transactions",
+        "currency": "Currency: {{name}}"
+      },
+      "daily": {
+        "description": "Claim your daily reward",
+        "success": "Daily Reward Claimed!",
+        "received": "You received your daily reward!",
+        "reward": "Reward",
+        "streak": "Streak",
+        "newBalance": "New Balance",
+        "streakBonus": "Streak Bonus",
+        "streakBonusText": "You earned {{symbol}}{{amount}} extra for your {{days}} day streak!",
+        "cooldown": "You can claim your daily reward in {{hours}}h {{minutes}}m",
+        "comeback": "Come back tomorrow for more rewards!"
+      },
+      "work": {
+        "description": "Work to earn money",
+        "success": "Work Complete!",
+        "earned": "Earned",
+        "newBalance": "New Balance",
+        "cooldown": "You can work again in {{minutes}}m {{seconds}}s",
+        "cooldownFooter": "You can work again in {{minutes}} minutes",
+        "jobs": {
+          "programmer": "You worked as a programmer and fixed bugs",
+          "pizza": "You delivered pizzas around town",
+          "store": "You helped at the local store",
+          "freelance": "You did some freelance work",
+          "lawn": "You mowed lawns in the neighborhood",
+          "lemonade": "You sold lemonade at a stand",
+          "dogwalker": "You walked dogs for your neighbors",
+          "tutor": "You tutored students online"
+        }
+      },
+      "rob": {
+        "description": "Attempt to rob another user",
+        "selfError": "You cannot rob yourself!",
+        "botError": "You cannot rob bots!",
+        "protectedTitle": "Rob Failed - Protected!",
+        "protectedText": "{{user}} has rob protection! You cannot rob them.",
+        "protectedFooter": "Buy protection from the shop to protect yourself!",
+        "successTitle": "Robbery Successful!",
+        "successText": "You successfully robbed {{user}}!",
+        "failedTitle": "Robbery Failed!",
+        "failedText": "You were caught trying to rob {{user}}!",
+        "amountStolen": "Amount Stolen",
+        "fine": "Fine",
+        "yourBalance": "Your Balance",
+        "victimBalance": "Victim Balance",
+        "notEnoughMoney": "This user doesn't have enough money to rob",
+        "disabled": "Robbing is disabled in this server",
+        "cooldown": "You can rob again in {{hours}}h {{minutes}}m"
+      },
+      "gamble": {
+        "description": "Play various gambling games",
+        "invalidBet": "Bet must be between {{symbol}}{{min}} and {{symbol}}{{max}}",
+        "insufficientFunds": "Insufficient funds or invalid bet amount",
+        "dice": {
+          "description": "Roll dice against the dealer",
+          "title": "🎲 Dice Game",
+          "tie": "It's a tie!",
+          "won": "You won!",
+          "lost": "You lost!",
+          "yourRoll": "Your Roll",
+          "dealerRoll": "Dealer Roll",
+          "result": "Result",
+          "push": "Push"
+        },
+        "coinflip": {
+          "description": "Flip a coin",
+          "title": "🪙 Coinflip",
+          "landed": "The coin landed on **{{result}}**!",
+          "yourChoice": "Your Choice"
+        },
+        "slots": {
+          "description": "Play the slot machine",
+          "title": "🎰 Slot Machine",
+          "jackpot": "💰 JACKPOT! 💰",
+          "triple": "🎉 Triple Match!",
+          "double": "✨ Double Match!",
+          "noMatch": "No match",
+          "jackpotWin": "🎊 Congratulations!",
+          "jackpotText": "You hit the JACKPOT with triple 7s! {{multiplier}}x multiplier!"
+        },
+        "blackjack": {
+          "description": "Play blackjack against the dealer",
+          "title": "🃏 Blackjack",
+          "yourHand": "Your Hand",
+          "dealerHand": "Dealer Hand",
+          "value": "Value: {{value}}",
+          "blackjack": " - Blackjack!",
+          "bust": " - Bust!",
+          "push": "Push",
+          "returned": "Returned",
+          "blackjackWin": "🎊 **BLACKJACK!** You got 21 with your first two cards!"
+        },
+        "roulette": {
+          "description": "Play roulette",
+          "title": "🎰 Roulette",
+          "landed": "The ball landed on **{{emoji}} {{number}}**",
+          "yourBet": "Your Bet",
+          "result": "Result",
+          "multiplier": "Multiplier",
+          "numberRequired": "Please specify a number to bet on (0-36)"
+        },
+        "stats": {
+          "winRate": "Win Rate: {{rate}}% | Streak: {{streak}}",
+          "gamesPlayed": "Win Rate: {{rate}}% | Games Played: {{games}}",
+          "bestWin": "Win Rate: {{rate}}% | Best Win: {{symbol}}{{amount}}",
+          "totalWagered": "Win Rate: {{rate}}% | Total Wagered: {{symbol}}{{amount}}"
+        }
+      },
+      "shop": {
+        "description": "Shop commands",
+        "view": {
+          "description": "View available shop items",
+          "title": "{{symbol}} Shop",
+          "balance": "Your balance: {{symbol}}{{amount}}",
+          "page": "Page {{current}}/{{total}} • Use /shop buy <item> to purchase",
+          "stock": "Stock",
+          "unlimited": "Unlimited",
+          "left": "{{amount}} left",
+          "price": "Price",
+          "effect": "Effect",
+          "empty": "The shop is currently empty. Please contact an administrator.",
+          "notForYou": "This shop view is not for you!"
+        },
+        "buy": {
+          "description": "Purchase an item from the shop",
+          "itemNotFound": "Item not found in the shop!",
+          "success": "Purchase Successful!",
+          "purchased": "You purchased **{{quantity}}x {{item}}**!",
+          "totalCost": "Total Cost"
+        },
+        "inventory": {
+          "description": "View your purchased items",
+          "title": "📦 Your Inventory",
+          "itemCount": "You have {{count}} unique item{{s}}",
+          "empty": "Your inventory is empty! Visit the shop to purchase items.",
+          "expires": "Expires",
+          "effect": "Effect"
+        },
+        "effects": {
+          "robProtection": "🛡️ Protection from robbery for {{hours}} hours",
+          "xpBoost": "📈 {{multiplier}}x XP boost for {{hours}} hours",
+          "luckBoost": "🍀 Increases gambling win rate by {{bonus}}% for {{hours}} hours",
+          "workBoost": "💪 Increases work rewards by {{percent}}% for {{hours}} hours",
+          "bankAccess": "🏦 Allows you to store money in the bank ({{uses}} use{{s}})",
+          "role": "🎭 Grants a special role",
+          "special": "✨ Special effect"
+        }
+      },
+      "errors": {
+        "general": "Failed to process request. Please try again later.",
+        "insufficientFunds": "Insufficient funds",
+        "invalidAmount": "Invalid amount",
+        "userNotFound": "User not found",
+        "itemNotFound": "Item not found",
+        "notEnoughStock": "Not enough stock available"
+      }
+    },
+    "config": {
+      "description": "Configure server settings",
+      "subcommands": {
+        "xp": {
+          "description": "Configure XP system settings",
+          "embed": {
+            "title": "XP Configuration",
+            "description": "Configure XP system settings for your server",
+            "fields": {
+              "status": "Status",
+              "perMessage": "XP per Message",
+              "perVoiceMinute": "XP per Voice Minute",
+              "cooldown": "Cooldown",
+              "levelUpAnnounce": "Announce Level Up",
+              "boosterRole": "Booster Role",
+              "boosterMultiplier": "Booster Multiplier",
+              "roleRewards": "Role Rewards"
+            }
+          },
+          "buttons": {
+            "rates": "Rates",
+            "channels": "Channels",
+            "roles": "Roles",
+            "rewards": "Rewards"
+          }
+        },
+        "eco": {
+          "description": "Configure economy settings",
+          "embed": {
+            "title": "Economy Configuration",
+            "description": "Configure economy settings for your server",
+            "fields": {
+              "currency": "Currency",
+              "startingBalance": "Starting Balance",
+              "dailyAmount": "Daily Amount",
+              "workReward": "Work Reward Range",
+              "robEnabled": "Rob Enabled",
+              "shopItems": "Shop Items",
+              "itemsConfigured": "items configured"
+            }
+          },
+          "buttons": {
+            "currency": "Currency",
+            "rewards": "Rewards",
+            "rob": "Rob Settings",
+            "shop": "Shop Manager"
+          }
+        },
+        "lang": {
+          "description": "Set server language",
+          "options": {
+            "language": "Select the language for the bot"
+          },
+          "success": {
+            "title": "Language Updated",
+            "description": "Server language has been set to {{language}}"
+          }
+        },
+        "welcome": {
+          "description": "Configure welcome messages",
+          "embed": {
+            "title": "Welcome Configuration",
+            "description": "Configure welcome messages for new members",
+            "fields": {
+              "status": "Status",
+              "channel": "Channel",
+              "embedEnabled": "Embed Enabled",
+              "dmEnabled": "DM Enabled",
+              "message": "Message"
+            }
+          },
+          "buttons": {
+            "channel": "Set Channel",
+            "message": "Edit Message",
+            "embed": "Embed Settings",
+            "dm": "DM Settings"
+          }
+        },
+        "autorole": {
+          "description": "Configure auto-role assignment",
+          "embed": {
+            "title": "Autorole Configuration",
+            "description": "Configure automatic role assignment for new members",
+            "fields": {
+              "status": "Status",
+              "roles": "Roles"
+            }
+          },
+          "buttons": {
+            "add": "Add Role",
+            "remove": "Remove Role",
+            "clear": "Clear All"
+          }
+        },
+        "goodbye": {
+          "description": "Configure goodbye messages",
+          "embed": {
+            "title": "Goodbye Configuration",
+            "description": "Configure goodbye messages for leaving members",
+            "fields": {
+              "status": "Status",
+              "channel": "Channel",
+              "embedEnabled": "Embed Enabled",
+              "message": "Message"
+            }
+          },
+          "buttons": {
+            "channel": "Set Channel",
+            "message": "Edit Message",
+            "embed": "Embed Settings"
+          }
+        }
+      }
+    },
+    "moderation": {
+      "description": "Moderation commands",
+      "subcommands": {
+        "ban": {
+          "description": "Ban a user from the server",
+          "options": {
+            "user": "The user to ban",
+            "reason": "Reason for the ban",
+            "deleteDays": "Number of days of messages to delete (0-7)"
+          },
+          "memberNotFound": "Member not found in this server",
+          "cannotBanSelf": "You cannot ban yourself!",
+          "cannotBanBot": "I cannot ban myself!",
+          "cannotBan": "I cannot ban this member",
+          "higherRole": "You cannot ban a member with a higher or equal role",
+          "botHierarchy": "I cannot ban this member due to role hierarchy",
+          "dmTitle": "You have been banned",
+          "dmDescription": "You have been banned from **{{guild}}**\n\n**Reason:** {{reason}}",
+          "success": {
+            "title": "Member Banned",
+            "description": "**{{user}}** has been banned by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to ban the member"
+        },
+        "kick": {
+          "description": "Kick a user from the server",
+          "options": {
+            "user": "The user to kick",
+            "reason": "Reason for the kick"
+          },
+          "memberNotFound": "Member not found in this server",
+          "cannotKickSelf": "You cannot kick yourself!",
+          "cannotKickBot": "I cannot kick myself!",
+          "cannotKick": "I cannot kick this member",
+          "higherRole": "You cannot kick a member with a higher or equal role",
+          "botHierarchy": "I cannot kick this member due to role hierarchy",
+          "dmTitle": "You have been kicked",
+          "dmDescription": "You have been kicked from **{{guild}}**\n\n**Reason:** {{reason}}",
+          "success": {
+            "title": "Member Kicked",
+            "description": "**{{user}}** has been kicked by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to kick the member"
+        },
+        "timeout": {
+          "description": "Timeout a user",
+          "options": {
+            "user": "The user to timeout",
+            "duration": "Duration of the timeout in minutes",
+            "reason": "Reason for the timeout"
+          },
+          "memberNotFound": "Member not found in this server",
+          "cannotTimeoutSelf": "You cannot timeout yourself!",
+          "cannotTimeoutBot": "I cannot timeout myself!",
+          "cannotTimeout": "I cannot timeout this member",
+          "higherRole": "You cannot timeout a member with a higher or equal role",
+          "botHierarchy": "I cannot timeout this member due to role hierarchy",
+          "dmTitle": "You have been timed out",
+          "dmDescription": "You have been timed out in **{{guild}}** for **{{duration}}**\n\n**Reason:** {{reason}}",
+          "success": {
+            "title": "Member Timed Out",
+            "description": "**{{user}}** has been timed out for **{{duration}}** by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to timeout the member"
+        },
+        "resetxp": {
+          "description": "Reset a user's XP",
+          "options": {
+            "user": "The user whose XP to reset",
+            "confirm": "Confirm the XP reset"
+          },
+          "notConfirmed": "XP reset not confirmed. Operation cancelled.",
+          "cannotResetSelf": "You cannot reset your own XP!",
+          "success": {
+            "title": "XP Reset",
+            "description": "**{{user}}'s** XP has been reset to 0 by **{{moderator}}**"
+          },
+          "error": "Failed to reset XP"
+        }
+      }
+    },
+    "giveaway": {
+      "description": "Giveaway management commands",
+      "invalidDuration": "Invalid duration format. Use format like: 1h, 30m, 7d",
+      "error": "An error occurred while processing the giveaway",
+      "notFound": "Giveaway not found",
+      "notActive": "This giveaway is not active",
+      "subcommands": {
+        "start": {
+          "description": "Start an advanced giveaway with custom settings",
+          "options": {
+            "prize": "What you're giving away",
+            "duration": "How long the giveaway should last (e.g., 1h, 30m, 7d)",
+            "winners": "Number of winners (default: 1)",
+            "channel": "Channel to start the giveaway in (default: current channel)"
+          },
+          "modal": {
+            "title": "Advanced Giveaway Settings",
+            "description": "Giveaway description (optional)",
+            "requirements": "Entry requirements (optional)",
+            "bonusEntries": "Bonus entry settings (optional)",
+            "embedColor": "Embed color in hex (optional)",
+            "host": "Giveaway host (optional)"
+          },
+          "success": "Giveaway created successfully! ID: `{{id}}`"
+        },
+        "simple": {
+          "description": "Start a simple giveaway",
+          "options": {
+            "prize": "What you're giving away",
+            "duration": "How long the giveaway should last",
+            "winners": "Number of winners"
+          },
+          "success": "Simple giveaway created successfully! ID: `{{id}}`"
+        },
+        "end": {
+          "description": "End a giveaway early",
+          "options": {
+            "giveawayId": "The giveaway ID to end"
+          },
+          "success": "Giveaway `{{id}}` ended successfully with {{count}} winner(s)!"
+        },
+        "reroll": {
+          "description": "Reroll winners for an ended giveaway",
+          "options": {
+            "giveawayId": "The giveaway ID to reroll",
+            "winners": "New number of winners (optional)"
+          },
+          "success": "Giveaway `{{id}}` rerolled successfully with {{count}} new winner(s)!"
+        },
+        "configure": {
+          "description": "Configure an active giveaway",
+          "options": {
+            "giveawayId": "The giveaway ID to configure"
+          },
+          "modal": {
+            "title": "Configure Giveaway",
+            "prize": "Prize",
+            "winners": "Number of winners",
+            "description": "Description",
+            "requirements": "Entry requirements",
+            "bonusEntries": "Bonus entries"
+          },
+          "success": "Giveaway `{{id}}` configured successfully!"
+        }
+      },
+      "embed": {
+        "title": "🎉 GIVEAWAY 🎉",
+        "ended": "🎉 GIVEAWAY ENDED 🎉",
+        "description": "React with 🎉 to enter!\n\n**Prize:** {{prize}}",
+        "simpleDescription": "**Prize:** {{prize}}",
+        "hostedBy": "Hosted By",
+        "winners": "Winners",
+        "endsAt": "Ends",
+        "footer": "Giveaway ID: {{id}}",
+        "requirements": "Requirements",
+        "bonusEntries": "Bonus Entries",
+        "winnersField": "Winner(s)",
+        "noWinners": "No valid entries"
+      },
+      "buttons": {
+        "enter": "Enter Giveaway",
+        "info": "Giveaway Info"
+      },
+      "interactions": {
+        "entered": "You have entered the giveaway with {{entries}} entries!",
+        "left": "You have left the giveaway!",
+        "alreadyEntered": "You are already entered in this giveaway!",
+        "requirementsNotMet": "You do not meet the requirements for this giveaway"
+      },
+      "info": {
+        "title": "Giveaway Information",
+        "description": "Information about the giveaway for **{{prize}}**",
+        "status": "Status",
+        "statusActive": "Active",
+        "statusEnded": "Ended",
+        "entries": "Total Entries",
+        "winners": "Winners",
+        "yourEntries": "Your Entries",
+        "yourStats": "Your Stats",
+        "statsValue": "{{entries}} entries, {{wins}} wins",
+        "requirements": "Requirements",
+        "bonusEntries": "Bonus Entries",
+        "footer": "ID: {{id}}"
+      },
+      "winnerAnnouncement": "Congratulations {{winners}}! You won **{{prize}}**!"
+    },
+    "language": {
+      "description": "Language settings",
+      "subcommands": {
+        "available": {
+          "description": "View available languages",
+          "title": "Available Languages",
+          "description": "Choose your preferred language for bot responses",
+          "footer": "Use /language set to change your language"
+        },
+        "current": {
+          "description": "View your current language setting",
+          "title": "Current Language",
+          "description": "Your current language is **{{language}}** (`{{code}}`)",
+          "footer": "Use /language set to change"
+        },
+        "set": {
+          "description": "Set your preferred language",
+          "options": {
+            "language": "The language to use"
+          },
+          "invalidLanguage": "Invalid language selected",
+          "success": {
+            "title": "Language Updated",
+            "description": "Your language has been set to **{{language}}**"
+          }
+        }
+      }
+    },
+    "blacklist": {
+      "description": "Manage server blacklist",
+      "error": "An error occurred while managing the blacklist",
+      "subcommands": {
+        "user": {
+          "description": "Add a user to the blacklist",
+          "options": {
+            "user": "The user to blacklist",
+            "reason": "Reason for blacklisting"
+          },
+          "alreadyBlacklisted": "This user is already blacklisted!",
+          "cannotBlacklistSelf": "You cannot blacklist yourself!",
+          "cannotBlacklistBot": "You cannot blacklist the bot!",
+          "success": {
+            "title": "User Blacklisted",
+            "description": "**{{user}}** has been added to the blacklist",
+            "reason": "Reason",
+            "blacklistedBy": "Blacklisted By"
+          }
+        },
+        "view": {
+          "description": "View blacklisted users",
+          "options": {
+            "page": "Page number"
+          },
+          "noBlacklisted": "No users are currently blacklisted",
+          "title": "Blacklisted Users",
+          "description": "Page {{page}} of {{totalPages}}",
+          "reason": "Reason",
+          "blacklistedBy": "Blacklisted By",
+          "date": "Date"
+        },
+        "remove": {
+          "description": "Remove a user from the blacklist",
+          "options": {
+            "user": "The user to remove from blacklist"
+          },
+          "notBlacklisted": "This user is not blacklisted!",
+          "success": {
+            "title": "User Removed from Blacklist",
+            "description": "**{{user}}** has been removed from the blacklist"
+          }
+        }
+      }
+    },
+    "warn": {
+      "description": "Manage warnings",
+      "subcommands": {
+        "create": {
+          "description": "Warn a user",
+          "options": {
+            "user": "The user to warn",
+            "title": "Title of the warning",
+            "description": "Description of the warning",
+            "level": "Warning level (default: 1)",
+            "proof": "Proof attachment"
+          },
+          "success": "Successfully warned {{user}}",
+          "embed": {
+            "title": "Warning Issued",
+            "warnId": "Warning ID",
+            "level": "Level"
+          }
+        },
+        "edit": {
+          "description": "Edit a warning",
+          "options": {
+            "warnid": "The warning ID to edit"
+          },
+          "modal": {
+            "title": "Edit Warning",
+            "titleField": "Warning Title",
+            "descriptionField": "Warning Description"
+          },
+          "success": "Successfully edited warning {{warnId}}",
+          "notFound": "Warning not found"
+        },
+        "lookup": {
+          "description": "Lookup a specific warning",
+          "options": {
+            "warnid": "The warning ID to lookup"
+          },
+          "notFound": "Warning {{warnId}} not found"
+        },
+        "view": {
+          "description": "View all warnings for a user",
+          "options": {
+            "user": "The user to view warnings for"
+          },
+          "title": "Warnings for {{user}}",
+          "noWarnings": "No warnings found for {{user}}",
+          "stats": "Total Warnings: {{count}} | Total Level: {{level}}"
+        },
+        "automation": {
+          "create": {
+            "description": "Create a warning automation",
+            "modal": {
+              "title": "Create Warning Automation",
+              "name": "Automation Name",
+              "description": "Automation Description",
+              "triggerType": "Trigger Type (warn_count or warn_level)",
+              "triggerValue": "Trigger Value",
+              "actions": "Actions (JSON format)"
+            },
+            "success": "Successfully created automation {{name}}",
+            "invalidJson": "Invalid JSON format for actions"
+          },
+          "view": {
+            "description": "View all warning automations",
+            "title": "Warning Automations",
+            "noAutomations": "No automations configured",
+            "fields": {
+              "trigger": "Trigger",
+              "actions": "Actions",
+              "status": "Status",
+              "lastTriggered": "Last Triggered"
+            }
+          },
+          "delete": {
+            "description": "Delete a warning automation",
+            "options": {
+              "automationid": "The automation ID to delete"
+            },
+            "success": "Successfully deleted automation {{automationId}}",
+            "notFound": "Automation not found"
+          }
+        }
+      }
+    },
+    "xp": {
+      "description": "XP system commands",
+      "rank": {
+        "description": "View your XP rank card",
+        "noData": "{{user}} has not earned any XP yet"
+      },
+      "leaderboard": {
+        "description": "View the server XP leaderboard",
+        "title": "{{guild}} XP Leaderboard",
+        "noData": "No XP data found for this server",
+        "entry": "Level {{level}} • {{xp}} XP",
+        "footer": "Page {{page}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "configuration": {
+        "description": "View current XP configuration",
+        "title": "XP Configuration",
+        "status": "XP System",
+        "perMessage": "XP per Message",
+        "perVoiceMinute": "XP per Voice Minute",
+        "cooldown": "Message Cooldown",
+        "levelUpAnnounce": "Level Up Announcements",
+        "levelUpChannel": "Level Up Channel",
+        "boosterRole": "Booster Role",
+        "multiplier": "multiplier",
+        "roleRewards": "Role Rewards",
+        "level": "Level",
+        "andMore": "and more...",
+        "ignoredChannels": "Ignored Channels",
+        "noXpChannels": "No XP Channels",
+        "doubleXpChannels": "Double XP Channels",
+        "channels": "channels",
+        "specialChannels": "Special Channels",
+        "footer": "Use /config xp to modify these settings"
+      },
+      "card": {
+        "description": "Customize your rank card colors",
+        "modalTitle": "Customize Rank Card",
+        "backgroundColor": "Background Color",
+        "progressBarColor": "Progress Bar Color",
+        "textColor": "Text Color",
+        "accentColor": "Accent Color",
+        "invalidColor": "Invalid color format for {{color}}: {{value}}. Please use hex format (#RRGGBB)",
+        "savedTitle": "Rank Card Customized",
+        "savedDescription": "Your rank card colors have been updated!",
+        "savedNoPreview": "Your rank card colors have been saved! Use /xp rank to see your new design."
+      },
+      "levelUp": {
+        "title": "Level Up!",
+        "defaultMessage": "{{user}} has reached level {{level}}!",
+        "rolesEarned": "Roles Earned"
+      }
     }
   },
-  "time": {
-    "seconds": "seconds",
-    "minutes": "minutes", 
-    "hours": "hours",
-    "days": "days",
-    "weeks": "weeks",
-    "months": "months",
-    "years": "years",
-    "second": "second",
-    "minute": "minute",
-    "hour": "hour",
-    "day": "day",
-    "week": "week",
-    "month": "month",
-    "year": "year",
-    "ago": "ago",
-    "in": "in",
-    "now": "now",
-    "never": "never",
-    "permanent": "permanent",
-    "forever": "forever"
+  "events": {
+    "ready": "Bot is ready and logged in as {{tag}}",
+    "guildCreate": "Joined new guild: {{name}} ({{id}})",
+    "guildDelete": "Left guild: {{name}} ({{id}})"
   },
-  "permissions": {
-    "administrator": "Administrator",
-    "manage_guild": "Manage Server",
-    "manage_roles": "Manage Roles",
-    "manage_channels": "Manage Channels",
-    "manage_messages": "Manage Messages",
-    "kick_members": "Kick Members",
-    "ban_members": "Ban Members",
-    "moderate_members": "Timeout Members",
-    "view_audit_log": "View Audit Log",
-    "manage_webhooks": "Manage Webhooks",
-    "manage_emojis": "Manage Emojis",
-    "send_messages": "Send Messages",
-    "embed_links": "Embed Links",
-    "attach_files": "Attach Files",
-    "read_message_history": "Read Message History",
-    "use_external_emojis": "Use External Emojis",
-    "add_reactions": "Add Reactions",
-    "connect": "Connect to Voice",
-    "speak": "Speak in Voice",
-    "stream": "Video/Stream",
-    "use_voice_activation": "Use Voice Activity",
-    "priority_speaker": "Priority Speaker",
-    "mute_members": "Mute Members",
-    "deafen_members": "Deafen Members",
-    "move_members": "Move Members"
+  "errors": {
+    "commandNotFound": "Command not found",
+    "commandError": "An error occurred while executing this command",
+    "missingArguments": "Missing required arguments",
+    "invalidArgument": "Invalid argument provided",
+    "databaseError": "A database error occurred"
+  },
+  "config": {
+    "xp": {
+      "modal": {
+        "rates": {
+          "title": "Configure XP Rates",
+          "perMessage": "XP per Message",
+          "perVoiceMinute": "XP per Voice Minute",
+          "cooldown": "Cooldown (seconds)",
+          "boosterMultiplier": "Booster Multiplier (%)"
+        },
+        "roles": {
+          "title": "Configure XP Roles",
+          "boosterRole": "Booster Role ID",
+          "ignoredRoles": "Ignored Role IDs (one per line)"
+        }
+      },
+      "validation": {
+        "invalidPerMessage": "XP per message must be between 0 and 1000",
+        "invalidPerVoiceMinute": "XP per voice minute must be between 0 and 1000",
+        "invalidCooldown": "Cooldown must be between 0 and 3600 seconds",
+        "invalidBoosterMultiplier": "Booster multiplier must be between 100 and 1000",
+        "invalidBoosterRole": "Invalid booster role ID",
+        "invalidIgnoredRoles": "Invalid role IDs: {{roles}}"
+      },
+      "success": {
+        "rates": {
+          "title": "XP Rates Updated",
+          "description": "XP rates have been successfully updated"
+        },
+        "roles": {
+          "title": "XP Roles Updated",
+          "description": "XP role settings have been successfully updated"
+        }
+      },
+      "fields": {
+        "perMessage": "XP per Message",
+        "perVoiceMinute": "XP per Voice Minute",
+        "cooldown": "Cooldown",
+        "boosterMultiplier": "Booster Multiplier",
+        "boosterRole": "Booster Role",
+        "ignoredRoles": "Ignored Roles"
+      },
+      "channels": {
+        "title": "XP Channel Configuration",
+        "description": "Configure channel-specific XP settings",
+        "ignored": "Ignored Channels",
+        "noXp": "No XP Channels",
+        "doubleXp": "Double XP Channels",
+        "selectType": "Select channel type to configure",
+        "types": {
+          "ignored": "Ignored Channels",
+          "ignoredDesc": "Bot messages are ignored in these channels",
+          "noXp": "No XP Channels",
+          "noXpDesc": "No XP is gained in these channels",
+          "doubleXp": "Double XP Channels",
+          "doubleXpDesc": "Double XP is gained in these channels"
+        }
+      },
+      "rewards": {
+        "title": "XP Role Rewards",
+        "description": "Configure roles awarded at specific levels",
+        "current": "Current Rewards",
+        "selectAction": "Select an action",
+        "actions": {
+          "add": "Add Reward",
+          "addDesc": "Add a new level reward",
+          "remove": "Remove Reward",
+          "removeDesc": "Remove an existing reward",
+          "clear": "Clear All",
+          "clearDesc": "Remove all rewards"
+        }
+      }
+    },
+    "eco": {
+      "modal": {
+        "currency": {
+          "title": "Configure Currency",
+          "symbol": "Currency Symbol",
+          "name": "Currency Name",
+          "startingBalance": "Starting Balance"
+        },
+        "rewards": {
+          "title": "Configure Rewards",
+          "dailyAmount": "Daily Amount",
+          "dailyStreakBonus": "Daily Streak Bonus",
+          "workMin": "Work Min Amount",
+          "workMax": "Work Max Amount",
+          "workCooldown": "Work Cooldown (hours)"
+        },
+        "rob": {
+          "title": "Configure Rob Settings",
+          "enabled": "Enabled (true/false)",
+          "minAmount": "Minimum Rob Amount",
+          "successRate": "Success Rate (%)",
+          "protectionCost": "Protection Cost"
+        }
+      },
+      "validation": {
+        "invalidStartingBalance": "Starting balance must be 0 or greater",
+        "invalidDailyAmount": "Daily amount must be 0 or greater",
+        "invalidDailyStreakBonus": "Daily streak bonus must be 0 or greater",
+        "invalidWorkAmounts": "Work amounts must be valid and min <= max",
+        "invalidWorkCooldown": "Work cooldown must be between 0 and 24 hours",
+        "invalidRobMinAmount": "Rob minimum amount must be 0 or greater",
+        "invalidRobSuccessRate": "Rob success rate must be between 0 and 100",
+        "invalidRobProtectionCost": "Rob protection cost must be 0 or greater"
+      },
+      "success": {
+        "currency": {
+          "title": "Currency Updated",
+          "description": "Currency settings have been successfully updated"
+        },
+        "rewards": {
+          "title": "Rewards Updated",
+          "description": "Reward settings have been successfully updated"
+        },
+        "rob": {
+          "title": "Rob Settings Updated",
+          "description": "Rob settings have been successfully updated"
+        }
+      },
+      "fields": {
+        "symbol": "Symbol",
+        "name": "Name",
+        "startingBalance": "Starting Balance",
+        "dailyAmount": "Daily Amount",
+        "dailyStreakBonus": "Daily Streak Bonus",
+        "workReward": "Work Reward",
+        "workCooldown": "Work Cooldown",
+        "robEnabled": "Rob Enabled",
+        "robMinAmount": "Min Rob Amount",
+        "robSuccessRate": "Rob Success Rate",
+        "robProtectionCost": "Rob Protection Cost"
+      },
+      "shop": {
+        "title": "Shop Management",
+        "description": "Manage shop items",
+        "noItems": "No items configured",
+        "noItemsDesc": "Use the add button to create your first item",
+        "showing": "Showing {{shown}} of {{total}} items",
+        "selectAction": "Select an action",
+        "actions": {
+          "add": "Add Item",
+          "addDesc": "Create a new shop item",
+          "edit": "Edit Item",
+          "editDesc": "Modify an existing item",
+          "remove": "Remove Item",
+          "removeDesc": "Delete an item from the shop"
+        }
+      }
+    },
+    "welcome": {
+      "selectChannel": "Select a welcome channel",
+      "selectChannelPrompt": "Please select the channel where welcome messages will be sent",
+      "modal": {
+        "message": {
+          "title": "Configure Welcome Message",
+          "content": "Welcome Message",
+          "placeholder": "Welcome {{user}} to {{server}}! We now have {{memberCount}} members!"
+        },
+        "embed": {
+          "title": "Configure Welcome Embed",
+          "enabled": "Enable Embed (true/false)",
+          "color": "Embed Color",
+          "title": "Embed Title",
+          "image": "Image URL",
+          "thumbnail": "Thumbnail URL"
+        },
+        "dm": {
+          "title": "Configure Welcome DM",
+          "enabled": "Enable DM (true/false)",
+          "message": "DM Message",
+          "placeholder": "Welcome to {{server}}! Please read our rules in #rules"
+        }
+      },
+      "success": {
+        "message": {
+          "title": "Welcome Message Updated",
+          "description": "Welcome message has been successfully updated"
+        },
+        "embed": {
+          "title": "Welcome Embed Updated",
+          "description": "Welcome embed settings have been successfully updated"
+        },
+        "dm": {
+          "title": "Welcome DM Updated",
+          "description": "Welcome DM settings have been successfully updated"
+        }
+      },
+      "fields": {
+        "message": "Message",
+        "embedEnabled": "Embed Enabled",
+        "embedColor": "Embed Color",
+        "embedTitle": "Embed Title",
+        "dmEnabled": "DM Enabled",
+        "dmMessage": "DM Message"
+      },
+      "placeholders": "Placeholders: {{user}}, {{server}}, {{memberCount}}"
+    },
+    "goodbye": {
+      "selectChannel": "Select a goodbye channel",
+      "selectChannelPrompt": "Please select the channel where goodbye messages will be sent",
+      "modal": {
+        "message": {
+          "title": "Configure Goodbye Message",
+          "content": "Goodbye Message",
+          "placeholder": "{{user}} has left the server. We now have {{memberCount}} members."
+        },
+        "embed": {
+          "title": "Configure Goodbye Embed",
+          "enabled": "Enable Embed (true/false)",
+          "color": "Embed Color",
+          "title": "Embed Title",
+          "image": "Image URL",
+          "thumbnail": "Thumbnail URL"
+        }
+      },
+      "success": {
+        "message": {
+          "title": "Goodbye Message Updated",
+          "description": "Goodbye message has been successfully updated"
+        },
+        "embed": {
+          "title": "Goodbye Embed Updated",
+          "description": "Goodbye embed settings have been successfully updated"
+        }
+      },
+      "fields": {
+        "message": "Message",
+        "embedEnabled": "Embed Enabled",
+        "embedColor": "Embed Color",
+        "embedTitle": "Embed Title"
+      },
+      "placeholders": "Placeholders: {{user}}, {{server}}, {{memberCount}}"
+    },
+    "autorole": {
+      "selectRole": "Select roles to auto-assign",
+      "selectRolePrompt": "Select up to 5 roles to automatically assign to new members",
+      "selectRoleToRemove": "Select role to remove",
+      "selectRoleToRemovePrompt": "Select the role to remove from autorole",
+      "noRoles": "No roles configured for autorole"
+    },
+    "validation": {
+      "invalidColor": "Invalid color format. Use hex format like #0099FF",
+      "invalidImageUrl": "Invalid image URL",
+      "invalidThumbnailUrl": "Invalid thumbnail URL"
+    }
+  },
+  "warnings": {
+    "automation": {
+      "triggered": "Warning Automation Triggered",
+      "description": "User **{{user}}** ({{userId}}) has triggered the automation **{{automation}}**\n\nWarnings: {{count}}\nTotal Level: {{level}}"
+    },
+    "actions": {
+      "ban": "Ban User",
+      "kick": "Kick User",
+      "mute": "Mute ({{duration}}m)",
+      "view": "View Warnings"
+    },
+    "embed": {
+      "title": "Warning {{warnId}}",
+      "user": "User",
+      "moderator": "Moderator",
+      "level": "Level",
+      "title": "Title",
+      "description": "Description",
+      "edited": "Edited by {{editor}} on {{date}}"
+    }
+  },
+  "tickets": {
+    "maxTicketsReached": "You have reached the maximum number of open tickets ({{max}})",
+    "ticketCreated": "Ticket #{{number}}",
+    "welcomeMessage": "Support staff will be with you shortly. Please describe your issue in detail.",
+    "createdBy": "Created by",
+    "reason": "Reason",
+    "noReason": "No reason provided",
+    "close": "Close",
+    "closeWithReason": "Close with Reason",
+    "lock": "Lock",
+    "freeze": "Freeze",
+    "claim": "Claim",
+    "ticketCreatedLog": "Ticket created by {{user}}\nReason: {{reason}}",
+    "alreadyClaimed": "This ticket has already been claimed",
+    "claimedBy": "Ticket claimed by {{user}}",
+    "closedBy": "Ticket closed by {{user}}\nReason: {{reason}}",
+    "lockedBy": "Ticket locked by {{user}}",
+    "frozenBy": "Ticket frozen by {{user}}",
+    "createTicket": "Create Ticket",
+    "reasonLabel": "Please describe your issue",
+    "reasonPlaceholder": "Provide a detailed description of your issue...",
+    "closeTicket": "Close Ticket",
+    "closeReasonLabel": "Reason for closing (optional)",
+    "closeReasonPlaceholder": "Provide a reason for closing this ticket...",
+    "panelCreation": "Panel Creation",
+    "configuringPanel": "Configuring panel: {{id}}",
+    "title": "Title",
+    "buttonLabel": "Button Label",
+    "maxTicketsPerUser": "Max Tickets per User",
+    "addMoreRoles": "Add More Roles",
+    "setImage": "Set Image",
+    "setFooter": "Set Footer",
+    "confirmCreate": "Create Panel",
+    "panelCreated": "Panel Created",
+    "panelCreatedDesc": "Panel '{{id}}' has been created successfully!",
+    "nextStep": "Next Step",
+    "useLoadCommand": "Use `/ticket panel load {{id}}` to send this panel to a channel",
+    "panelLoaded": "Panel '{{id}}' has been sent to {{channel}}",
+    "panelDeleted": "Panel '{{id}}' has been deleted",
+    "noPanels": "No ticket panels found in this server",
+    "panelList": "Ticket Panels",
+    "status": "Status",
+    "created": "Created",
+    "notInTicket": "This command must be used in a ticket channel",
+    "claimSuccess": "You have successfully claimed this ticket",
+    "closing": "Closing ticket in 5 seconds...",
+    "statistics": "Ticket Statistics",
+    "totalTickets": "Total Tickets",
+    "openTickets": "Open Tickets",
+    "claimedTickets": "Claimed Tickets",
+    "closedTickets": "Closed Tickets",
+    "lockedTickets": "Locked Tickets",
+    "frozenTickets": "Frozen Tickets",
+    "panelNotFound": "Ticket panel not found or inactive",
+    "ticketNotFound": "Ticket not found",
+    "ticketLocked": "Ticket Locked",
+    "ticketLockedDesc": "This ticket has been locked. The user can no longer send messages.",
+    "ticketFrozen": "Ticket Frozen",
+    "ticketFrozenDesc": "This ticket has been frozen. No one can send messages except administrators.",
+    "ticketClaimed": "Ticket Claimed",
+    "notSupportStaff": "You must be support staff to claim tickets",
+    "ticketCreatedDesc": "Your ticket has been created in {{channel}}",
+    "closingWithReason": "Closing ticket with reason: {{reason}}"
   }
 }
