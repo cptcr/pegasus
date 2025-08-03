@@ -1,322 +1,453 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { createSuccessEmbed, createErrorEmbed, createEmbed, formatNumber, chunkArray } from '../../utils/helpers';
-import { economyHandler } from '../../handlers/economy';
-import { colors, emojis } from '../../utils/config';
+import { 
+  SlashCommandBuilder, 
+  ChatInputCommandInteraction, 
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  ComponentType,
+  StringSelectMenuInteraction,
+  ButtonInteraction
+} from 'discord.js';
+import { CommandCategory } from '../../types/command';
+import { economyService } from '../../services/economyService';
+import { economyRepository } from '../../repositories/economyRepository';
+import { embedBuilder } from '../../handlers/embedBuilder';
+import type { EconomyShopItem } from '../../database/schema';
 
 export const data = new SlashCommandBuilder()
-    .setName('shop')
-    .setDescription('Browse and manage the server shop')
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('list')
-        .setDescription('View all items in the shop')
-        .addIntegerOption(option =>
-          option.setName('page')
-            .setDescription('Page number')
-            .setMinValue(1)
-            .setRequired(false)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('buy')
-        .setDescription('Buy an item from the shop')
-        .addStringOption(option =>
-          option.setName('item_id')
-            .setDescription('ID of the item to buy')
-            .setRequired(true)
-        )
-        .addIntegerOption(option =>
-          option.setName('quantity')
-            .setDescription('Quantity to buy')
-            .setMinValue(1)
-            .setRequired(false)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('add')
-        .setDescription('Add an item to the shop')
-        .addStringOption(option =>
-          option.setName('name')
-            .setDescription('Name of the item')
-            .setRequired(true)
-        )
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Description of the item')
-            .setRequired(true)
-        )
-        .addIntegerOption(option =>
-          option.setName('price')
-            .setDescription('Price of the item')
-            .setMinValue(1)
-            .setRequired(true)
-        )
-        .addStringOption(option =>
-          option.setName('type')
-            .setDescription('Type of item')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Role', value: 'role' },
-              { name: 'Item', value: 'item' },
-              { name: 'Consumable', value: 'consumable' },
-              { name: 'Upgrade', value: 'upgrade' }
-            )
-        )
-        .addRoleOption(option =>
-          option.setName('role')
-            .setDescription('Role to give (for role type items)')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option.setName('emoji')
-            .setDescription('Emoji for the item')
-            .setRequired(false)
-        )
-        .addIntegerOption(option =>
-          option.setName('stock')
-            .setDescription('Stock amount (-1 for unlimited)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('remove')
-        .setDescription('Remove an item from the shop')
-        .addStringOption(option =>
-          option.setName('item_id')
-            .setDescription('ID of the item to remove')
-            .setRequired(true)
-        )
-    )
-    .setDMPermission(false);
+  .setName('shop')
+  .setDescription('View and purchase items from the shop')
+  .setDescriptionLocalizations({
+    'es-ES': 'Ver y comprar artículos de la tienda',
+    'fr': 'Voir et acheter des articles dans la boutique',
+    'de': 'Artikel im Shop anzeigen und kaufen',
+  })
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('view')
+      .setDescription('View available shop items')
+      .setDescriptionLocalizations({
+        'es-ES': 'Ver artículos disponibles en la tienda',
+        'fr': 'Voir les articles disponibles dans la boutique',
+        'de': 'Verfügbare Shop-Artikel anzeigen',
+      })
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('buy')
+      .setDescription('Purchase an item from the shop')
+      .setDescriptionLocalizations({
+        'es-ES': 'Comprar un artículo de la tienda',
+        'fr': 'Acheter un article dans la boutique',
+        'de': 'Einen Artikel aus dem Shop kaufen',
+      })
+      .addStringOption(option =>
+        option
+          .setName('item')
+          .setDescription('The item to purchase')
+          .setDescriptionLocalizations({
+            'es-ES': 'El artículo a comprar',
+            'fr': 'L\'article à acheter',
+            'de': 'Der zu kaufende Artikel',
+          })
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+      .addIntegerOption(option =>
+        option
+          .setName('quantity')
+          .setDescription('Quantity to purchase')
+          .setDescriptionLocalizations({
+            'es-ES': 'Cantidad a comprar',
+            'fr': 'Quantité à acheter',
+            'de': 'Zu kaufende Menge',
+          })
+          .setMinValue(1)
+          .setMaxValue(99)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('inventory')
+      .setDescription('View your purchased items')
+      .setDescriptionLocalizations({
+        'es-ES': 'Ver tus artículos comprados',
+        'fr': 'Voir vos articles achetés',
+        'de': 'Ihre gekauften Artikel anzeigen',
+      })
+  );
 
-export async function execute(interaction: any) {
-  if (!interaction.guild) return;
+export const category = CommandCategory.Economy;
+export const cooldown = 3;
 
+export async function execute(interaction: ChatInputCommandInteraction) {
   const subcommand = interaction.options.getSubcommand();
 
   switch (subcommand) {
-    case 'list':
-      await handleList(interaction);
+    case 'view':
+      await handleViewShop(interaction);
       break;
     case 'buy':
-      await handleBuy(interaction);
+      await handleBuyItem(interaction);
       break;
-    case 'add':
-      await handleAdd(interaction);
-      break;
-    case 'remove':
-      await handleRemove(interaction);
+    case 'inventory':
+      await handleViewInventory(interaction);
       break;
   }
 }
 
-async function handleList(interaction: any) {
-    if (!interaction.guild) return;
+async function handleViewShop(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+  
+  const guildId = interaction.guildId!;
+  const userId = interaction.user.id;
 
-    const page = interaction.options.getInteger('page') || 1;
+  try {
+    const items = await economyRepository.getShopItems(guildId, true);
+    const settings = await economyRepository.ensureSettings(guildId);
+    const balance = await economyService.getOrCreateBalance(userId, guildId);
 
-    await interaction.deferReply();
-
-    try {
-      const items = await economyHandler.getShop(interaction.guild.id);
-
-      if (items.length === 0) {
-        return interaction.editReply({
-          embeds: [createErrorEmbed('Empty Shop', 'No items are currently available in the shop.')],
+    if (items.length === 0) {
+      // Create default shop items if none exist
+      await createDefaultShopItems(guildId);
+      const newItems = await economyRepository.getShopItems(guildId, true);
+      
+      if (newItems.length === 0) {
+        await interaction.editReply({
+          embeds: [embedBuilder.createErrorEmbed('The shop is currently empty. Please contact an administrator.')]
         });
+        return;
       }
+      
+      items.push(...newItems);
+    }
 
-      const itemsPerPage = 10;
-      const totalPages = Math.ceil(items.length / itemsPerPage);
-      const pageItems = items.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    const itemsPerPage = 5;
+    let currentPage = 0;
+    const totalPages = Math.ceil(items.length / itemsPerPage);
 
-      const embed = createEmbed({
-        title: `${emojis.diamond} Server Shop`,
-        description: `Browse items available for purchase`,
-        color: colors.primary,
-        footer: `Page ${page}/${totalPages} • ${items.length} total items`,
-      });
+    const createShopEmbed = (page: number) => {
+      const start = page * itemsPerPage;
+      const pageItems = items.slice(start, start + itemsPerPage);
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${settings.currencySymbol} Shop`)
+        .setDescription(`Your balance: ${settings.currencySymbol}${balance.balance.toLocaleString()}`)
+        .setColor(0x3498db)
+        .setFooter({ text: `Page ${page + 1}/${totalPages} • Use /shop buy <item> to purchase` })
+        .setTimestamp();
 
       pageItems.forEach((item, index) => {
         const stockText = item.stock === -1 ? 'Unlimited' : `${item.stock} left`;
-        const emoji = item.emoji || '📦';
+        const affordableEmoji = balance.balance >= item.price ? '✅' : '❌';
         
         embed.addFields({
-          name: `${emoji} ${item.name}`,
+          name: `${affordableEmoji} ${start + index + 1}. ${item.name}`,
           value: `${item.description}\n` +
-                 `**Price:** ${formatNumber(item.price)} coins\n` +
-                 `**Type:** ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}\n` +
-                 `**Stock:** ${stockText}\n` +
-                 `**ID:** \`${item.id}\``,
-          inline: true,
+                 `**Price:** ${settings.currencySymbol}${item.price.toLocaleString()} | **Stock:** ${stockText}` +
+                 (item.effectType ? `\n**Effect:** ${formatEffect(item.effectType, item.effectValue)}` : ''),
+          inline: false
         });
       });
 
-      if (totalPages > 1) {
-        embed.setDescription(
-          embed.data.description + `\n\nUse \`/shop list page:${page + 1}\` for next page.`
+      return embed;
+    };
+
+    const createButtons = (page: number) => {
+      return new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId('shop_first')
+            .setLabel('⏮️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === 0),
+          new ButtonBuilder()
+            .setCustomId('shop_prev')
+            .setLabel('◀️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === 0),
+          new ButtonBuilder()
+            .setCustomId('shop_refresh')
+            .setLabel('🔄')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('shop_next')
+            .setLabel('▶️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === totalPages - 1),
+          new ButtonBuilder()
+            .setCustomId('shop_last')
+            .setLabel('⏭️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === totalPages - 1)
         );
-      }
+    };
 
-      await interaction.editReply({ embeds: [embed] });
+    const message = await interaction.editReply({
+      embeds: [createShopEmbed(currentPage)],
+      components: totalPages > 1 ? [createButtons(currentPage)] : []
+    });
 
-    } catch (error) {
-      console.error('Error fetching shop:', error);
-      await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to fetch shop items.')],
-      });
-    }
-  }
-
-async function handleBuy(interaction: any) {
-    if (!interaction.guild) return;
-
-    const itemId = interaction.options.getString('item_id', true);
-    const quantity = interaction.options.getInteger('quantity') || 1;
-
-    await interaction.deferReply();
-
-    try {
-      const result = await economyHandler.buyItem(interaction.user.id, interaction.guild.id, itemId, quantity);
-
-      if (!result.success) {
-        return interaction.editReply({
-          embeds: [createErrorEmbed('Purchase Failed', result.error || 'Unknown error')],
-        });
-      }
-
-      const item = result.item!;
-      const totalCost = item.price * quantity;
-      const emoji = item.emoji || '📦';
-
-      const embed = createSuccessEmbed(
-        'Purchase Successful!',
-        `${emoji} You bought **${quantity}x ${item.name}** for **${formatNumber(totalCost)}** coins!`
-      );
-
-      embed.addFields({
-        name: 'Item Description',
-        value: item.description,
-        inline: false,
+    if (totalPages > 1) {
+      const collector = message.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 300000 // 5 minutes
       });
 
-      if (item.type === 'role' && item.roleId) {
-        embed.addFields({
-          name: 'Role Granted',
-          value: `<@&${item.roleId}>`,
-          inline: true,
-        });
-      }
-
-      await interaction.editReply({ embeds: [embed] });
-
-    } catch (error) {
-      console.error('Error buying item:', error);
-      await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to purchase item.')],
-      });
-    }
-  }
-
-async function handleAdd(interaction: any) {
-    if (!interaction.guild) return;
-
-    // Check permissions
-    const member = interaction.member;
-    if (!member || !member.permissions || !member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return interaction.reply({
-        embeds: [createErrorEmbed('Permission Denied', 'You need the Manage Server permission to add shop items.')],
-        ephemeral: true,
-      });
-    }
-
-    const name = interaction.options.getString('name', true);
-    const description = interaction.options.getString('description', true);
-    const price = interaction.options.getInteger('price', true);
-    const type = interaction.options.getString('type', true) as any;
-    const role = interaction.options.getRole('role');
-    const emoji = interaction.options.getString('emoji');
-    const stock = interaction.options.getInteger('stock') ?? -1;
-
-    await interaction.deferReply({ ephemeral: true });
-
-    try {
-      const itemId = await economyHandler.createShopItem(interaction.guild.id, {
-        name,
-        description,
-        price,
-        type,
-        roleId: role?.id,
-        emoji,
-        stock,
-        maxStock: stock,
-        enabled: true,
-      });
-
-      const embed = createSuccessEmbed(
-        'Item Added',
-        `**${name}** has been added to the shop!`
-      );
-
-      embed.addFields(
-        {
-          name: 'Details',
-          value: `**Price:** ${formatNumber(price)} coins\n` +
-                 `**Type:** ${type}\n` +
-                 `**Stock:** ${stock === -1 ? 'Unlimited' : stock}\n` +
-                 `**ID:** \`${itemId}\``,
-          inline: false,
+      collector.on('collect', async (i: ButtonInteraction) => {
+        if (i.user.id !== userId) {
+          await i.reply({ content: 'This shop view is not for you!', ephemeral: true });
+          return;
         }
-      );
 
-      if (role) {
-        embed.addFields({
-          name: 'Role',
-          value: role.toString(),
-          inline: true,
+        switch (i.customId) {
+          case 'shop_first':
+            currentPage = 0;
+            break;
+          case 'shop_prev':
+            currentPage = Math.max(0, currentPage - 1);
+            break;
+          case 'shop_next':
+            currentPage = Math.min(totalPages - 1, currentPage + 1);
+            break;
+          case 'shop_last':
+            currentPage = totalPages - 1;
+            break;
+          case 'shop_refresh':
+            // Refresh balance
+            const newBalance = await economyService.getOrCreateBalance(userId, guildId);
+            balance.balance = newBalance.balance;
+            break;
+        }
+
+        await i.update({
+          embeds: [createShopEmbed(currentPage)],
+          components: [createButtons(currentPage)]
         });
-      }
+      });
 
-      await interaction.editReply({ embeds: [embed] });
-
-    } catch (error) {
-      console.error('Error adding shop item:', error);
-      await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to add item to shop.')],
+      collector.on('end', async () => {
+        await interaction.editReply({ components: [] }).catch(() => {});
       });
     }
+  } catch (error) {
+    console.error('Error viewing shop:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to load shop. Please try again later.')]
+    });
   }
+}
 
-async function handleRemove(interaction: any) {
-    if (!interaction.guild) return;
+async function handleBuyItem(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+  
+  const itemName = interaction.options.getString('item', true);
+  const quantity = interaction.options.getInteger('quantity') || 1;
+  const userId = interaction.user.id;
+  const guildId = interaction.guildId!;
 
-    // Check permissions
-    const member = interaction.member;
-    if (!member || !member.permissions || !member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return interaction.reply({
-        embeds: [createErrorEmbed('Permission Denied', 'You need the Manage Server permission to remove shop items.')],
-        ephemeral: true,
+  try {
+    const items = await economyRepository.getShopItems(guildId, true);
+    const item = items.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+
+    if (!item) {
+      await interaction.editReply({
+        embeds: [embedBuilder.createErrorEmbed('Item not found in the shop!')]
+      });
+      return;
+    }
+
+    const result = await economyService.purchaseItem(userId, guildId, item.id, quantity);
+    const settings = await economyRepository.ensureSettings(guildId);
+
+    if (!result.success) {
+      await interaction.editReply({
+        embeds: [embedBuilder.createErrorEmbed(result.error!)]
+      });
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('Purchase Successful!')
+      .setDescription(`You purchased **${quantity}x ${item.name}**!`)
+      .setColor(0x2ecc71)
+      .setThumbnail(interaction.user.displayAvatarURL())
+      .addFields(
+        { 
+          name: 'Total Cost', 
+          value: `${settings.currencySymbol}${(item.price * quantity).toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'New Balance', 
+          value: `${settings.currencySymbol}${result.balance!.balance.toLocaleString()}`, 
+          inline: true 
+        }
+      )
+      .setTimestamp();
+
+    if (item.effectType) {
+      embed.addFields({
+        name: 'Effect',
+        value: formatEffect(item.effectType, item.effectValue),
+        inline: false
       });
     }
 
-    const itemId = interaction.options.getString('item_id', true);
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Error buying item:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to purchase item. Please try again later.')]
+    });
+  }
+}
 
-    await interaction.deferReply({ ephemeral: true });
+async function handleViewInventory(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+  
+  const userId = interaction.user.id;
+  const guildId = interaction.guildId!;
 
+  try {
+    const userItems = await economyRepository.getUserItems(userId, guildId, true);
+    const settings = await economyRepository.ensureSettings(guildId);
+
+    if (userItems.length === 0) {
+      await interaction.editReply({
+        embeds: [embedBuilder.createInfoEmbed('Your inventory is empty! Visit the shop to purchase items.')]
+      });
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('📦 Your Inventory')
+      .setDescription(`You have ${userItems.length} unique item${userItems.length > 1 ? 's' : ''}`)
+      .setColor(0x3498db)
+      .setThumbnail(interaction.user.displayAvatarURL())
+      .setTimestamp();
+
+    userItems.forEach(userItem => {
+      const expiryText = userItem.expiresAt ? 
+        `\nExpires: <t:${Math.floor(userItem.expiresAt.getTime() / 1000)}:R>` : '';
+      
+      embed.addFields({
+        name: `${userItem.item.name} (x${userItem.quantity})`,
+        value: `${userItem.item.description}` +
+               (userItem.item.effectType ? `\n**Effect:** ${formatEffect(userItem.item.effectType, userItem.item.effectValue)}` : '') +
+               expiryText,
+        inline: false
+      });
+    });
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Error viewing inventory:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to load inventory. Please try again later.')]
+    });
+  }
+}
+
+export async function autocomplete(interaction: any) {
+  const focusedValue = interaction.options.getFocused().toLowerCase();
+  const guildId = interaction.guildId!;
+
+  try {
+    const items = await economyRepository.getShopItems(guildId, true);
+    const filtered = items
+      .filter(item => item.name.toLowerCase().includes(focusedValue))
+      .slice(0, 25);
+
+    await interaction.respond(
+      filtered.map(item => ({
+        name: item.name,
+        value: item.name
+      }))
+    );
+  } catch (error) {
+    console.error('Error in shop autocomplete:', error);
+    await interaction.respond([]);
+  }
+}
+
+function formatEffect(effectType: string, effectValue: any): string {
+  switch (effectType) {
+    case 'rob_protection':
+      const duration = effectValue?.duration || 86400;
+      return `🛡️ Protection from robbery for ${duration / 3600} hours`;
+    case 'xp_boost':
+      const multiplier = effectValue?.multiplier || 2;
+      const xpDuration = effectValue?.duration || 3600;
+      return `📈 ${multiplier}x XP boost for ${xpDuration / 3600} hours`;
+    case 'role':
+      return `🎭 Grants a special role`;
+    default:
+      return '✨ Special effect';
+  }
+}
+
+async function createDefaultShopItems(guildId: string) {
+  const defaultItems = [
+    {
+      guildId,
+      name: 'Rob Protection',
+      description: 'Protects you from being robbed for 24 hours',
+      price: 1000,
+      type: 'protection',
+      effectType: 'rob_protection',
+      effectValue: { duration: 86400 }, // 24 hours
+      stock: -1,
+    },
+    {
+      guildId,
+      name: 'XP Booster',
+      description: 'Doubles your XP gain for 1 hour',
+      price: 500,
+      type: 'booster',
+      effectType: 'xp_boost',
+      effectValue: { multiplier: 2, duration: 3600 }, // 1 hour
+      stock: -1,
+    },
+    {
+      guildId,
+      name: 'Lucky Charm',
+      description: 'Increases gambling win rate by 10% for 2 hours',
+      price: 2000,
+      type: 'booster',
+      effectType: 'luck_boost',
+      effectValue: { bonus: 10, duration: 7200 }, // 2 hours
+      stock: -1,
+    },
+    {
+      guildId,
+      name: 'Work Efficiency',
+      description: 'Increases work rewards by 50% for 3 hours',
+      price: 750,
+      type: 'booster',
+      effectType: 'work_boost',
+      effectValue: { multiplier: 1.5, duration: 10800 }, // 3 hours
+      stock: -1,
+    },
+    {
+      guildId,
+      name: 'Vault Access',
+      description: 'Allows you to store money in the bank (one-time use)',
+      price: 5000,
+      type: 'utility',
+      effectType: 'bank_access',
+      effectValue: { uses: 1 },
+      stock: -1,
+    }
+  ];
+
+  for (const item of defaultItems) {
     try {
-      // This would require implementing a delete method in economyHandler
-      // For now, just show success message
-      await interaction.editReply({
-        embeds: [createSuccessEmbed('Item Removed', `Item \`${itemId}\` has been removed from the shop.`)],
-      });
-
+      await economyRepository.createShopItem(item as any);
     } catch (error) {
-      console.error('Error removing shop item:', error);
-      await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to remove item from shop.')],
-      });
+      console.error(`Error creating default shop item ${item.name}:`, error);
     }
   }
+}

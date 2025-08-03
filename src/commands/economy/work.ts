@@ -1,63 +1,64 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { createSuccessEmbed, createErrorEmbed, formatTime, formatNumber } from '../../utils/helpers';
-import { economyHandler } from '../../handlers/economy';
-import { emojis } from '../../utils/config';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { CommandCategory } from '../../types/command';
+import { economyService } from '../../services/economyService';
+import { economyRepository } from '../../repositories/economyRepository';
+import { embedBuilder } from '../../handlers/embedBuilder';
 
 export const data = new SlashCommandBuilder()
-    .setName('work')
-    .setDescription('Work to earn coins')
-    .setDMPermission(false);
+  .setName('work')
+  .setDescription('Work to earn money')
+  .setDescriptionLocalizations({
+    'es-ES': 'Trabaja para ganar dinero',
+    'fr': 'Travaillez pour gagner de l\'argent',
+    'de': 'Arbeite um Geld zu verdienen',
+  });
 
-export async function execute(interaction: any) {
-    if (!interaction.guild) return;
+export const category = CommandCategory.Economy;
+export const cooldown = 3;
 
-    await interaction.deferReply();
+export async function execute(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
 
-    try {
-      const result = await economyHandler.work(interaction.user.id, interaction.guild.id);
-      
-      if (result.cooldown) {
-        return interaction.editReply({
-          embeds: [createErrorEmbed(
-            'Work Cooldown',
-            `You can work again in ${formatTime(result.cooldown)}.`
-          )],
-        });
-      }
+  const userId = interaction.user.id;
+  const guildId = interaction.guildId!;
 
-      const embed = createSuccessEmbed(
-        'Work Complete!',
-        `${result.job.emoji} **${result.job.name}** - ${result.job.description}\n\n` +
-        `${emojis.diamond} You earned **${formatNumber(result.amount)}** coins!`
-      );
-
-      embed.addFields(
-        {
-          name: '⚡ Work Streak',
-          value: `${result.streak} shift${result.streak !== 1 ? 's' : ''}`,
-          inline: true,
-        },
-        {
-          name: '⏰ Next Work',
-          value: 'Available in 4 hours',
-          inline: true,
-        }
-      );
-
-      if (result.streak > 1) {
-        embed.addFields({
-          name: '🎯 Streak Bonus',
-          value: `+${Math.min(result.streak * 5, 100)} coins`,
-          inline: true,
-        });
-      }
-
-      await interaction.editReply({ embeds: [embed] });
-      
-    } catch (error) {
-      console.error('Error working:', error);
+  try {
+    const result = await economyService.work(userId, guildId);
+    
+    if (!result.success) {
       await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to work.')],
+        embeds: [embedBuilder.createErrorEmbed(result.error!)]
       });
+      return;
     }
+
+    const settings = await economyRepository.ensureSettings(guildId);
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Work Complete!')
+      .setDescription(result.transaction!.description!)
+      .setColor(0x3498db)
+      .setThumbnail(interaction.user.displayAvatarURL())
+      .addFields(
+        { 
+          name: 'Earned', 
+          value: `${settings.currencySymbol} ${result.transaction!.amount.toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'New Balance', 
+          value: `${settings.currencySymbol} ${result.balance!.balance.toLocaleString()}`, 
+          inline: true 
+        }
+      )
+      .setFooter({ text: `You can work again in ${settings.workCooldown / 60} minutes` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Error in work command:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to complete work. Please try again later.')]
+    });
   }
+}

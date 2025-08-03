@@ -1,56 +1,79 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { createSuccessEmbed, createErrorEmbed, formatTime, formatNumber } from '../../utils/helpers';
-import { economyHandler } from '../../handlers/economy';
-import { emojis } from '../../utils/config';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { CommandCategory } from '../../types/command';
+import { economyService } from '../../services/economyService';
+import { economyRepository } from '../../repositories/economyRepository';
+import { embedBuilder } from '../../handlers/embedBuilder';
 
 export const data = new SlashCommandBuilder()
-    .setName('daily')
-    .setDescription('Claim your daily reward')
-    .setDMPermission(false);
+  .setName('daily')
+  .setDescription('Claim your daily reward')
+  .setDescriptionLocalizations({
+    'es-ES': 'Reclama tu recompensa diaria',
+    'fr': 'Réclamez votre récompense quotidienne',
+    'de': 'Fordere deine tägliche Belohnung an',
+  });
 
-export async function execute(interaction: any) {
-    if (!interaction.guild) return;
+export const category = CommandCategory.Economy;
+export const cooldown = 3;
 
-    await interaction.deferReply();
+export async function execute(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
 
-    try {
-      const result = await economyHandler.dailyReward(interaction.user.id, interaction.guild.id);
-      
-      if (result.cooldown) {
-        return interaction.editReply({
-          embeds: [createErrorEmbed(
-            'Daily Cooldown',
-            `You can claim your daily reward again in ${formatTime(result.cooldown)}.`
-          )],
-        });
-      }
+  const userId = interaction.user.id;
+  const guildId = interaction.guildId!;
 
-      const embed = createSuccessEmbed(
-        'Daily Reward Claimed!',
-        `${emojis.tada} You received **${formatNumber(result.amount)}** coins!`
-      );
-
-      embed.addFields(
-        {
-          name: '🔥 Daily Streak',
-          value: `${result.streak} day${result.streak !== 1 ? 's' : ''}`,
-          inline: true,
-        },
-        {
-          name: '💡 Tip',
-          value: result.streak < 7 
-            ? `Claim daily for ${7 - result.streak} more day${7 - result.streak !== 1 ? 's' : ''} to maximize your streak!`
-            : 'Keep up the streak to maintain maximum rewards!',
-          inline: false,
-        }
-      );
-
-      await interaction.editReply({ embeds: [embed] });
-      
-    } catch (error) {
-      console.error('Error claiming daily reward:', error);
+  try {
+    const result = await economyService.claimDaily(userId, guildId);
+    
+    if (!result.success) {
       await interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to claim daily reward.')],
+        embeds: [embedBuilder.createErrorEmbed(result.error!)]
+      });
+      return;
+    }
+
+    const settings = await economyRepository.ensureSettings(guildId);
+    const metadata = result.transaction?.metadata as any;
+    const streakDays = metadata?.streakDays || 1;
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Daily Reward Claimed!')
+      .setDescription(`You received your daily reward!`)
+      .setColor(0x2ecc71)
+      .setThumbnail(interaction.user.displayAvatarURL())
+      .addFields(
+        { 
+          name: 'Reward', 
+          value: `${settings.currencySymbol} ${result.transaction!.amount.toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'Streak', 
+          value: `${streakDays} day${streakDays > 1 ? 's' : ''}`, 
+          inline: true 
+        },
+        { 
+          name: 'New Balance', 
+          value: `${settings.currencySymbol} ${result.balance!.balance.toLocaleString()}`, 
+          inline: true 
+        }
+      )
+      .setFooter({ text: 'Come back tomorrow for more rewards!' })
+      .setTimestamp();
+
+    if (streakDays > 1) {
+      embed.addFields({
+        name: 'Streak Bonus',
+        value: `You earned ${settings.currencySymbol}${settings.dailyStreakBonus * (streakDays - 1)} extra for your ${streakDays} day streak!`,
+        inline: false
       });
     }
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Error in daily command:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to claim daily reward. Please try again later.')]
+    });
   }
+}

@@ -1,94 +1,99 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { createEmbed, formatNumber } from '../../utils/helpers';
-import { economyHandler } from '../../handlers/economy';
-import { colors, emojis } from '../../utils/config';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, User } from 'discord.js';
+import { CommandCategory } from '../../types/command';
+import { economyService } from '../../services/economyService';
+import { economyRepository } from '../../repositories/economyRepository';
+import { embedBuilder } from '../../handlers/embedBuilder';
 
 export const data = new SlashCommandBuilder()
-    .setName('balance')
-    .setDescription('Check your or another user\'s balance')
-    .addUserOption(option =>
-      option.setName('user')
-        .setDescription('User to check balance for')
-        .setRequired(false)
-    )
-    .setDMPermission(false);
+  .setName('balance')
+  .setDescription('Check your or another user\'s balance')
+  .setDescriptionLocalizations({
+    'es-ES': 'Consulta tu saldo o el de otro usuario',
+    'fr': 'Vérifiez votre solde ou celui d\'un autre utilisateur',
+    'de': 'Überprüfe dein Guthaben oder das eines anderen Benutzers',
+  })
+  .addUserOption(option =>
+    option
+      .setName('user')
+      .setDescription('The user to check balance for')
+      .setDescriptionLocalizations({
+        'es-ES': 'El usuario para verificar el saldo',
+        'fr': 'L\'utilisateur dont vérifier le solde',
+        'de': 'Der Benutzer, dessen Guthaben überprüft werden soll',
+      })
+      .setRequired(false)
+  );
 
-export async function execute(interaction: any) {
-    if (!interaction.guild) return;
+export const category = CommandCategory.Economy;
+export const cooldown = 3;
 
-    const targetUser = interaction.options.getUser('user') || interaction.user;
+export async function execute(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+
+  const targetUser = interaction.options.getUser('user') || interaction.user;
+  const guildId = interaction.guildId!;
+
+  try {
+    const balance = await economyService.getOrCreateBalance(targetUser.id, guildId);
+    const settings = await economyRepository.ensureSettings(guildId);
     
-    if (targetUser.bot) {
-      return interaction.reply({
-        content: `${emojis.error} Bots don't have economy accounts!`,
-        ephemeral: true,
+    // Get recent transactions
+    const transactions = await economyRepository.getTransactions(targetUser.id, guildId, 5);
+    
+    const embed = new EmbedBuilder()
+      .setTitle(`${settings.currencySymbol} Balance`)
+      .setDescription(`**${targetUser.username}'s Balance**`)
+      .setColor(0x2ecc71)
+      .setThumbnail(targetUser.displayAvatarURL())
+      .addFields(
+        { 
+          name: 'Wallet', 
+          value: `${settings.currencySymbol} ${balance.balance.toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'Bank', 
+          value: `${settings.currencySymbol} ${balance.bankBalance.toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'Net Worth', 
+          value: `${settings.currencySymbol} ${(balance.balance + balance.bankBalance).toLocaleString()}`, 
+          inline: true 
+        },
+        { 
+          name: 'Statistics', 
+          value: `Total Earned: ${settings.currencySymbol} ${balance.totalEarned.toLocaleString()}\n` +
+                 `Total Spent: ${settings.currencySymbol} ${balance.totalSpent.toLocaleString()}\n` +
+                 `Total Gambled: ${settings.currencySymbol} ${balance.totalGambled.toLocaleString()}`,
+          inline: false 
+        }
+      )
+      .setFooter({ text: `Currency: ${settings.currencyName}` })
+      .setTimestamp();
+
+    // Add recent transactions if any
+    if (transactions.length > 0) {
+      const transactionList = transactions
+        .map(t => {
+          const prefix = t.amount > 0 ? '+' : '';
+          const emoji = t.amount > 0 ? '📈' : '📉';
+          return `${emoji} ${prefix}${settings.currencySymbol}${Math.abs(t.amount)} - ${t.description || t.type}`;
+        })
+        .join('\n');
+      
+      embed.addFields({
+        name: 'Recent Transactions',
+        value: transactionList,
+        inline: false
       });
     }
 
-    await interaction.deferReply();
-
-    try {
-      const economyUser = await economyHandler.getUser(targetUser.id, interaction.guild.id);
-      
-      const totalWealth = economyUser.coins + economyUser.bank;
-      const bankPercentage = economyUser.bankLimit > 0 
-        ? Math.round((economyUser.bank / economyUser.bankLimit) * 100)
-        : 0;
-
-      const embed = createEmbed({
-        title: `${emojis.diamond} ${targetUser.username}'s Balance`,
-        color: colors.success,
-        thumbnail: targetUser.displayAvatarURL(),
-        fields: [
-          {
-            name: '🪙 Wallet',
-            value: `${formatNumber(economyUser.coins)} coins`,
-            inline: true,
-          },
-          {
-            name: '🏦 Bank',
-            value: `${formatNumber(economyUser.bank)} / ${formatNumber(economyUser.bankLimit)} coins\n(${bankPercentage}% full)`,
-            inline: true,
-          },
-          {
-            name: '💎 Net Worth',
-            value: `${formatNumber(totalWealth)} coins`,
-            inline: true,
-          },
-          {
-            name: '📊 Statistics',
-            value: `💰 Total Earned: ${formatNumber(economyUser.totalEarned)}\n` +
-                   `💸 Total Spent: ${formatNumber(economyUser.totalSpent)}\n` +
-                   `🔥 Daily Streak: ${economyUser.dailyStreak}\n` +
-                   `⚡ Work Streak: ${economyUser.workStreak}`,
-            inline: false,
-          },
-        ],
-        timestamp: true,
-      });
-
-      if (economyUser.multiplier > 1) {
-        embed.addFields({
-          name: '🚀 Multiplier',
-          value: `${economyUser.multiplier}x`,
-          inline: true,
-        });
-      }
-
-      if (economyUser.prestige > 0) {
-        embed.addFields({
-          name: '⭐ Prestige',
-          value: `Level ${economyUser.prestige}`,
-          inline: true,
-        });
-      }
-
-      await interaction.editReply({ embeds: [embed] });
-      
-    } catch (error) {
-      console.error('Error fetching balance:', error);
-      await interaction.editReply({
-        content: `${emojis.error} Failed to fetch balance information.`,
-      });
-    }
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    console.error('Error in balance command:', error);
+    await interaction.editReply({
+      embeds: [embedBuilder.createErrorEmbed('Failed to fetch balance. Please try again later.')]
+    });
   }
+}
