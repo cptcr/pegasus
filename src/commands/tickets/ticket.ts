@@ -1,184 +1,571 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.js';
-import { createSuccessEmbed, createErrorEmbed } from '../../utils/helpers';
-import { ticketHandler } from '../../handlers/tickets';
+import { 
+  SlashCommandBuilder, 
+  ChatInputCommandInteraction, 
+  PermissionFlagsBits,
+  EmbedBuilder,
+  ChannelType,
+  TextChannel,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  ComponentType
+} from 'discord.js';
+import { Command } from '../../types/command';
+import { TicketService } from '../../services/ticketService';
+import { TicketRepository } from '../../repositories/ticketRepository';
+import { i18n } from '../../i18n';
+import { GuildService } from '../../services/guildService';
 
-export const data = new SlashCommandBuilder()
+export const ticket: Command = {
+  data: new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Manage ticket system')
-    .addSubcommand(subcommand =>
-      subcommand
+    .addSubcommandGroup(group =>
+      group
         .setName('panel')
-        .setDescription('Create a ticket panel')
-        .addChannelOption(option =>
-          option.setName('channel')
-            .setDescription('Channel to send the ticket panel to')
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(true)
+        .setDescription('Manage ticket panels')
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('create')
+            .setDescription('Create a new ticket panel configuration')
+            .addStringOption(option =>
+              option
+                .setName('panel_id')
+                .setDescription('Unique ID for this panel')
+                .setRequired(true)
+                .setMinLength(3)
+                .setMaxLength(20)
+            )
+            .addStringOption(option =>
+              option
+                .setName('title')
+                .setDescription('Panel title')
+                .setRequired(true)
+                .setMaxLength(256)
+            )
+            .addStringOption(option =>
+              option
+                .setName('description')
+                .setDescription('Panel description')
+                .setRequired(true)
+                .setMaxLength(4096)
+            )
+            .addStringOption(option =>
+              option
+                .setName('button_label')
+                .setDescription('Label for the create ticket button')
+                .setMaxLength(80)
+            )
+            .addIntegerOption(option =>
+              option
+                .setName('button_style')
+                .setDescription('Button style')
+                .addChoices(
+                  { name: 'Primary (Blue)', value: ButtonStyle.Primary },
+                  { name: 'Secondary (Gray)', value: ButtonStyle.Secondary },
+                  { name: 'Success (Green)', value: ButtonStyle.Success },
+                  { name: 'Danger (Red)', value: ButtonStyle.Danger },
+                )
+            )
+            .addChannelOption(option =>
+              option
+                .setName('category')
+                .setDescription('Category to create tickets in')
+                .addChannelTypes(ChannelType.GuildCategory)
+            )
+            .addRoleOption(option =>
+              option
+                .setName('support_role')
+                .setDescription('Support role that can see tickets')
+            )
+            .addIntegerOption(option =>
+              option
+                .setName('max_tickets')
+                .setDescription('Maximum tickets per user')
+                .setMinValue(1)
+                .setMaxValue(10)
+            )
+            .addStringOption(option =>
+              option
+                .setName('welcome_message')
+                .setDescription('Welcome message shown in new tickets')
+                .setMaxLength(1024)
+            )
         )
-        .addStringOption(option =>
-          option.setName('title')
-            .setDescription('Title of the ticket panel')
-            .setRequired(true)
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('load')
+            .setDescription('Load and send a ticket panel')
+            .addStringOption(option =>
+              option
+                .setName('panel_id')
+                .setDescription('ID of the panel to load')
+                .setRequired(true)
+            )
+            .addChannelOption(option =>
+              option
+                .setName('channel')
+                .setDescription('Channel to send the panel to')
+                .setRequired(true)
+                .addChannelTypes(ChannelType.GuildText)
+            )
         )
-        .addStringOption(option =>
-          option.setName('description')
-            .setDescription('Description of the ticket panel')
-            .setRequired(true)
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('delete')
+            .setDescription('Delete a ticket panel')
+            .addStringOption(option =>
+              option
+                .setName('panel_id')
+                .setDescription('ID of the panel to delete')
+                .setRequired(true)
+            )
         )
-        .addChannelOption(option =>
-          option.setName('category')
-            .setDescription('Category to create ticket channels in')
-            .addChannelTypes(ChannelType.GuildCategory)
-            .setRequired(true)
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('list')
+            .setDescription('List all ticket panels in this server')
         )
-        .addRoleOption(option =>
-          option.setName('support_role')
-            .setDescription('Support role for tickets')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option.setName('color')
-            .setDescription('Color of the embed (hex code)')
-            .setRequired(false)
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('edit')
+            .setDescription('Edit an existing ticket panel')
+            .addStringOption(option =>
+              option
+                .setName('panel_id')
+                .setDescription('ID of the panel to edit')
+                .setRequired(true)
+            )
         )
     )
     .addSubcommand(subcommand =>
       subcommand
-        .setName('list')
-        .setDescription('List all ticket panels')
+        .setName('claim')
+        .setDescription('Claim a ticket (for support staff)')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('close')
+        .setDescription('Close a ticket')
+        .addStringOption(option =>
+          option
+            .setName('reason')
+            .setDescription('Reason for closing the ticket')
+            .setMaxLength(1000)
+        )
     )
     .addSubcommand(subcommand =>
       subcommand
         .setName('stats')
-        .setDescription('Show ticket statistics')
+        .setDescription('View ticket statistics for this server')
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-    .setDMPermission(false);
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
-export async function execute(interaction: any) {
-  if (!interaction.guild) return;
+  async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+    const subcommandGroup = interaction.options.getSubcommandGroup();
+    const subcommand = interaction.options.getSubcommand();
+    const ticketService = new TicketService();
+    const ticketRepository = new TicketRepository();
+    const guildService = new GuildService();
+    const locale = await guildService.getGuildLanguage(interaction.guildId!);
 
-  const subcommand = interaction.options.getSubcommand();
+    try {
+      if (subcommandGroup === 'panel') {
+        switch (subcommand) {
+          case 'create':
+            await handlePanelCreate(interaction, ticketService, locale);
+            break;
+          case 'load':
+            await handlePanelLoad(interaction, ticketService, locale);
+            break;
+          case 'delete':
+            await handlePanelDelete(interaction, ticketService, locale);
+            break;
+          case 'list':
+            await handlePanelList(interaction, ticketRepository, locale);
+            break;
+          case 'edit':
+            await handlePanelEdit(interaction, ticketService, ticketRepository, locale);
+            break;
+        }
+      } else {
+        switch (subcommand) {
+          case 'claim':
+            await handleClaim(interaction, ticketService, ticketRepository, locale);
+            break;
+          case 'close':
+            await handleClose(interaction, ticketService, ticketRepository, locale);
+            break;
+          case 'stats':
+            await handleStats(interaction, ticketRepository, locale);
+            break;
+        }
+      }
+    } catch (error: any) {
+      await interaction.reply({
+        content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+        ephemeral: true,
+      });
+    }
+  },
+};
 
-  switch (subcommand) {
-    case 'panel':
-      await handlePanelCreate(interaction);
-      break;
-    case 'list':
-      await handlePanelList(interaction);
-      break;
-    case 'stats':
-      await handleStats(interaction);
-      break;
+async function handlePanelCreate(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const panelId = interaction.options.getString('panel_id', true);
+  const title = interaction.options.getString('title', true);
+  const description = interaction.options.getString('description', true);
+  const buttonLabel = interaction.options.getString('button_label') || 'Create Ticket';
+  const buttonStyle = interaction.options.getInteger('button_style') || ButtonStyle.Primary;
+  const category = interaction.options.getChannel('category');
+  const supportRole = interaction.options.getRole('support_role');
+  const maxTickets = interaction.options.getInteger('max_tickets') || 1;
+  const welcomeMessage = interaction.options.getString('welcome_message');
+
+  // Collect additional options through components
+  const embed = new EmbedBuilder()
+    .setTitle(i18n.__({ phrase: 'tickets.panelCreation', locale }))
+    .setDescription(i18n.__({ phrase: 'tickets.configuringPanel', locale }, { id: panelId }))
+    .addFields([
+      { name: i18n.__({ phrase: 'tickets.title', locale }), value: title, inline: true },
+      { name: i18n.__({ phrase: 'tickets.buttonLabel', locale }), value: buttonLabel, inline: true },
+      { name: i18n.__({ phrase: 'tickets.maxTicketsPerUser', locale }), value: maxTickets.toString(), inline: true },
+    ])
+    .setColor(0x00FF00);
+
+  const additionalRolesButton = new ButtonBuilder()
+    .setCustomId('panel_add_roles')
+    .setLabel(i18n.__({ phrase: 'tickets.addMoreRoles', locale }))
+    .setStyle(ButtonStyle.Secondary);
+
+  const setImageButton = new ButtonBuilder()
+    .setCustomId('panel_set_image')
+    .setLabel(i18n.__({ phrase: 'tickets.setImage', locale }))
+    .setStyle(ButtonStyle.Secondary);
+
+  const setFooterButton = new ButtonBuilder()
+    .setCustomId('panel_set_footer')
+    .setLabel(i18n.__({ phrase: 'tickets.setFooter', locale }))
+    .setStyle(ButtonStyle.Secondary);
+
+  const confirmButton = new ButtonBuilder()
+    .setCustomId('panel_confirm')
+    .setLabel(i18n.__({ phrase: 'tickets.confirmCreate', locale }))
+    .setStyle(ButtonStyle.Success);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    additionalRolesButton,
+    setImageButton,
+    setFooterButton,
+    confirmButton
+  );
+
+  // Store panel data temporarily
+  const panelData = {
+    panelId,
+    title,
+    description,
+    buttonLabel,
+    buttonStyle,
+    categoryId: category?.id,
+    supportRoles: supportRole ? [supportRole.id] : [],
+    maxTicketsPerUser: maxTickets,
+    welcomeMessage,
+  };
+
+  const message = await interaction.editReply({
+    embeds: [embed],
+    components: [row],
+  });
+
+  // Handle button interactions
+  const collector = message.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 300000, // 5 minutes
+  });
+
+  collector.on('collect', async (buttonInteraction) => {
+    if (buttonInteraction.user.id !== interaction.user.id) {
+      await buttonInteraction.reply({
+        content: i18n.__({ phrase: 'common.notYourButton', locale }),
+        ephemeral: true,
+      });
+      return;
+    }
+
+    switch (buttonInteraction.customId) {
+      case 'panel_confirm':
+        try {
+          const panel = await ticketService.createPanel(interaction.guild!, panelData);
+          
+          const successEmbed = new EmbedBuilder()
+            .setTitle(i18n.__({ phrase: 'tickets.panelCreated', locale }))
+            .setDescription(i18n.__({ phrase: 'tickets.panelCreatedDesc', locale }, { id: panelId }))
+            .setColor(0x00FF00)
+            .addFields([
+              { 
+                name: i18n.__({ phrase: 'tickets.nextStep', locale }), 
+                value: i18n.__({ phrase: 'tickets.useLoadCommand', locale }, { id: panelId }) 
+              },
+            ]);
+
+          await buttonInteraction.update({
+            embeds: [successEmbed],
+            components: [],
+          });
+          collector.stop();
+        } catch (error: any) {
+          await buttonInteraction.reply({
+            content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+            ephemeral: true,
+          });
+        }
+        break;
+
+      // TODO: Implement additional configuration buttons
+      default:
+        await buttonInteraction.reply({
+          content: i18n.__({ phrase: 'common.featureNotImplemented', locale }),
+          ephemeral: true,
+        });
+    }
+  });
+
+  collector.on('end', () => {
+    if (!collector.ended) {
+      interaction.editReply({
+        components: [],
+      });
+    }
+  });
+}
+
+async function handlePanelLoad(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const panelId = interaction.options.getString('panel_id', true);
+  const channel = interaction.options.getChannel('channel', true) as TextChannel;
+
+  try {
+    const message = await ticketService.loadPanel(interaction.guild!, panelId, channel, locale);
+    
+    await interaction.editReply({
+      content: i18n.__({ phrase: 'tickets.panelLoaded', locale }, { 
+        id: panelId, 
+        channel: channel.toString() 
+      }),
+    });
+  } catch (error: any) {
+    await interaction.editReply({
+      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+    });
   }
 }
 
-async function handlePanelCreate(interaction: any) {
-    if (!interaction.guild) return;
+async function handlePanelDelete(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
 
-    const channel = interaction.options.getChannel('channel', true);
-    const title = interaction.options.getString('title', true);
-    const description = interaction.options.getString('description', true);
-    const category = interaction.options.getChannel('category', true);
-    const supportRole = interaction.options.getRole('support_role');
-    const color = interaction.options.getString('color') || '#0099ff';
+  const panelId = interaction.options.getString('panel_id', true);
 
-    if (!channel.isTextBased()) {
-      return interaction.reply({
-        embeds: [createErrorEmbed('Error', 'Channel must be a text channel.')],
-        ephemeral: true,
-      });
-    }
-
-    if (category.type !== ChannelType.GuildCategory) {
-      return interaction.reply({
-        embeds: [createErrorEmbed('Error', 'Category must be a category channel.')],
-        ephemeral: true,
-      });
-    }
-
-    const supportRoles = supportRole ? [supportRole.id] : [];
-
-    await interaction.deferReply({ ephemeral: true });
-
-    const panelId = await ticketHandler.createTicketPanel(
-      interaction.guild.id,
-      channel.id,
-      title,
-      description,
-      category.id,
-      supportRoles,
-      color
-    );
-
-    if (!panelId) {
-      return interaction.editReply({
-        embeds: [createErrorEmbed('Error', 'Failed to create ticket panel.')],
-      });
-    }
-
+  try {
+    await ticketService.deletePanel(interaction.guild!, panelId);
+    
     await interaction.editReply({
-      embeds: [createSuccessEmbed('Panel Created', `Ticket panel created successfully in ${channel}`)],
+      content: i18n.__({ phrase: 'tickets.panelDeleted', locale }, { id: panelId }),
+    });
+  } catch (error: any) {
+    await interaction.editReply({
+      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
     });
   }
+}
 
-async function handlePanelList(interaction: any) {
-    if (!interaction.guild) return;
+async function handlePanelList(
+  interaction: ChatInputCommandInteraction,
+  ticketRepository: TicketRepository,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
 
-    await interaction.deferReply({ ephemeral: true });
+  const panels = await ticketRepository.getGuildPanels(interaction.guildId!);
 
-    const panels = await ticketHandler.getTicketPanels(interaction.guild.id);
-
-    if (panels.length === 0) {
-      return interaction.editReply({
-        embeds: [createErrorEmbed('No Panels', 'No ticket panels found.')],
-      });
-    }
-
-    const embed = createSuccessEmbed('Ticket Panels', 'List of all ticket panels in this server');
-
-    panels.forEach((panel, index) => {
-      const channel = interaction.guild?.channels.cache.get(panel.channel_id);
-      const category = interaction.guild?.channels.cache.get(panel.category);
-
-      embed.addFields({
-        name: `${index + 1}. ${panel.title}`,
-        value: `Channel: ${channel || 'Unknown'}\nCategory: ${category || 'Unknown'}\nCreated: <t:${Math.floor(new Date(panel.created_at).getTime() / 1000)}:R>`,
-        inline: true,
-      });
+  if (panels.length === 0) {
+    await interaction.editReply({
+      content: i18n.__({ phrase: 'tickets.noPanels', locale }),
     });
-
-    await interaction.editReply({ embeds: [embed] });
+    return;
   }
 
-async function handleStats(interaction: any) {
-    if (!interaction.guild) return;
-
-    await interaction.deferReply({ ephemeral: true });
-
-    const openTickets = await ticketHandler.getTickets(interaction.guild.id, 'open');
-    const closedTickets = await ticketHandler.getTickets(interaction.guild.id, 'closed');
-    const totalTickets = openTickets.length + closedTickets.length;
-
-    const embed = createSuccessEmbed('Ticket Statistics', `Statistics for ${interaction.guild.name}`);
-
-    embed.addFields(
-      {
-        name: 'Open Tickets',
-        value: openTickets.length.toString(),
-        inline: true,
-      },
-      {
-        name: 'Closed Tickets',
-        value: closedTickets.length.toString(),
-        inline: true,
-      },
-      {
-        name: 'Total Tickets',
-        value: totalTickets.toString(),
-        inline: true,
-      }
+  const embed = new EmbedBuilder()
+    .setTitle(i18n.__({ phrase: 'tickets.panelList', locale }))
+    .setColor(0x5865F2)
+    .setDescription(
+      panels.map(panel => 
+        `**${panel.panelId}**\n` +
+        `${i18n.__({ phrase: 'tickets.title', locale })}: ${panel.title}\n` +
+        `${i18n.__({ phrase: 'tickets.status', locale })}: ${panel.isActive ? '✅' : '❌'}\n` +
+        `${i18n.__({ phrase: 'tickets.created', locale })}: <t:${Math.floor(panel.createdAt.getTime() / 1000)}:R>`
+      ).join('\n\n')
     );
 
-    await interaction.editReply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handlePanelEdit(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  ticketRepository: TicketRepository,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const panelId = interaction.options.getString('panel_id', true);
+  
+  // TODO: Implement panel editing with select menus and modals
+  await interaction.editReply({
+    content: i18n.__({ phrase: 'common.featureNotImplemented', locale }),
+  });
+}
+
+async function handleClaim(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  ticketRepository: TicketRepository,
+  locale: string
+) {
+  // Check if in ticket channel
+  const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
+  if (!ticket) {
+    await interaction.reply({
+      content: i18n.__({ phrase: 'tickets.notInTicket', locale }),
+      ephemeral: true,
+    });
+    return;
   }
+
+  try {
+    await ticketService.claimTicket(ticket.id, interaction.member as any, locale);
+    
+    await interaction.reply({
+      content: i18n.__({ phrase: 'tickets.claimSuccess', locale }),
+    });
+  } catch (error: any) {
+    await interaction.reply({
+      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleClose(
+  interaction: ChatInputCommandInteraction,
+  ticketService: TicketService,
+  ticketRepository: TicketRepository,
+  locale: string
+) {
+  // Check if in ticket channel
+  const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
+  if (!ticket) {
+    await interaction.reply({
+      content: i18n.__({ phrase: 'tickets.notInTicket', locale }),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const reason = interaction.options.getString('reason');
+
+  try {
+    const { transcript } = await ticketService.closeTicket(
+      ticket.id, 
+      interaction.member as any, 
+      reason || undefined,
+      locale
+    );
+
+    await interaction.reply({
+      content: i18n.__({ phrase: 'tickets.closing', locale }),
+    });
+
+    // Delete channel after 5 seconds
+    setTimeout(async () => {
+      try {
+        await interaction.channel?.delete();
+      } catch (error) {
+        // Channel might already be deleted
+      }
+    }, 5000);
+  } catch (error: any) {
+    await interaction.reply({
+      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      ephemeral: true,
+    });
+  }
+}
+
+async function handleStats(
+  interaction: ChatInputCommandInteraction,
+  ticketRepository: TicketRepository,
+  locale: string
+) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const stats = await ticketRepository.getTicketStats(interaction.guildId!);
+
+  const embed = new EmbedBuilder()
+    .setTitle(i18n.__({ phrase: 'tickets.statistics', locale }))
+    .setColor(0x5865F2)
+    .addFields([
+      { 
+        name: i18n.__({ phrase: 'tickets.totalTickets', locale }), 
+        value: stats.total.toString(), 
+        inline: true 
+      },
+      { 
+        name: i18n.__({ phrase: 'tickets.openTickets', locale }), 
+        value: stats.open.toString(), 
+        inline: true 
+      },
+      { 
+        name: i18n.__({ phrase: 'tickets.claimedTickets', locale }), 
+        value: stats.claimed.toString(), 
+        inline: true 
+      },
+      { 
+        name: i18n.__({ phrase: 'tickets.closedTickets', locale }), 
+        value: stats.closed.toString(), 
+        inline: true 
+      },
+      { 
+        name: i18n.__({ phrase: 'tickets.lockedTickets', locale }), 
+        value: stats.locked.toString(), 
+        inline: true 
+      },
+      { 
+        name: i18n.__({ phrase: 'tickets.frozenTickets', locale }), 
+        value: stats.frozen.toString(), 
+        inline: true 
+      },
+    ])
+    .setTimestamp();
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+// Export for command handler
+export const data = ticket.data;
+export const execute = ticket.execute;
