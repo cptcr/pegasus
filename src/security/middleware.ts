@@ -1,336 +1,444 @@
 import { 
-  ChatInputCommandInteraction, 
-  ButtonInteraction,
-  StringSelectMenuInteraction,
-  ModalSubmitInteraction,
-  GuildMember
+  ChatInputCommandInteraction,
+  Message,
+  GuildMember,
+  PermissionFlagsBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } from 'discord.js';
-import { InputValidator } from './validator';
-import { rateLimiter } from './rateLimiter';
-import { permissions } from './permissions';
-import { auditLogger, AuditCategories, AuditActions } from './audit';
+import { checkCommandRateLimit, RateLimitResult } from './rateLimiter';
+import { PermissionManager, PermissionCheck } from './permissions';
+import { Validator, CommandSchemas, ValidationError } from './validator';
+import { Sanitizer } from './sanitizer';
+import { auditLogger } from './audit';
 import { logger } from '../utils/logger';
-import { config } from '../config';
+import { t } from '../i18n';
+import type { Command } from '../types/command';
 
 export interface SecurityContext {
   userId: string;
   guildId: string;
-  command?: string;
-  action?: string;
-  metadata?: Record<string, any>;
+  channelId: string;
+  commandName: string;
+  timestamp: number;
+  isOwner: boolean;
+  permissions: bigint[];
 }
 
-export class SecurityMiddleware {
-  /**
-   * Main security check for interactions
-   */
-  async checkInteraction(
-    interaction: ChatInputCommandInteraction | ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    try {
-      if (!interaction.guild || !interaction.member) {
-        return { allowed: false, reason: 'This command can only be used in a server.' };
-      }
+export interface SecurityCheckResult {
+  passed: boolean;
+  error?: string;
+  code?: 'RATE_LIMIT' | 'PERMISSION' | 'VALIDATION' | 'BLACKLIST' | 'MAINTENANCE';
+  details?: any;
+}
 
-      const member = interaction.member as GuildMember;
-      const context: SecurityContext = {
-        userId: member.id,
-        guildId: interaction.guild.id,
-        command: interaction.isChatInputCommand() ? interaction.commandName : undefined,
-        action: interaction.isButton() ? interaction.customId : undefined
+/**
+ * Main security middleware for commands
+ */
+export async function securityMiddleware(
+  interaction: ChatInputCommandInteraction,
+  command: Command
+): Promise<SecurityCheckResult> {
+  const context: SecurityContext = {
+    userId: interaction.user.id,
+    guildId: interaction.guildId!,
+    channelId: interaction.channelId,
+    commandName: `${command.data.name}`,
+    timestamp: Date.now(),
+    isOwner: PermissionManager.isBotOwner(interaction.user.id),
+    permissions: (interaction.member as GuildMember)?.permissions.bitfield || 0n,
+  };
+  
+  try {
+    // 1. Check maintenance mode
+    if (process.env.MAINTENANCE_MODE === 'true' && !context.isOwner) {
+      return {
+        passed: false,
+        error: t('security.maintenance'),
+        code: 'MAINTENANCE',
       };
-
-      // 1. Check rate limits
-      const rateLimitCheck = await this.checkRateLimit(context);
-      if (!rateLimitCheck.allowed) {
-        return rateLimitCheck;
-      }
-
-      // 2. Check permissions (only for commands)
-      if (interaction.isChatInputCommand()) {
-        const permissionCheck = await this.checkPermissions(interaction);
-        if (!permissionCheck.allowed) {
-          return permissionCheck;
-        }
-      }
-
-      // 3. Validate inputs (for commands and modals)
-      if (interaction.isChatInputCommand() || interaction.isModalSubmit()) {
-        const validationCheck = await this.validateInputs(interaction);
-        if (!validationCheck.allowed) {
-          return validationCheck;
-        }
-      }
-
-      // 4. Check for suspicious activity
-      const suspiciousCheck = await this.checkSuspiciousActivity(context);
-      if (!suspiciousCheck.allowed) {
-        return suspiciousCheck;
-      }
-
-      // Log successful security check
-      if (interaction.isChatInputCommand()) {
-        await auditLogger.log(
-          context.userId,
-          context.guildId,
-          `command_executed`,
-          AuditCategories.USER_ACTION,
-          { command: interaction.commandName }
-        );
-      }
-
-      return { allowed: true };
-    } catch (error) {
-      logger.error('Security check failed', error as Error);
-      return { allowed: false, reason: 'Security check failed. Please try again later.' };
     }
-  }
-
-  /**
-   * Check rate limits
-   */
-  private async checkRateLimit(context: SecurityContext): Promise<{ allowed: boolean; reason?: string }> {
-    const key = `discord:${context.userId}:${context.command || context.action || 'general'}`;
-    const configName = this.getRateLimitConfig(context);
     
-    const result = rateLimiter.isRateLimited(key, configName);
+    // 2. Check blacklist
+    const blacklistCheck = await checkBlacklist(context);
+    if (!blacklistCheck.passed) {
+      return blacklistCheck;
+    }
     
-    if (result.limited) {
-      await auditLogger.log(
-        context.userId,
-        context.guildId,
-        AuditActions.RATE_LIMIT_EXCEEDED,
-        AuditCategories.SECURITY,
-        { 
-          command: context.command,
-          retryAfter: result.retryAfter 
-        }
+    // 3. Check rate limits
+    const rateLimitCheck = await checkRateLimit(context);
+    if (!rateLimitCheck.passed) {
+      await handleRateLimit(interaction, rateLimitCheck.details as RateLimitResult);
+      return rateLimitCheck;
+    }
+    
+    // 4. Check permissions
+    if (command.permissions && command.permissions.length > 0) {
+      const permissionCheck = await PermissionManager.checkCommandPermissions(
+        interaction,
+        command.permissions
       );
       
-      return { 
-        allowed: false, 
-        reason: result.message || 'You are being rate limited. Please try again later.' 
+      if (!permissionCheck.allowed) {
+        await handlePermissionDenied(interaction, permissionCheck);
+        return {
+          passed: false,
+          error: permissionCheck.reason,
+          code: 'PERMISSION',
+          details: permissionCheck,
+        };
+      }
+    }
+    
+    // 5. Validate input
+    const validationCheck = await validateCommandInput(interaction, command);
+    if (!validationCheck.passed) {
+      await handleValidationError(interaction, validationCheck.error!);
+      return validationCheck;
+    }
+    
+    // 6. Log command execution
+    await auditLogger.logAction({
+      action: 'COMMAND_EXECUTE',
+      userId: context.userId,
+      guildId: context.guildId,
+      targetId: context.channelId,
+      details: {
+        command: context.commandName,
+        options: sanitizeOptions(interaction.options.data),
+      },
+    });
+    
+    return { passed: true };
+  } catch (error) {
+    logger.error('Security middleware error:', error);
+    return {
+      passed: false,
+      error: t('security.error'),
+      code: 'VALIDATION',
+    };
+  }
+}
+
+/**
+ * Check if user/guild is blacklisted
+ */
+async function checkBlacklist(context: SecurityContext): Promise<SecurityCheckResult> {
+  // Check user blacklist
+  const userBlacklisted = await isBlacklisted('user', context.userId);
+  if (userBlacklisted) {
+    return {
+      passed: false,
+      error: t('security.blacklisted.user'),
+      code: 'BLACKLIST',
+    };
+  }
+  
+  // Check guild blacklist
+  const guildBlacklisted = await isBlacklisted('guild', context.guildId);
+  if (guildBlacklisted) {
+    return {
+      passed: false,
+      error: t('security.blacklisted.guild'),
+      code: 'BLACKLIST',
+    };
+  }
+  
+  return { passed: true };
+}
+
+/**
+ * Check rate limits
+ */
+async function checkRateLimit(context: SecurityContext): Promise<SecurityCheckResult> {
+  // Owners bypass rate limits
+  if (context.isOwner) {
+    return { passed: true };
+  }
+  
+  // Check if user has rate limit bypass permission
+  if (context.permissions & PermissionFlagsBits.Administrator) {
+    return { passed: true };
+  }
+  
+  const result = await checkCommandRateLimit(
+    context.userId,
+    context.guildId,
+    context.commandName
+  );
+  
+  if (!result.allowed) {
+    return {
+      passed: false,
+      error: t('security.rateLimit', { 
+        seconds: Math.ceil(result.msBeforeNext / 1000) 
+      }),
+      code: 'RATE_LIMIT',
+      details: result,
+    };
+  }
+  
+  return { passed: true };
+}
+
+/**
+ * Validate command input
+ */
+async function validateCommandInput(
+  interaction: ChatInputCommandInteraction,
+  command: Command
+): Promise<SecurityCheckResult> {
+  const commandName = command.data.name;
+  const subcommand = interaction.options.getSubcommand(false);
+  const fullCommand = subcommand ? `${commandName}.${subcommand}` : commandName;
+  
+  // Get validation schema
+  const schema = CommandSchemas[commandName]?.[subcommand || 'default'];
+  if (!schema) {
+    return { passed: true }; // No schema defined, skip validation
+  }
+  
+  try {
+    // Extract options
+    const options: Record<string, any> = {};
+    interaction.options.data.forEach(opt => {
+      if (opt.type === 1) { // Subcommand
+        opt.options?.forEach(subOpt => {
+          options[subOpt.name] = subOpt.value;
+        });
+      } else {
+        options[opt.name] = opt.value;
+      }
+    });
+    
+    // Validate
+    Validator.validate(schema, options);
+    
+    // Additional security checks
+    await performSecurityChecks(options);
+    
+    return { passed: true };
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return {
+        passed: false,
+        error: error.message,
+        code: 'VALIDATION',
       };
     }
-    
-    return { allowed: true };
+    throw error;
   }
+}
 
-  /**
-   * Get rate limit config based on context
-   */
-  private getRateLimitConfig(context: SecurityContext): string {
-    if (context.command) {
-      // Special rate limits for certain commands
-      const heavyCommands = ['backup', 'restore', 'migrate'];
-      if (heavyCommands.includes(context.command)) {
-        return 'heavy';
+/**
+ * Perform additional security checks on input
+ */
+async function performSecurityChecks(options: Record<string, any>): Promise<void> {
+  for (const [key, value] of Object.entries(options)) {
+    if (typeof value === 'string') {
+      // Check for mass mentions
+      if (Sanitizer.hasMassMentions(value)) {
+        throw new ValidationError('Mass mentions are not allowed');
       }
       
-      const economyCommands = ['daily', 'work', 'rob', 'gamble'];
-      if (economyCommands.includes(context.command)) {
-        return 'economy';
+      // Check for spam patterns
+      if (value.length > 100 && Sanitizer.isSpam(value)) {
+        throw new ValidationError('Message appears to be spam');
       }
       
-      const adminCommands = ['config', 'setup', 'permissions'];
-      if (adminCommands.includes(context.command)) {
-        return 'admin';
-      }
-    }
-    
-    return 'default';
-  }
-
-  /**
-   * Check permissions
-   */
-  private async checkPermissions(
-    interaction: ChatInputCommandInteraction
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    const member = interaction.member as GuildMember;
-    const commandPermissions = permissions.constructor.getCommandPermissions();
-    const requiredPermission = commandPermissions[interaction.commandName];
-    
-    if (requiredPermission) {
-      const hasPermission = await permissions.hasPermission(member, requiredPermission);
-      
-      if (!hasPermission) {
-        await auditLogger.log(
-          member.id,
-          interaction.guildId!,
-          'permission_denied',
-          AuditCategories.SECURITY,
-          { 
-            command: interaction.commandName,
-            permission: requiredPermission 
+      // Check URLs if present
+      const urlMatch = value.match(/https?:\/\/[^\s]+/gi);
+      if (urlMatch) {
+        for (const url of urlMatch) {
+          if (!Validator.isUrlSafe(url)) {
+            throw new ValidationError('Unsafe URL detected');
           }
-        );
-        
-        return { 
-          allowed: false, 
-          reason: 'You do not have permission to use this command.' 
-        };
-      }
-    }
-    
-    return { allowed: true };
-  }
-
-  /**
-   * Validate inputs
-   */
-  private async validateInputs(
-    interaction: ChatInputCommandInteraction | ModalSubmitInteraction
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    if (interaction.isChatInputCommand()) {
-      // Validate command options
-      for (const option of interaction.options.data) {
-        const value = option.value?.toString();
-        if (value && InputValidator.containsSQLInjection(value)) {
-          await auditLogger.log(
-            interaction.user.id,
-            interaction.guildId!,
-            AuditActions.SUSPICIOUS_ACTIVITY,
-            AuditCategories.SECURITY,
-            { 
-              command: interaction.commandName,
-              option: option.name,
-              value: value.slice(0, 100) 
-            }
-          );
-          
-          return { 
-            allowed: false, 
-            reason: 'Invalid input detected. Please try again with valid input.' 
-          };
         }
       }
-    } else if (interaction.isModalSubmit()) {
-      // Validate modal fields
-      for (const field of interaction.fields.fields.values()) {
-        if (InputValidator.containsSQLInjection(field.value)) {
-          await auditLogger.log(
-            interaction.user.id,
-            interaction.guildId!,
-            AuditActions.SUSPICIOUS_ACTIVITY,
-            AuditCategories.SECURITY,
-            { 
-              modal: interaction.customId,
-              field: field.customId,
-              value: field.value.slice(0, 100) 
-            }
-          );
-          
-          return { 
-            allowed: false, 
-            reason: 'Invalid input detected. Please try again with valid input.' 
-          };
-        }
-      }
-    }
-    
-    return { allowed: true };
-  }
-
-  /**
-   * Check for suspicious activity patterns
-   */
-  private async checkSuspiciousActivity(
-    context: SecurityContext
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    // Check for rapid command switching (potential bot/automation)
-    const recentCommands = await this.getRecentCommands(context.userId, context.guildId);
-    
-    if (recentCommands.length >= 10) {
-      const uniqueCommands = new Set(recentCommands);
-      if (uniqueCommands.size >= 8) {
-        // User is rapidly switching between many different commands
-        await auditLogger.log(
-          context.userId,
-          context.guildId,
-          AuditActions.SUSPICIOUS_ACTIVITY,
-          AuditCategories.SECURITY,
-          { 
-            reason: 'Rapid command switching detected',
-            commands: Array.from(uniqueCommands) 
-          }
-        );
-        
-        // Add to temporary blacklist
-        rateLimiter.addToBlacklist(`discord:${context.userId}:*`, 600000); // 10 minutes
-        
-        return { 
-          allowed: false, 
-          reason: 'Suspicious activity detected. Please try again later.' 
-        };
-      }
-    }
-    
-    return { allowed: true };
-  }
-
-  /**
-   * Get recent commands from audit log
-   */
-  private async getRecentCommands(userId: string, guildId: string): Promise<string[]> {
-    const fiveMinutesAgo = new Date(Date.now() - 300000);
-    
-    const entries = await auditLogger.query({
-      userId,
-      guildId,
-      action: 'command_executed',
-      startDate: fiveMinutesAgo
-    }, 20);
-    
-    return entries
-      .map(entry => entry.details.command)
-      .filter(Boolean);
-  }
-
-  /**
-   * Sanitize user input for safe display
-   */
-  static sanitizeForDisplay(input: string): string {
-    return InputValidator.sanitizeText(input);
-  }
-
-  /**
-   * Sanitize user input for database queries
-   */
-  static sanitizeForDatabase(input: string): string {
-    return input
-      .replace(/'/g, "''") // Escape single quotes
-      .replace(/\\/g, '\\\\') // Escape backslashes
-      .trim();
-  }
-
-  /**
-   * Check if a URL is safe
-   */
-  static isSafeURL(url: string): boolean {
-    try {
-      const parsed = new URL(url);
-      
-      // Check protocol
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return false;
-      }
-      
-      // Check for suspicious patterns
-      const suspiciousPatterns = [
-        /javascript:/i,
-        /data:text\/html/i,
-        /vbscript:/i,
-        /onload=/i,
-        /onerror=/i,
-      ];
-      
-      return !suspiciousPatterns.some(pattern => pattern.test(url));
-    } catch {
-      return false;
     }
   }
 }
 
-// Global security middleware instance
-export const security = new SecurityMiddleware();
+/**
+ * Handle rate limit response
+ */
+async function handleRateLimit(
+  interaction: ChatInputCommandInteraction,
+  result: RateLimitResult
+): Promise<void> {
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('Rate Limit')
+    .setDescription(t('security.rateLimit.description'))
+    .addFields(
+      {
+        name: 'Time Remaining',
+        value: `${Math.ceil(result.msBeforeNext / 1000)} seconds`,
+        inline: true,
+      },
+      {
+        name: 'Status',
+        value: result.isBlocked ? 'Temporarily Blocked' : 'Rate Limited',
+        inline: true,
+      }
+    )
+    .setFooter({ text: 'Please slow down and try again later' })
+    .setTimestamp();
+  
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+/**
+ * Handle permission denied response
+ */
+async function handlePermissionDenied(
+  interaction: ChatInputCommandInteraction,
+  check: PermissionCheck
+): Promise<void> {
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('Permission Denied')
+    .setDescription(check.reason || t('security.permission.denied'))
+    .setTimestamp();
+  
+  if (check.missingPermissions && check.missingPermissions.length > 0) {
+    embed.addFields({
+      name: 'Missing Permissions',
+      value: check.missingPermissions.join(', '),
+      inline: false,
+    });
+  }
+  
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+/**
+ * Handle validation error response
+ */
+async function handleValidationError(
+  interaction: ChatInputCommandInteraction,
+  error: string
+): Promise<void> {
+  const embed = new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('Invalid Input')
+    .setDescription(error)
+    .setFooter({ text: 'Please check your input and try again' })
+    .setTimestamp();
+  
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+
+/**
+ * Sanitize options for logging
+ */
+function sanitizeOptions(options: any[]): any[] {
+  return options.map(opt => ({
+    name: opt.name,
+    type: opt.type,
+    value: typeof opt.value === 'string' 
+      ? Sanitizer.removeSensitive(opt.value)
+      : opt.value,
+    options: opt.options ? sanitizeOptions(opt.options) : undefined,
+  }));
+}
+
+/**
+ * Check if entity is blacklisted (implement based on your database)
+ */
+async function isBlacklisted(type: 'user' | 'guild', id: string): Promise<boolean> {
+  // TODO: Implement database check
+  // For now, return false
+  return false;
+}
+
+/**
+ * Message security middleware
+ */
+export async function messageSecurityMiddleware(
+  message: Message
+): Promise<SecurityCheckResult> {
+  // Skip bot messages
+  if (message.author.bot) {
+    return { passed: true };
+  }
+  
+  // Skip DMs for now
+  if (!message.guild) {
+    return { passed: true };
+  }
+  
+  const content = message.content;
+  
+  // Check for spam
+  if (Sanitizer.isSpam(content)) {
+    await message.delete().catch(() => {});
+    return {
+      passed: false,
+      error: 'Message detected as spam',
+      code: 'VALIDATION',
+    };
+  }
+  
+  // Check for mass mentions
+  if (Sanitizer.hasMassMentions(content)) {
+    await message.delete().catch(() => {});
+    await message.member?.timeout(300000, 'Mass mention spam').catch(() => {});
+    return {
+      passed: false,
+      error: 'Mass mentions detected',
+      code: 'VALIDATION',
+    };
+  }
+  
+  return { passed: true };
+}
+
+/**
+ * Create security report embed
+ */
+export function createSecurityReport(
+  title: string,
+  severity: 'low' | 'medium' | 'high' | 'critical',
+  details: string,
+  actions?: string[]
+): EmbedBuilder {
+  const colors = {
+    low: 0x00FF00,
+    medium: 0xFFFF00,
+    high: 0xFFA500,
+    critical: 0xFF0000,
+  };
+  
+  const embed = new EmbedBuilder()
+    .setColor(colors[severity])
+    .setTitle(`Security Alert: ${title}`)
+    .setDescription(details)
+    .addFields({
+      name: 'Severity',
+      value: severity.toUpperCase(),
+      inline: true,
+    })
+    .setTimestamp();
+  
+  if (actions && actions.length > 0) {
+    embed.addFields({
+      name: 'Recommended Actions',
+      value: actions.map((a, i) => `${i + 1}. ${a}`).join('\n'),
+      inline: false,
+    });
+  }
+  
+  return embed;
+}

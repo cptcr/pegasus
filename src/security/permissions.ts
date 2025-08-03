@@ -1,323 +1,368 @@
 import { 
-  ChatInputCommandInteraction, 
-  GuildMember, 
-  PermissionFlagsBits,
+  PermissionFlagsBits, 
   PermissionsBitField,
-  Guild
+  GuildMember,
+  User,
+  Guild,
+  ChatInputCommandInteraction,
+  Message,
+  TextChannel,
+  VoiceChannel,
+  CategoryChannel,
+  ThreadChannel,
+  GuildChannel,
+  Role
 } from 'discord.js';
-import { database } from '../database/connection';
+import { db } from '../database/drizzle';
+import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 
-export interface PermissionNode {
-  node: string;
+export interface PermissionCheck {
   allowed: boolean;
-  source: 'role' | 'user' | 'default';
+  reason?: string;
+  missingPermissions?: string[];
 }
+
+// Permission groups for easier management
+export const PermissionGroups = {
+  MODERATION_BASIC: [
+    PermissionFlagsBits.KickMembers,
+    PermissionFlagsBits.BanMembers,
+    PermissionFlagsBits.ModerateMembers,
+    PermissionFlagsBits.ManageMessages,
+  ],
+  
+  MODERATION_ADVANCED: [
+    PermissionFlagsBits.Administrator,
+    PermissionFlagsBits.ManageGuild,
+    PermissionFlagsBits.ManageRoles,
+    PermissionFlagsBits.ManageChannels,
+  ],
+  
+  MANAGEMENT: [
+    PermissionFlagsBits.ManageGuild,
+    PermissionFlagsBits.ManageChannels,
+    PermissionFlagsBits.ManageRoles,
+    PermissionFlagsBits.ManageWebhooks,
+    PermissionFlagsBits.ManageGuildExpressions,
+  ],
+  
+  DANGEROUS: [
+    PermissionFlagsBits.Administrator,
+    PermissionFlagsBits.ManageGuild,
+    PermissionFlagsBits.ManageRoles,
+    PermissionFlagsBits.ManageWebhooks,
+  ],
+};
 
 export class PermissionManager {
-  private cache: Map<string, PermissionNode[]> = new Map();
-  private readonly cacheTimeout = 300000; // 5 minutes
-
+  // Bot owner IDs (from environment variable)
+  private static readonly BOT_OWNERS = (process.env.BOT_OWNERS || '').split(',').filter(Boolean);
+  
   /**
-   * Check if a member has a specific permission
+   * Check if user is bot owner
    */
-  async hasPermission(
+  static isBotOwner(userId: string): boolean {
+    return this.BOT_OWNERS.includes(userId);
+  }
+  
+  /**
+   * Check if member has required permissions
+   */
+  static hasPermissions(
     member: GuildMember,
-    permission: string
-  ): Promise<boolean> {
-    // Guild owner always has permission
-    if (member.guild.ownerId === member.id) {
-      return true;
+    permissions: bigint[],
+    checkAdmin: boolean = true
+  ): PermissionCheck {
+    // Bot owners bypass all checks
+    if (this.isBotOwner(member.id)) {
+      return { allowed: true };
     }
-
-    // Check Discord admin permission
-    if (member.permissions.has(PermissionFlagsBits.Administrator)) {
-      return true;
-    }
-
-    // Get all permission nodes for the member
-    const nodes = await this.getMemberPermissions(member);
     
-    // Check for exact match or wildcard
-    return this.evaluatePermission(permission, nodes);
-  }
-
-  /**
-   * Get all permissions for a member
-   */
-  private async getMemberPermissions(member: GuildMember): Promise<PermissionNode[]> {
-    const cacheKey = `${member.guild.id}:${member.id}`;
+    // Check for admin if enabled
+    if (checkAdmin && member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return { allowed: true };
+    }
     
-    // Check cache
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const permissions: PermissionNode[] = [];
-
-    // Get user-specific permissions
-    const userPerms = await database.query<{ permission: string; allowed: boolean }>(
-      'SELECT permission, allowed FROM user_permissions WHERE guild_id = $1 AND user_id = $2',
-      [member.guild.id, member.id]
-    );
-
-    for (const perm of userPerms.rows) {
-      permissions.push({
-        node: perm.permission,
-        allowed: perm.allowed,
-        source: 'user'
-      });
-    }
-
-    // Get role permissions
-    const roleIds = member.roles.cache.map(r => r.id);
-    if (roleIds.length > 0) {
-      const rolePerms = await database.query<{ permission: string; allowed: boolean; role_id: string }>(
-        'SELECT permission, allowed, role_id FROM role_permissions WHERE guild_id = $1 AND role_id = ANY($2)',
-        [member.guild.id, roleIds]
-      );
-
-      // Sort by role position (higher position = higher priority)
-      const sortedPerms = rolePerms.rows.sort((a, b) => {
-        const roleA = member.roles.cache.get(a.role_id);
-        const roleB = member.roles.cache.get(b.role_id);
-        return (roleB?.position || 0) - (roleA?.position || 0);
-      });
-
-      for (const perm of sortedPerms) {
-        permissions.push({
-          node: perm.permission,
-          allowed: perm.allowed,
-          source: 'role'
-        });
+    // Check specific permissions
+    const missing: string[] = [];
+    for (const permission of permissions) {
+      if (!member.permissions.has(permission)) {
+        const permName = this.getPermissionName(permission);
+        missing.push(permName);
       }
     }
-
-    // Cache the results
-    this.cache.set(cacheKey, permissions);
-    setTimeout(() => this.cache.delete(cacheKey), this.cacheTimeout);
-
-    return permissions;
+    
+    if (missing.length > 0) {
+      return {
+        allowed: false,
+        reason: 'Missing required permissions',
+        missingPermissions: missing,
+      };
+    }
+    
+    return { allowed: true };
   }
-
+  
   /**
-   * Evaluate if a permission is granted based on nodes
+   * Check if member can moderate target
    */
-  private evaluatePermission(permission: string, nodes: PermissionNode[]): boolean {
-    const parts = permission.split('.');
-    let allowed = false;
-
-    // Check from most specific to least specific
-    for (let i = parts.length; i >= 0; i--) {
-      const checkPerm = i === 0 ? '*' : parts.slice(0, i).join('.');
-      const wildcardPerm = i === 0 ? '*' : `${parts.slice(0, i).join('.')}.*`;
-
-      // Check exact match
-      const exactMatch = nodes.find(n => n.node === checkPerm);
-      if (exactMatch) {
-        allowed = exactMatch.allowed;
-        if (exactMatch.source === 'user') {
-          // User permissions override all
-          return allowed;
+  static canModerate(
+    moderator: GuildMember,
+    target: GuildMember,
+    action: 'ban' | 'kick' | 'timeout' | 'warn' | 'role'
+  ): PermissionCheck {
+    // Bot owners can moderate anyone
+    if (this.isBotOwner(moderator.id)) {
+      return { allowed: true };
+    }
+    
+    // Can't moderate yourself
+    if (moderator.id === target.id) {
+      return { allowed: false, reason: 'You cannot moderate yourself' };
+    }
+    
+    // Can't moderate the guild owner
+    if (target.id === target.guild.ownerId) {
+      return { allowed: false, reason: 'Cannot moderate the guild owner' };
+    }
+    
+    // Can't moderate bot owners
+    if (this.isBotOwner(target.id)) {
+      return { allowed: false, reason: 'Cannot moderate bot owners' };
+    }
+    
+    // Check role hierarchy
+    const moderatorHighest = moderator.roles.highest;
+    const targetHighest = target.roles.highest;
+    
+    if (moderatorHighest.position <= targetHighest.position) {
+      return { 
+        allowed: false, 
+        reason: 'Your highest role must be above the target\'s highest role' 
+      };
+    }
+    
+    // Check specific permissions for action
+    const requiredPerms: bigint[] = [];
+    switch (action) {
+      case 'ban':
+        requiredPerms.push(PermissionFlagsBits.BanMembers);
+        break;
+      case 'kick':
+        requiredPerms.push(PermissionFlagsBits.KickMembers);
+        break;
+      case 'timeout':
+        requiredPerms.push(PermissionFlagsBits.ModerateMembers);
+        break;
+      case 'warn':
+        requiredPerms.push(PermissionFlagsBits.ModerateMembers);
+        break;
+      case 'role':
+        requiredPerms.push(PermissionFlagsBits.ManageRoles);
+        break;
+    }
+    
+    return this.hasPermissions(moderator, requiredPerms);
+  }
+  
+  /**
+   * Check if bot has permissions in channel
+   */
+  static async checkBotPermissions(
+    guild: Guild,
+    channel?: GuildChannel | null,
+    permissions: bigint[] = []
+  ): Promise<PermissionCheck> {
+    const botMember = guild.members.me;
+    if (!botMember) {
+      return { allowed: false, reason: 'Bot is not in the guild' };
+    }
+    
+    // Check guild-level permissions
+    const guildCheck = this.hasPermissions(botMember, permissions, true);
+    if (!guildCheck.allowed) {
+      return guildCheck;
+    }
+    
+    // Check channel-level permissions if provided
+    if (channel) {
+      const channelPerms = channel.permissionsFor(botMember);
+      if (!channelPerms) {
+        return { allowed: false, reason: 'Cannot determine channel permissions' };
+      }
+      
+      const missing: string[] = [];
+      for (const permission of permissions) {
+        if (!channelPerms.has(permission)) {
+          const permName = this.getPermissionName(permission);
+          missing.push(permName);
         }
       }
-
-      // Check wildcard
-      const wildcardMatch = nodes.find(n => n.node === wildcardPerm);
-      if (wildcardMatch) {
-        allowed = wildcardMatch.allowed;
-        if (wildcardMatch.source === 'user') {
-          // User permissions override all
-          return allowed;
-        }
+      
+      if (missing.length > 0) {
+        return {
+          allowed: false,
+          reason: 'Bot missing required channel permissions',
+          missingPermissions: missing,
+        };
       }
     }
-
-    return allowed;
-  }
-
-  /**
-   * Grant a permission to a user
-   */
-  async grantUserPermission(
-    guildId: string,
-    userId: string,
-    permission: string
-  ): Promise<void> {
-    await database.query(
-      `INSERT INTO user_permissions (guild_id, user_id, permission, allowed)
-       VALUES ($1, $2, $3, true)
-       ON CONFLICT (guild_id, user_id, permission)
-       DO UPDATE SET allowed = true`,
-      [guildId, userId, permission]
-    );
-
-    // Clear cache
-    this.cache.delete(`${guildId}:${userId}`);
     
-    logger.audit('Permission granted', userId, guildId, { permission });
+    return { allowed: true };
   }
-
+  
   /**
-   * Revoke a permission from a user
+   * Check command permissions
    */
-  async revokeUserPermission(
-    guildId: string,
-    userId: string,
-    permission: string
-  ): Promise<void> {
-    await database.query(
-      `INSERT INTO user_permissions (guild_id, user_id, permission, allowed)
-       VALUES ($1, $2, $3, false)
-       ON CONFLICT (guild_id, user_id, permission)
-       DO UPDATE SET allowed = false`,
-      [guildId, userId, permission]
-    );
-
-    // Clear cache
-    this.cache.delete(`${guildId}:${userId}`);
-    
-    logger.audit('Permission revoked', userId, guildId, { permission });
-  }
-
-  /**
-   * Grant a permission to a role
-   */
-  async grantRolePermission(
-    guildId: string,
-    roleId: string,
-    permission: string
-  ): Promise<void> {
-    await database.query(
-      `INSERT INTO role_permissions (guild_id, role_id, permission, allowed)
-       VALUES ($1, $2, $3, true)
-       ON CONFLICT (guild_id, role_id, permission)
-       DO UPDATE SET allowed = true`,
-      [guildId, roleId, permission]
-    );
-
-    // Clear cache for all members with this role
-    this.clearGuildCache(guildId);
-    
-    logger.audit('Role permission granted', 'system', guildId, { roleId, permission });
-  }
-
-  /**
-   * Revoke a permission from a role
-   */
-  async revokeRolePermission(
-    guildId: string,
-    roleId: string,
-    permission: string
-  ): Promise<void> {
-    await database.query(
-      `INSERT INTO role_permissions (guild_id, role_id, permission, allowed)
-       VALUES ($1, $2, $3, false)
-       ON CONFLICT (guild_id, role_id, permission)
-       DO UPDATE SET allowed = false`,
-      [guildId, roleId, permission]
-    );
-
-    // Clear cache for all members with this role
-    this.clearGuildCache(guildId);
-    
-    logger.audit('Role permission revoked', 'system', guildId, { roleId, permission });
-  }
-
-  /**
-   * Clear cache for a guild
-   */
-  private clearGuildCache(guildId: string): void {
-    for (const key of this.cache.keys()) {
-      if (key.startsWith(`${guildId}:`)) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Get all permissions for display
-   */
-  async getPermissionList(guildId: string, targetId: string, type: 'user' | 'role'): Promise<PermissionNode[]> {
-    const table = type === 'user' ? 'user_permissions' : 'role_permissions';
-    const column = type === 'user' ? 'user_id' : 'role_id';
-    
-    const result = await database.query<{ permission: string; allowed: boolean }>(
-      `SELECT permission, allowed FROM ${table} WHERE guild_id = $1 AND ${column} = $2 ORDER BY permission`,
-      [guildId, targetId]
-    );
-
-    return result.rows.map(row => ({
-      node: row.permission,
-      allowed: row.allowed,
-      source: type
-    }));
-  }
-
-  /**
-   * Middleware for command permission checking
-   */
-  async checkCommandPermission(
+  static async checkCommandPermissions(
     interaction: ChatInputCommandInteraction,
-    requiredPermission?: string
-  ): Promise<boolean> {
+    requiredPermissions: bigint[],
+    options: {
+      requireOwner?: boolean;
+      requireAdmin?: boolean;
+      customCheck?: (member: GuildMember) => Promise<boolean>;
+    } = {}
+  ): Promise<PermissionCheck> {
     if (!interaction.guild || !interaction.member) {
-      return false;
+      return { allowed: false, reason: 'This command can only be used in a guild' };
     }
-
-    const member = interaction.member as GuildMember;
-    const permission = requiredPermission || `command.${interaction.commandName}`;
-
-    const hasPermission = await this.hasPermission(member, permission);
     
-    if (!hasPermission) {
-      logger.warn('Permission denied', {
-        userId: member.id,
-        guildId: interaction.guild.id,
-        permission,
-        command: interaction.commandName
-      });
+    const member = interaction.member as GuildMember;
+    
+    // Check owner requirement
+    if (options.requireOwner && !this.isBotOwner(member.id)) {
+      return { allowed: false, reason: 'This command is restricted to bot owners' };
     }
-
-    return hasPermission;
+    
+    // Check admin requirement
+    if (options.requireAdmin && !member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return { allowed: false, reason: 'This command requires administrator permissions' };
+    }
+    
+    // Check custom requirement
+    if (options.customCheck) {
+      try {
+        const customAllowed = await options.customCheck(member);
+        if (!customAllowed) {
+          return { allowed: false, reason: 'You do not meet the requirements for this command' };
+        }
+      } catch (error) {
+        logger.error('Custom permission check failed:', error);
+        return { allowed: false, reason: 'Permission check failed' };
+      }
+    }
+    
+    // Check required permissions
+    return this.hasPermissions(member, requiredPermissions);
   }
-
+  
   /**
-   * Get permission nodes for commands
+   * Get human-readable permission name
    */
-  static getCommandPermissions(): Record<string, string> {
-    return {
-      // Moderation
-      'ban': 'moderation.ban',
-      'kick': 'moderation.kick',
-      'mute': 'moderation.mute',
-      'warn': 'moderation.warn',
-      'clear': 'moderation.clear',
-      
-      // Admin
-      'config': 'admin.config',
-      'setup': 'admin.setup',
-      'permissions': 'admin.permissions',
-      
-      // Economy
-      'economy': 'economy.manage',
-      'give': 'economy.give',
-      'take': 'economy.take',
-      
-      // Giveaways
-      'giveaway': 'giveaway.manage',
-      
-      // Tickets
-      'ticket-setup': 'tickets.setup',
-      'ticket-close': 'tickets.close',
-      
-      // Utility
-      'say': 'utility.say',
-      'embed': 'utility.embed',
+  private static getPermissionName(permission: bigint): string {
+    const permissionNames: Record<string, string> = {
+      [PermissionFlagsBits.CreateInstantInvite.toString()]: 'Create Invite',
+      [PermissionFlagsBits.KickMembers.toString()]: 'Kick Members',
+      [PermissionFlagsBits.BanMembers.toString()]: 'Ban Members',
+      [PermissionFlagsBits.Administrator.toString()]: 'Administrator',
+      [PermissionFlagsBits.ManageChannels.toString()]: 'Manage Channels',
+      [PermissionFlagsBits.ManageGuild.toString()]: 'Manage Server',
+      [PermissionFlagsBits.AddReactions.toString()]: 'Add Reactions',
+      [PermissionFlagsBits.ViewAuditLog.toString()]: 'View Audit Log',
+      [PermissionFlagsBits.PrioritySpeaker.toString()]: 'Priority Speaker',
+      [PermissionFlagsBits.Stream.toString()]: 'Video',
+      [PermissionFlagsBits.ViewChannel.toString()]: 'View Channel',
+      [PermissionFlagsBits.SendMessages.toString()]: 'Send Messages',
+      [PermissionFlagsBits.SendTTSMessages.toString()]: 'Send TTS Messages',
+      [PermissionFlagsBits.ManageMessages.toString()]: 'Manage Messages',
+      [PermissionFlagsBits.EmbedLinks.toString()]: 'Embed Links',
+      [PermissionFlagsBits.AttachFiles.toString()]: 'Attach Files',
+      [PermissionFlagsBits.ReadMessageHistory.toString()]: 'Read Message History',
+      [PermissionFlagsBits.MentionEveryone.toString()]: 'Mention Everyone',
+      [PermissionFlagsBits.UseExternalEmojis.toString()]: 'Use External Emojis',
+      [PermissionFlagsBits.ViewGuildInsights.toString()]: 'View Server Insights',
+      [PermissionFlagsBits.Connect.toString()]: 'Connect',
+      [PermissionFlagsBits.Speak.toString()]: 'Speak',
+      [PermissionFlagsBits.MuteMembers.toString()]: 'Mute Members',
+      [PermissionFlagsBits.DeafenMembers.toString()]: 'Deafen Members',
+      [PermissionFlagsBits.MoveMembers.toString()]: 'Move Members',
+      [PermissionFlagsBits.UseVAD.toString()]: 'Use Voice Activity',
+      [PermissionFlagsBits.ChangeNickname.toString()]: 'Change Nickname',
+      [PermissionFlagsBits.ManageNicknames.toString()]: 'Manage Nicknames',
+      [PermissionFlagsBits.ManageRoles.toString()]: 'Manage Roles',
+      [PermissionFlagsBits.ManageWebhooks.toString()]: 'Manage Webhooks',
+      [PermissionFlagsBits.ManageGuildExpressions.toString()]: 'Manage Expressions',
+      [PermissionFlagsBits.UseApplicationCommands.toString()]: 'Use Application Commands',
+      [PermissionFlagsBits.RequestToSpeak.toString()]: 'Request to Speak',
+      [PermissionFlagsBits.ManageEvents.toString()]: 'Manage Events',
+      [PermissionFlagsBits.ManageThreads.toString()]: 'Manage Threads',
+      [PermissionFlagsBits.CreatePublicThreads.toString()]: 'Create Public Threads',
+      [PermissionFlagsBits.CreatePrivateThreads.toString()]: 'Create Private Threads',
+      [PermissionFlagsBits.UseExternalStickers.toString()]: 'Use External Stickers',
+      [PermissionFlagsBits.SendMessagesInThreads.toString()]: 'Send Messages in Threads',
+      [PermissionFlagsBits.UseEmbeddedActivities.toString()]: 'Use Activities',
+      [PermissionFlagsBits.ModerateMembers.toString()]: 'Timeout Members',
     };
+    
+    return permissionNames[permission.toString()] || 'Unknown Permission';
+  }
+  
+  /**
+   * Check if member has dangerous permissions
+   */
+  static hasDangerousPermissions(member: GuildMember): boolean {
+    return PermissionGroups.DANGEROUS.some(perm => member.permissions.has(perm));
+  }
+  
+  /**
+   * Get effective permissions for a member in a channel
+   */
+  static getEffectivePermissions(
+    member: GuildMember,
+    channel: GuildChannel
+  ): PermissionsBitField {
+    return channel.permissionsFor(member) || new PermissionsBitField();
+  }
+  
+  /**
+   * Check rate limit bypass permission
+   */
+  static canBypassRateLimit(member: GuildMember): boolean {
+    return this.isBotOwner(member.id) || 
+           member.permissions.has(PermissionFlagsBits.Administrator) ||
+           member.permissions.has(PermissionFlagsBits.ManageGuild);
+  }
+  
+  /**
+   * Validate role management
+   */
+  static canManageRole(member: GuildMember, role: Role): PermissionCheck {
+    // Check basic permission
+    if (!member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      return { 
+        allowed: false, 
+        reason: 'You need Manage Roles permission',
+        missingPermissions: ['Manage Roles'] 
+      };
+    }
+    
+    // Check role hierarchy
+    if (member.roles.highest.position <= role.position) {
+      return { 
+        allowed: false, 
+        reason: 'You can only manage roles below your highest role' 
+      };
+    }
+    
+    // Check if role is managed by integration
+    if (role.managed) {
+      return { 
+        allowed: false, 
+        reason: 'This role is managed by an integration and cannot be manually assigned' 
+      };
+    }
+    
+    return { allowed: true };
   }
 }
-
-// Global permission manager instance
-export const permissions = new PermissionManager();
