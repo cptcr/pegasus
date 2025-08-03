@@ -1,35 +1,27 @@
+import { Client } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { ExtendedClient } from '../types';
+import { logger } from '../utils/logger';
+import chalk from 'chalk';
 
-export class EventHandler {
-  private client: ExtendedClient;
+export async function loadEvents(client: Client): Promise<void> {
+  const eventsPath = join(__dirname, '..', 'events');
+  const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
 
-  constructor(client: ExtendedClient) {
-    this.client = client;
-  }
-
-  public async loadEvents(): Promise<void> {
-    const eventsPath = join(__dirname, '../events');
-    const eventFiles = readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-    console.log(`Loading ${eventFiles.length} event files...`);
-
-    for (const file of eventFiles) {
+  for (const file of eventFiles) {
+    try {
       const filePath = join(eventsPath, file);
-      const eventModule = await import(filePath);
-      const event = eventModule.event;
-
-      if (event && event.name) {
-        if (event.once) {
-          this.client.once(event.name, (...args) => event.execute(...args));
-        } else {
-          this.client.on(event.name, (...args) => event.execute(...args));
-        }
-
-        console.log(`Loaded event: ${event.name}`);
+      const event = await import(filePath);
+      
+      if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args));
       } else {
-        console.log(`Warning: Event at ${filePath} is missing required "name" or "execute" property.`);
+        client.on(event.name, (...args) => event.execute(...args));
       }
+      
+      logger.info(chalk.green(`Loaded event: ${event.name}`));
+    } catch (error) {
+      logger.error(chalk.red(`Failed to load event ${file}:`), error);
     }
   }
 }

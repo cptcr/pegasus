@@ -1,73 +1,58 @@
-import { Collection, REST, Routes } from 'discord.js';
+import { Client, REST, Routes, Collection } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { ExtendedClient, Command } from '../types';
-import { config } from '../utils/config';
+import { logger } from '../utils/logger';
+import chalk from 'chalk';
+import type { Command } from '../types/command';
 
-export class CommandHandler {
-  private client: ExtendedClient;
-  private commands: Collection<string, Command>;
+export async function loadCommands(client: Client): Promise<void> {
+  const commands = [];
+  const commandsPath = join(__dirname, '..', 'commands');
+  const commandCategories = readdirSync(commandsPath);
 
-  constructor(client: ExtendedClient) {
-    this.client = client;
-    this.commands = new Collection();
-    this.client.commands = this.commands;
-  }
+  for (const category of commandCategories) {
+    const categoryPath = join(commandsPath, category);
+    const commandFiles = readdirSync(categoryPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
 
-  public async loadCommands(): Promise<void> {
-    const commandsPath = join(__dirname, '../commands');
-    const commandFolders = readdirSync(commandsPath);
-
-    for (const folder of commandFolders) {
-      const commandsDir = join(commandsPath, folder);
-      const commandFiles = readdirSync(commandsDir).filter(file => file.endsWith('.js'));
-
-      for (const file of commandFiles) {
-        const filePath = join(commandsDir, file);
-        const commandModule = await import(filePath);
-
-        if (commandModule.data && commandModule.execute) {
-          const command = {
-            data: commandModule.data,
-            execute: commandModule.execute
-          };
-          this.commands.set(command.data.name, command);
-          console.log(`Loaded command: ${command.data.name}`);
+    for (const file of commandFiles) {
+      try {
+        const filePath = join(categoryPath, file);
+        const command = await import(filePath);
+        
+        if ('data' in command && 'execute' in command) {
+          client.commands.set(command.data.name, command as Command);
+          commands.push(command.data.toJSON());
+          logger.info(chalk.green(`Loaded command: ${command.data.name} (${category})`));
         } else {
-          console.log(`Warning: Command at ${filePath} is missing a required "data" or "execute" export.`);
+          logger.warn(chalk.yellow(`Command at ${filePath} is missing required "data" or "execute" property`));
         }
+      } catch (error) {
+        logger.error(chalk.red(`Failed to load command ${file}:`), error);
       }
     }
   }
 
-  public async registerCommands(): Promise<void> {
-    const commands = [];
-
-    for (const command of this.commands.values()) {
-      commands.push(command.data.toJSON());
-    }
-
-    const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN);
-
-    try {
-      console.log(`Started refreshing ${commands.length} application (/) commands.`);
-
+  // Register commands with Discord
+  try {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
+    
+    if (process.env.NODE_ENV === 'development' && process.env.GUILD_ID) {
+      // Register commands to a specific guild for development
       await rest.put(
-        Routes.applicationCommands(config.CLIENT_ID),
+        Routes.applicationGuildCommands(client.user!.id, process.env.GUILD_ID),
         { body: commands }
       );
-
-      console.log(`Successfully reloaded ${commands.length} application (/) commands.`);
-    } catch (error) {
-      console.error('Error registering commands:', error);
+      logger.info(chalk.green(`Registered ${commands.length} commands to guild ${process.env.GUILD_ID}`));
+    } else {
+      // Register commands globally for production
+      await rest.put(
+        Routes.applicationCommands(client.user!.id),
+        { body: commands }
+      );
+      logger.info(chalk.green(`Registered ${commands.length} commands globally`));
     }
-  }
-
-  public getCommand(name: string): Command | undefined {
-    return this.commands.get(name);
-  }
-
-  public getAllCommands(): Collection<string, Command> {
-    return this.commands;
+  } catch (error) {
+    logger.error(chalk.red('Failed to register commands:'), error);
+    throw error;
   }
 }

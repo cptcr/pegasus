@@ -1,27 +1,116 @@
-import { Events, Message } from 'discord.js';
-import { xpHandler } from '../handlers/xp';
-import { statsHandler } from '../handlers/stats';
-import { autoModHandler } from '../handlers/automod';
+import { Events, Message, EmbedBuilder, TextChannel } from 'discord.js';
+import { xpService } from '../services/xpService';
+import { configurationService } from '../services/configurationService';
+import { guildService } from '../services/guildService';
+import { logger } from '../utils/logger';
+import { getTranslation } from '../i18n';
 
-export const event = {
-  name: Events.MessageCreate,
-  async execute(message: Message) {
-    if (message.author.bot || !message.guild) return;
+export const name = Events.MessageCreate;
+export const once = false;
 
-    try {
-      // Handle automod first (may delete message)
-      await autoModHandler.handleMessage(message);
+export async function execute(message: Message) {
+  // Ignore bot messages
+  if (message.author.bot) return;
+  
+  // Ignore DMs
+  if (!message.guild || !message.member) return;
+
+  try {
+    // Ensure guild exists in database
+    await guildService.ensureGuildExists(message.guild.id);
+
+    // Process XP gain
+    await processXPGain(message);
+  } catch (error) {
+    logger.error('Error in messageCreate event:', error);
+  }
+}
+
+async function processXPGain(message: Message) {
+  try {
+    const config = await configurationService.getXPConfig(message.guild!.id);
+    
+    // Check if XP is enabled
+    if (!config.enabled) return;
+
+    // Add XP for message
+    const result = await xpService.addXP(
+      message.author.id,
+      message.guild!.id,
+      message.member!,
+      config.perMessage,
+      message.channel.id
+    );
+
+    if (!result || !result.leveledUp) return;
+
+    // Handle level up
+    if (config.announceLevelUp) {
+      const locale = await getTranslation(message.guild!.id, message.author.id);
       
-      // Only continue if message wasn't deleted
-      if (!message.deletable) return;
-      
-      // Handle XP system
-      await xpHandler.handleMessage(message);
-      
-      // Track message statistics
-      await statsHandler.incrementMessageCount(message.guild.id, message.author.id);
-    } catch (error) {
-      console.error('Error handling message:', error);
+      // Prepare level up message
+      let levelUpMessage = config.levelUpMessage || locale.commands.xp.levelUp.defaultMessage;
+      levelUpMessage = levelUpMessage
+        .replace('{{user}}', message.author.toString())
+        .replace('{{level}}', result.newLevel.toString())
+        .replace('{{username}}', message.author.username);
+
+      // Determine where to send the message
+      const targetChannel = config.levelUpChannel 
+        ? message.guild!.channels.cache.get(config.levelUpChannel) as TextChannel
+        : message.channel as TextChannel;
+
+      if (targetChannel && targetChannel.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor(0x00FF00)
+          .setTitle(locale.commands.xp.levelUp.title)
+          .setDescription(levelUpMessage)
+          .setThumbnail(message.author.displayAvatarURL())
+          .setTimestamp();
+
+        // Add role rewards info if any
+        if (result.rewardRoles && result.rewardRoles.length > 0) {
+          const roleRewards = result.rewardRoles
+            .map(roleId => `<@&${roleId}>`)
+            .join(', ');
+          
+          embed.addFields({
+            name: locale.commands.xp.levelUp.rolesEarned,
+            value: roleRewards,
+            inline: false,
+          });
+
+          // Add roles to member
+          for (const roleId of result.rewardRoles) {
+            try {
+              const role = message.guild!.roles.cache.get(roleId);
+              if (role && !message.member!.roles.cache.has(roleId)) {
+                await message.member!.roles.add(role);
+              }
+            } catch (error) {
+              logger.error(`Failed to add role ${roleId} to member ${message.author.id}:`, error);
+            }
+          }
+        }
+
+        await targetChannel.send({ embeds: [embed] });
+      }
     }
-  },
-};
+
+    // Add role rewards even if announce is disabled
+    if (result.rewardRoles && result.rewardRoles.length > 0 && !config.announceLevelUp) {
+      for (const roleId of result.rewardRoles) {
+        try {
+          const role = message.guild!.roles.cache.get(roleId);
+          if (role && !message.member!.roles.cache.has(roleId)) {
+            await message.member!.roles.add(role);
+          }
+        } catch (error) {
+          logger.error(`Failed to add role ${roleId} to member ${message.author.id}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to process XP gain:', error);
+  }
+}
