@@ -1,109 +1,267 @@
-import { ModalSubmitInteraction, PermissionFlagsBits } from 'discord.js';
-import { giveawayHandler } from '../../handlers/giveaway';
-import { i18n } from '../../i18n';
-import { logger } from '../../utils/logger';
-import { createErrorEmbed, createSuccessEmbed } from '../../utils/helpers';
+import { ModalSubmitInteraction, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { giveawayService } from '../../services/giveawayService';
+import { t } from '../../i18n';
 
-/**
- * Handle giveaway edit modal submissions
- */
-export async function handleGiveawayEditModal(interaction: ModalSubmitInteraction): Promise<void> {
-    try {
-        const giveawayId = interaction.customId.replace('giveaway_edit_modal_', '');
-        const userId = interaction.user.id;
-        const guildId = interaction.guildId!;
-        
-        const t = i18n.createTranslator(userId, guildId);
+export async function handleGiveawayModals(interaction: ModalSubmitInteraction) {
+  const [action, ...params] = interaction.customId.split(':');
 
-        if (!await checkManagementPermissions(interaction)) {
-            return;
-        }
-
-        await interaction.deferReply({ ephemeral: true });
-
-        const title = interaction.fields.getTextInputValue('title')?.trim();
-        const description = interaction.fields.getTextInputValue('description')?.trim() || undefined;
-        const prize = interaction.fields.getTextInputValue('prize')?.trim();
-        const winnerCountStr = interaction.fields.getTextInputValue('winner_count')?.trim();
-
-        if (!title || title.length < 3) {
-            await interaction.editReply({
-                embeds: [createErrorEmbed(
-                    t('giveaway.edit.error.title', {}, 'Invalid Title'),
-                    t('giveaway.edit.error.title_length', {}, 'Title must be at least 3 characters long.')
-                )]
-            });
-            return;
-        }
-
-        if (!prize || prize.length < 1) {
-            await interaction.editReply({
-                embeds: [createErrorEmbed(
-                    t('giveaway.edit.error.title', {}, 'Invalid Prize'),
-                    t('giveaway.edit.error.prize_required', {}, 'Prize is required.')
-                )]
-            });
-            return;
-        }
-
-        const winnerCount = parseInt(winnerCountStr);
-        if (isNaN(winnerCount) || winnerCount < 1 || winnerCount > 20) {
-            await interaction.editReply({
-                embeds: [createErrorEmbed(
-                    t('giveaway.edit.error.title', {}, 'Invalid Winner Count'),
-                    t('giveaway.edit.error.winner_count', {}, 'Winner count must be between 1 and 20.')
-                )]
-            });
-            return;
-        }
-
-        const success = await giveawayHandler.updateGiveaway(giveawayId, {
-            title,
-            description,
-            prize,
-            winnerCount
-        });
-
-        if (success) {
-            await interaction.editReply({
-                embeds: [createSuccessEmbed(
-                    t('giveaway.edit.success.title', {}, 'Giveaway Updated'),
-                    t('giveaway.edit.success.description', {}, 'The giveaway has been updated successfully.')
-                )]
-            });
-        } else {
-            await interaction.editReply({
-                embeds: [createErrorEmbed(
-                    t('giveaway.edit.error.title', {}, 'Update Failed'),
-                    t('giveaway.edit.error.update_failed', {}, 'Failed to update the giveaway.')
-                )]
-            });
-        }
-
-    } catch (error) {
-        logger.error('Error handling giveaway edit modal', error as Error);
-        if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({
-                embeds: [createErrorEmbed('Error', 'An unexpected error occurred.')],
-                ephemeral: true
-            });
-        }
-    }
+  if (action === 'gw_start') {
+    return handleGiveawayStart(interaction, params);
+  } else if (action === 'gw_configure') {
+    return handleGiveawayConfigure(interaction, params[0]);
+  }
 }
 
-/**
- * Check if user has management permissions
- */
-async function checkManagementPermissions(interaction: ModalSubmitInteraction): Promise<boolean> {
-    const member = interaction.guild?.members.cache.get(interaction.user.id);
-    
-    if (!member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
-        await interaction.reply({
-            embeds: [createErrorEmbed('Permission Denied', 'You need Manage Messages permission to manage giveaways.')],
-            ephemeral: true
-        });
-        return false;
+async function handleGiveawayStart(interaction: ModalSubmitInteraction, params: string[]) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const [channelId, prize, durationMs, winners] = params;
+  const channel = interaction.guild!.channels.cache.get(channelId) as TextChannel;
+
+  if (!channel) {
+    return interaction.editReply({
+      content: 'Channel not found',
+    });
+  }
+
+  // Get modal values
+  const description = interaction.fields.getTextInputValue('description') || null;
+  const requirementsText = interaction.fields.getTextInputValue('requirements');
+  const bonusEntriesText = interaction.fields.getTextInputValue('bonusEntries');
+  const embedColorText = interaction.fields.getTextInputValue('embedColor');
+  const hostText = interaction.fields.getTextInputValue('host');
+
+  // Parse requirements
+  const requirements: any = {};
+  if (requirementsText) {
+    const lines = requirementsText.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      const [key, value] = line.split(':').map(s => s.trim());
+      if (key === 'role') {
+        if (!requirements.roleIds) requirements.roleIds = [];
+        requirements.roleIds.push(value);
+      } else if (key === 'level') {
+        requirements.minLevel = parseInt(value);
+      } else if (key === 'time') {
+        requirements.minTimeInServer = value;
+      }
     }
-    
-    return true;
+  }
+
+  // Parse bonus entries
+  const bonusEntries: any = {};
+  if (bonusEntriesText) {
+    const lines = bonusEntriesText.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      const parts = line.split(':').map(s => s.trim());
+      if (parts[0] === 'role' && parts.length === 3) {
+        if (!bonusEntries.roles) bonusEntries.roles = {};
+        bonusEntries.roles[parts[1]] = parseInt(parts[2]);
+      } else if (parts[0] === 'booster' && parts.length === 2) {
+        bonusEntries.booster = parseInt(parts[1]);
+      }
+    }
+  }
+
+  // Parse embed color
+  let embedColor = 0x0099FF;
+  if (embedColorText) {
+    const colorMatch = embedColorText.match(/^#?([0-9A-Fa-f]{6})$/);
+    if (colorMatch) {
+      embedColor = parseInt(colorMatch[1], 16);
+    }
+  }
+
+  // Determine host
+  let hostedBy = interaction.user.id;
+  let hostDisplay = `<@${interaction.user.id}>`;
+  if (hostText) {
+    if (hostText.startsWith('<@') && hostText.endsWith('>')) {
+      // User mention
+      hostedBy = hostText.slice(2, -1).replace('!', '');
+      hostDisplay = hostText;
+    } else {
+      // Custom text
+      hostDisplay = hostText;
+    }
+  }
+
+  try {
+    const giveaway = await giveawayService.createGiveaway({
+      guildId: interaction.guild!.id,
+      channelId: channel.id,
+      hostedBy,
+      prize,
+      winnerCount: parseInt(winners),
+      endTime: new Date(Date.now() + parseInt(durationMs)),
+      description,
+      requirements,
+      bonusEntries,
+      embedColor,
+    });
+
+    // Build embed
+    const embed = new EmbedBuilder()
+      .setColor(embedColor)
+      .setTitle(t('commands.giveaway.embed.title'))
+      .setDescription(description || t('commands.giveaway.embed.description', { prize }))
+      .addFields(
+        {
+          name: t('commands.giveaway.embed.hostedBy'),
+          value: hostDisplay,
+          inline: true,
+        },
+        {
+          name: t('commands.giveaway.embed.winners'),
+          value: winners,
+          inline: true,
+        },
+        {
+          name: t('commands.giveaway.embed.endsAt'),
+          value: `<t:${Math.floor(giveaway.endTime.getTime() / 1000)}:R>`,
+          inline: true,
+        }
+      )
+      .setFooter({
+        text: t('commands.giveaway.embed.footer', { id: giveaway.giveawayId }),
+      })
+      .setTimestamp();
+
+    // Add requirements field if any
+    if (Object.keys(requirements).length > 0) {
+      const reqLines = [];
+      if (requirements.roleIds?.length > 0) {
+        reqLines.push(`• Roles: ${requirements.roleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
+      }
+      if (requirements.minLevel) {
+        reqLines.push(`• Minimum Level: ${requirements.minLevel}`);
+      }
+      if (requirements.minTimeInServer) {
+        reqLines.push(`• Time in Server: ${requirements.minTimeInServer}`);
+      }
+      embed.addFields({
+        name: t('commands.giveaway.embed.requirements'),
+        value: reqLines.join('\n'),
+        inline: false,
+      });
+    }
+
+    // Add bonus entries field if any
+    if (Object.keys(bonusEntries).length > 0) {
+      const bonusLines = [];
+      if (bonusEntries.roles) {
+        for (const [roleId, multiplier] of Object.entries(bonusEntries.roles)) {
+          bonusLines.push(`• <@&${roleId}>: ${multiplier}x entries`);
+        }
+      }
+      if (bonusEntries.booster) {
+        bonusLines.push(`• Server Booster: ${bonusEntries.booster}x entries`);
+      }
+      embed.addFields({
+        name: t('commands.giveaway.embed.bonusEntries'),
+        value: bonusLines.join('\n'),
+        inline: false,
+      });
+    }
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`gw_enter:${giveaway.giveawayId}`)
+        .setLabel(t('commands.giveaway.buttons.enter'))
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🎉'),
+      new ButtonBuilder()
+        .setCustomId(`gw_info:${giveaway.giveawayId}`)
+        .setLabel(t('commands.giveaway.buttons.info'))
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('ℹ️')
+    );
+
+    const message = await channel.send({
+      embeds: [embed],
+      components: [row],
+    });
+
+    await giveawayService.updateGiveawayMessage(giveaway.giveawayId, message.id);
+
+    await interaction.editReply({
+      content: t('commands.giveaway.subcommands.start.success', { id: giveaway.giveawayId }),
+    });
+  } catch (error) {
+    console.error('Error creating giveaway:', error);
+    await interaction.editReply({
+      content: t('commands.giveaway.error'),
+    });
+  }
+}
+
+async function handleGiveawayConfigure(interaction: ModalSubmitInteraction, giveawayId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const prize = interaction.fields.getTextInputValue('prize');
+  const winners = parseInt(interaction.fields.getTextInputValue('winners'));
+  const description = interaction.fields.getTextInputValue('description') || null;
+  const requirementsText = interaction.fields.getTextInputValue('requirements');
+  const bonusEntriesText = interaction.fields.getTextInputValue('bonusEntries');
+
+  if (isNaN(winners) || winners < 1 || winners > 20) {
+    return interaction.editReply({
+      content: 'Winner count must be between 1 and 20',
+    });
+  }
+
+  // Parse requirements
+  const requirements: any = {};
+  if (requirementsText) {
+    const lines = requirementsText.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      const [key, value] = line.split(':').map(s => s.trim());
+      if (key === 'role') {
+        if (!requirements.roleIds) requirements.roleIds = [];
+        requirements.roleIds.push(value);
+      } else if (key === 'level') {
+        requirements.minLevel = parseInt(value);
+      } else if (key === 'time') {
+        requirements.minTimeInServer = value;
+      }
+    }
+  }
+
+  // Parse bonus entries
+  const bonusEntries: any = {};
+  if (bonusEntriesText) {
+    const lines = bonusEntriesText.split('\n').filter(line => line.trim());
+    for (const line of lines) {
+      const parts = line.split(':').map(s => s.trim());
+      if (parts[0] === 'role' && parts.length === 3) {
+        if (!bonusEntries.roles) bonusEntries.roles = {};
+        bonusEntries.roles[parts[1]] = parseInt(parts[2]);
+      } else if (parts[0] === 'booster' && parts.length === 2) {
+        bonusEntries.booster = parseInt(parts[1]);
+      }
+    }
+  }
+
+  try {
+    await giveawayService.updateGiveaway(
+      giveawayId,
+      {
+        prize,
+        winnerCount: winners,
+        description,
+        requirements,
+        bonusEntries,
+      },
+      interaction.user
+    );
+
+    await interaction.editReply({
+      content: t('commands.giveaway.subcommands.configure.success', { id: giveawayId }),
+    });
+  } catch (error) {
+    console.error('Error configuring giveaway:', error);
+    await interaction.editReply({
+      content: t('commands.giveaway.error'),
+    });
+  }
 }
