@@ -71,6 +71,16 @@ export class GuildService {
       throw error;
     }
   }
+
+  async getGuildLanguage(guildId: string): Promise<string> {
+    try {
+      const guild = await guildRepository.findById(guildId);
+      return guild?.language || 'en';
+    } catch (error) {
+      logger.error(`Failed to get guild language for ${guildId}:`, error);
+      return 'en';
+    }
+  }
 }
 
 // Export singleton instance

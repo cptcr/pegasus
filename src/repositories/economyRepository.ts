@@ -19,7 +19,6 @@ import {
   type EconomyCooldown,
   type NewEconomyCooldown,
   type EconomyGamblingStats,
-  type NewEconomyGamblingStats,
   type EconomySettings,
   type NewEconomySettings,
 } from '../database/schema';
@@ -341,6 +340,22 @@ export class EconomyRepository {
       
       return created;
     }
+  }
+
+  async getRecentGambles(userId: string, guildId: string, seconds: number): Promise<number> {
+    const since = new Date(Date.now() - seconds * 1000);
+    const result = await this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(economyTransactions)
+      .where(and(
+        eq(economyTransactions.userId, userId),
+        eq(economyTransactions.guildId, guildId),
+        eq(economyTransactions.type, 'gamble'),
+        gte(economyTransactions.createdAt, since)
+      ))
+      .limit(1);
+    
+    return result[0]?.count || 0;
   }
 
   // Settings operations

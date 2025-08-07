@@ -3,13 +3,12 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   EmbedBuilder,
-  User,
   GuildMember,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { auditLogger } from '../../security/audit';
-import { db } from '../../database/drizzle';
+import { getDatabase } from '../../database/connection';
 import { userXp } from '../../database/schema/xp';
 import { eq, and } from 'drizzle-orm';
 
@@ -123,7 +122,7 @@ export const category = CommandCategory.Moderation;
 export const cooldown = 3;
 export const permissions = [PermissionFlagsBits.ModerateMembers];
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<any> {
   if (!interaction.guild) {
     return interaction.reply({
       content: t('common.guildOnly'),
@@ -142,10 +141,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return handleTimeout(interaction);
     case 'reset-xp':
       return handleResetXP(interaction);
+    default:
+      return interaction.reply({
+        content: t('common.unknownSubcommand'),
+        ephemeral: true,
+      });
   }
 }
 
-async function handleBan(interaction: ChatInputCommandInteraction) {
+async function handleBan(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -257,7 +261,7 @@ async function handleBan(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleKick(interaction: ChatInputCommandInteraction) {
+async function handleKick(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -364,7 +368,7 @@ async function handleKick(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleTimeout(interaction: ChatInputCommandInteraction) {
+async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -478,7 +482,8 @@ async function handleTimeout(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleResetXP(interaction: ChatInputCommandInteraction) {
+async function handleResetXP(interaction: ChatInputCommandInteraction): Promise<any> {
+  const db = getDatabase();
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);

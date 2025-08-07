@@ -125,7 +125,7 @@ export const category = CommandCategory.Utility;
 export const cooldown = 5;
 export const permissions = [PermissionFlagsBits.ManageGuild];
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<any> {
   if (!interaction.guild) {
     return interaction.reply({
       content: t('common.guildOnly'),
@@ -146,10 +146,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return handleReroll(interaction);
     case 'configure':
       return handleConfigure(interaction);
+    default:
+      return interaction.reply({
+        content: t('common.unknownSubcommand'),
+        ephemeral: true,
+      });
   }
 }
 
-async function handleStart(interaction: ChatInputCommandInteraction) {
+async function handleStart(interaction: ChatInputCommandInteraction): Promise<any> {
   const prize = interaction.options.getString('prize', true);
   const duration = interaction.options.getString('duration', true);
   const winners = interaction.options.getInteger('winners') || 1;
@@ -217,10 +222,10 @@ async function handleStart(interaction: ChatInputCommandInteraction) {
   ];
 
   modal.addComponents(...rows);
-  await interaction.showModal(modal);
+  return interaction.showModal(modal);
 }
 
-async function handleSimple(interaction: ChatInputCommandInteraction) {
+async function handleSimple(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply({ ephemeral: true });
 
   const prize = interaction.options.getString('prize', true);
@@ -307,7 +312,7 @@ async function handleSimple(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleEnd(interaction: ChatInputCommandInteraction) {
+async function handleEnd(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply({ ephemeral: true });
 
   const giveawayId = interaction.options.getString('giveaway_id', true);
@@ -335,14 +340,14 @@ async function handleEnd(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleReroll(interaction: ChatInputCommandInteraction) {
+async function handleReroll(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply({ ephemeral: true });
 
   const giveawayId = interaction.options.getString('giveaway_id', true);
   const newWinnerCount = interaction.options.getInteger('winners');
 
   try {
-    const result = await giveawayService.rerollGiveaway(giveawayId, interaction.user, newWinnerCount);
+    const result = await giveawayService.rerollGiveaway(giveawayId, interaction.user, newWinnerCount || undefined);
 
     if (!result.success) {
       return interaction.editReply({
@@ -364,7 +369,7 @@ async function handleReroll(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleConfigure(interaction: ChatInputCommandInteraction) {
+async function handleConfigure(interaction: ChatInputCommandInteraction): Promise<any> {
   const giveawayId = interaction.options.getString('giveaway_id', true);
 
   // Verify giveaway exists and user has permission
@@ -436,7 +441,7 @@ async function handleConfigure(interaction: ChatInputCommandInteraction) {
   ];
 
   modal.addComponents(...rows);
-  await interaction.showModal(modal);
+  return interaction.showModal(modal);
 }
 
 function parseDuration(duration: string): number | null {

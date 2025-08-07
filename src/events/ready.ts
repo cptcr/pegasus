@@ -10,7 +10,8 @@ export async function execute(client: Client<true>) {
   logger.info(chalk.green(`Ready! Logged in as ${client.user.tag}`));
   
   // Store client globally for giveaway service
-  (global as any).client = client;
+  const globalObj = global as { client?: Client };
+  globalObj.client = client;
   
   // Initialize active giveaways
   await giveawayService.initializeActiveGiveaways();

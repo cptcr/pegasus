@@ -1,5 +1,4 @@
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import path from 'path';
+import { createCanvas, loadImage, CanvasRenderingContext2D } from 'canvas';
 import { AttachmentBuilder } from 'discord.js';
 import type { RankData, RankCardCustomization } from './xpService';
 import { logger } from '../utils/logger';

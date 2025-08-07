@@ -1,5 +1,5 @@
 import { and, eq, desc, gte, sql } from 'drizzle-orm';
-import { db } from '../database/connection';
+import { getDatabase } from '../database/connection';
 import { userXp, xpRewards, xpMultipliers, xpSettings } from '../database/schema/xp';
 import { users } from '../database/schema/users';
 import { logger } from '../utils/logger';
@@ -41,7 +41,7 @@ export class XPRepository {
   // Get user XP data
   async getUserXP(userId: string, guildId: string): Promise<UserXPData | null> {
     try {
-      const [result] = await db
+      const [result] = await getDatabase()
         .select()
         .from(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)))
@@ -57,7 +57,7 @@ export class XPRepository {
   // Create or update user XP
   async upsertUserXP(data: Partial<UserXPData> & { userId: string; guildId: string }): Promise<boolean> {
     try {
-      await db
+      await getDatabase()
         .insert(userXp)
         .values({
           userId: data.userId,
@@ -88,7 +88,7 @@ export class XPRepository {
   // Get guild leaderboard
   async getLeaderboard(guildId: string, limit: number, offset: number): Promise<Array<UserXPData & { username?: string; avatarUrl?: string }>> {
     try {
-      const results = await db
+      const results = await getDatabase()
         .select({
           userId: userXp.userId,
           guildId: userXp.guildId,
@@ -116,7 +116,7 @@ export class XPRepository {
   // Get total users with XP in guild
   async getTotalUsersWithXP(guildId: string): Promise<number> {
     try {
-      const [result] = await db
+      const [result] = await getDatabase()
         .select({ count: sql<number>`COUNT(*)` })
         .from(userXp)
         .where(eq(userXp.guildId, guildId));
@@ -131,7 +131,7 @@ export class XPRepository {
   // Get user rank
   async getUserRank(userId: string, guildId: string, userXpAmount: number): Promise<number> {
     try {
-      const [result] = await db
+      const [result] = await getDatabase()
         .select({
           rank: sql<number>`COUNT(*) + 1`,
         })
@@ -152,7 +152,7 @@ export class XPRepository {
   // Get XP rewards for guild
   async getXPRewards(guildId: string): Promise<XPReward[]> {
     try {
-      const results = await db
+      const results = await getDatabase()
         .select()
         .from(xpRewards)
         .where(eq(xpRewards.guildId, guildId))
@@ -168,7 +168,7 @@ export class XPRepository {
   // Get XP multipliers for guild
   async getXPMultipliers(guildId: string): Promise<XPMultiplier[]> {
     try {
-      const results = await db
+      const results = await getDatabase()
         .select()
         .from(xpMultipliers)
         .where(eq(xpMultipliers.guildId, guildId));
@@ -188,7 +188,7 @@ export class XPRepository {
   // Get XP settings for guild
   async getXPSettings(guildId: string): Promise<XPSettings | null> {
     try {
-      const [result] = await db
+      const [result] = await getDatabase()
         .select()
         .from(xpSettings)
         .where(eq(xpSettings.guildId, guildId))
@@ -215,7 +215,7 @@ export class XPRepository {
   // Delete user XP
   async deleteUserXP(userId: string, guildId: string): Promise<boolean> {
     try {
-      await db
+      await getDatabase()
         .delete(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
 

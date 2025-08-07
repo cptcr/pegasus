@@ -5,16 +5,13 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
   ComponentType,
-  StringSelectMenuInteraction,
   ButtonInteraction
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
 import { embedBuilder } from '../../handlers/embedBuilder';
-import type { EconomyShopItem } from '../../database/schema';
 
 export const data = new SlashCommandBuilder()
   .setName('shop')
@@ -313,7 +310,6 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
 
   try {
     const userItems = await economyRepository.getUserItems(userId, guildId, true);
-    const settings = await economyRepository.ensureSettings(guildId);
 
     if (userItems.length === 0) {
       await interaction.editReply({

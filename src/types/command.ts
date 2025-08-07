@@ -32,5 +32,5 @@ export enum CommandCategory {
 export interface CommandError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }

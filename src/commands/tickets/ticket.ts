@@ -8,16 +8,17 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
   ComponentType
 } from 'discord.js';
 import { Command } from '../../types/command';
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
-import { i18n } from '../../i18n';
-import { GuildService } from '../../services/guildService';
+import { t } from '../../i18n';
+// import { GuildService } from '../../services/guildService';
+import { CommandCategory } from '../../types/command';
 
 export const ticket: Command = {
+  category: CommandCategory.Utility,
   data: new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Manage ticket system')
@@ -167,8 +168,7 @@ export const ticket: Command = {
     const subcommand = interaction.options.getSubcommand();
     const ticketService = new TicketService();
     const ticketRepository = new TicketRepository();
-    const guildService = new GuildService();
-    const locale = await guildService.getGuildLanguage(interaction.guildId!);
+    const locale = 'en'; // Default to English for now
 
     try {
       if (subcommandGroup === 'panel') {
@@ -186,7 +186,7 @@ export const ticket: Command = {
             await handlePanelList(interaction, ticketRepository, locale);
             break;
           case 'edit':
-            await handlePanelEdit(interaction, ticketService, ticketRepository, locale);
+            await handlePanelEdit(interaction, ticketService, locale);
             break;
         }
       } else {
@@ -204,7 +204,7 @@ export const ticket: Command = {
       }
     } catch (error: any) {
       await interaction.reply({
-        content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+        content: t('common.error') + ': ' + error.message,
         ephemeral: true,
       });
     }
@@ -230,33 +230,33 @@ async function handlePanelCreate(
 
   // Collect additional options through components
   const embed = new EmbedBuilder()
-    .setTitle(i18n.__({ phrase: 'tickets.panelCreation', locale }))
-    .setDescription(i18n.__({ phrase: 'tickets.configuringPanel', locale }, { id: panelId }))
+    .setTitle(t( 'tickets.panelCreation'))
+    .setDescription(t( 'tickets.configuringPanel', { id: panelId }))
     .addFields([
-      { name: i18n.__({ phrase: 'tickets.title', locale }), value: title, inline: true },
-      { name: i18n.__({ phrase: 'tickets.buttonLabel', locale }), value: buttonLabel, inline: true },
-      { name: i18n.__({ phrase: 'tickets.maxTicketsPerUser', locale }), value: maxTickets.toString(), inline: true },
+      { name: t( 'tickets.title'), value: title, inline: true },
+      { name: t( 'tickets.buttonLabel'), value: buttonLabel, inline: true },
+      { name: t( 'tickets.maxTicketsPerUser'), value: maxTickets.toString(), inline: true },
     ])
     .setColor(0x00FF00);
 
   const additionalRolesButton = new ButtonBuilder()
     .setCustomId('panel_add_roles')
-    .setLabel(i18n.__({ phrase: 'tickets.addMoreRoles', locale }))
+    .setLabel(t( 'tickets.addMoreRoles'))
     .setStyle(ButtonStyle.Secondary);
 
   const setImageButton = new ButtonBuilder()
     .setCustomId('panel_set_image')
-    .setLabel(i18n.__({ phrase: 'tickets.setImage', locale }))
+    .setLabel(t( 'tickets.setImage'))
     .setStyle(ButtonStyle.Secondary);
 
   const setFooterButton = new ButtonBuilder()
     .setCustomId('panel_set_footer')
-    .setLabel(i18n.__({ phrase: 'tickets.setFooter', locale }))
+    .setLabel(t( 'tickets.setFooter'))
     .setStyle(ButtonStyle.Secondary);
 
   const confirmButton = new ButtonBuilder()
     .setCustomId('panel_confirm')
-    .setLabel(i18n.__({ phrase: 'tickets.confirmCreate', locale }))
+    .setLabel(t( 'tickets.confirmCreate'))
     .setStyle(ButtonStyle.Success);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -293,7 +293,7 @@ async function handlePanelCreate(
   collector.on('collect', async (buttonInteraction) => {
     if (buttonInteraction.user.id !== interaction.user.id) {
       await buttonInteraction.reply({
-        content: i18n.__({ phrase: 'common.notYourButton', locale }),
+        content: t( 'common.notYourButton'),
         ephemeral: true,
       });
       return;
@@ -302,16 +302,19 @@ async function handlePanelCreate(
     switch (buttonInteraction.customId) {
       case 'panel_confirm':
         try {
-          const panel = await ticketService.createPanel(interaction.guild!, panelData);
+          await ticketService.createPanel(interaction.guild!, {
+            ...panelData,
+            guildId: interaction.guildId!
+          });
           
           const successEmbed = new EmbedBuilder()
-            .setTitle(i18n.__({ phrase: 'tickets.panelCreated', locale }))
-            .setDescription(i18n.__({ phrase: 'tickets.panelCreatedDesc', locale }, { id: panelId }))
+            .setTitle(t('tickets.panelCreated'))
+            .setDescription(t('tickets.panelCreatedDesc', { id: panelId }))
             .setColor(0x00FF00)
             .addFields([
               { 
-                name: i18n.__({ phrase: 'tickets.nextStep', locale }), 
-                value: i18n.__({ phrase: 'tickets.useLoadCommand', locale }, { id: panelId }) 
+                name: t('tickets.nextStep'), 
+                value: t('tickets.useLoadCommand', { id: panelId }) 
               },
             ]);
 
@@ -322,7 +325,7 @@ async function handlePanelCreate(
           collector.stop();
         } catch (error: any) {
           await buttonInteraction.reply({
-            content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+            content: t('common.error') + ': ' + error.message,
             ephemeral: true,
           });
         }
@@ -331,7 +334,7 @@ async function handlePanelCreate(
       // TODO: Implement additional configuration buttons
       default:
         await buttonInteraction.reply({
-          content: i18n.__({ phrase: 'common.featureNotImplemented', locale }),
+          content: t( 'common.featureNotImplemented'),
           ephemeral: true,
         });
     }
@@ -357,17 +360,17 @@ async function handlePanelLoad(
   const channel = interaction.options.getChannel('channel', true) as TextChannel;
 
   try {
-    const message = await ticketService.loadPanel(interaction.guild!, panelId, channel, locale);
+    await ticketService.loadPanel(interaction.guild!, panelId, channel, locale);
     
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.panelLoaded', locale }, { 
+      content: t( 'tickets.panelLoaded', { 
         id: panelId, 
         channel: channel.toString() 
       }),
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t( 'common.error', { error: error.message }),
     });
   }
 }
@@ -385,11 +388,11 @@ async function handlePanelDelete(
     await ticketService.deletePanel(interaction.guild!, panelId);
     
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.panelDeleted', locale }, { id: panelId }),
+      content: t( 'tickets.panelDeleted', { id: panelId }),
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t( 'common.error', { error: error.message }),
     });
   }
 }
@@ -405,20 +408,20 @@ async function handlePanelList(
 
   if (panels.length === 0) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.noPanels', locale }),
+      content: t( 'tickets.noPanels'),
     });
     return;
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(i18n.__({ phrase: 'tickets.panelList', locale }))
+    .setTitle(t( 'tickets.panelList'))
     .setColor(0x5865F2)
     .setDescription(
       panels.map(panel => 
         `**${panel.panelId}**\n` +
-        `${i18n.__({ phrase: 'tickets.title', locale })}: ${panel.title}\n` +
-        `${i18n.__({ phrase: 'tickets.status', locale })}: ${panel.isActive ? '✅' : '❌'}\n` +
-        `${i18n.__({ phrase: 'tickets.created', locale })}: <t:${Math.floor(panel.createdAt.getTime() / 1000)}:R>`
+        `${t( 'tickets.title')}: ${panel.title}\n` +
+        `${t( 'tickets.status')}: ${panel.isActive ? '✅' : '❌'}\n` +
+        `${t( 'tickets.created')}: <t:${Math.floor(panel.createdAt.getTime() / 1000)}:R>`
       ).join('\n\n')
     );
 
@@ -428,16 +431,15 @@ async function handlePanelList(
 async function handlePanelEdit(
   interaction: ChatInputCommandInteraction,
   ticketService: TicketService,
-  ticketRepository: TicketRepository,
   locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
-  const panelId = interaction.options.getString('panel_id', true);
+  // const panelId = interaction.options.getString('panel_id', true);
   
   // TODO: Implement panel editing with select menus and modals
   await interaction.editReply({
-    content: i18n.__({ phrase: 'common.featureNotImplemented', locale }),
+    content: t( 'common.featureNotImplemented'),
   });
 }
 
@@ -451,7 +453,7 @@ async function handleClaim(
   const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
   if (!ticket) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.notInTicket', locale }),
+      content: t( 'tickets.notInTicket'),
       ephemeral: true,
     });
     return;
@@ -461,11 +463,11 @@ async function handleClaim(
     await ticketService.claimTicket(ticket.id, interaction.member as any, locale);
     
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.claimSuccess', locale }),
+      content: t( 'tickets.claimSuccess'),
     });
   } catch (error: any) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t( 'common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -481,7 +483,7 @@ async function handleClose(
   const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
   if (!ticket) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.notInTicket', locale }),
+      content: t( 'tickets.notInTicket'),
       ephemeral: true,
     });
     return;
@@ -490,7 +492,7 @@ async function handleClose(
   const reason = interaction.options.getString('reason');
 
   try {
-    const { transcript } = await ticketService.closeTicket(
+    await ticketService.closeTicket(
       ticket.id, 
       interaction.member as any, 
       reason || undefined,
@@ -498,7 +500,7 @@ async function handleClose(
     );
 
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.closing', locale }),
+      content: t( 'tickets.closing'),
     });
 
     // Delete channel after 5 seconds
@@ -511,7 +513,7 @@ async function handleClose(
     }, 5000);
   } catch (error: any) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t( 'common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -527,36 +529,36 @@ async function handleStats(
   const stats = await ticketRepository.getTicketStats(interaction.guildId!);
 
   const embed = new EmbedBuilder()
-    .setTitle(i18n.__({ phrase: 'tickets.statistics', locale }))
+    .setTitle(t( 'tickets.statistics'))
     .setColor(0x5865F2)
     .addFields([
       { 
-        name: i18n.__({ phrase: 'tickets.totalTickets', locale }), 
+        name: t( 'tickets.totalTickets'), 
         value: stats.total.toString(), 
         inline: true 
       },
       { 
-        name: i18n.__({ phrase: 'tickets.openTickets', locale }), 
+        name: t( 'tickets.openTickets'), 
         value: stats.open.toString(), 
         inline: true 
       },
       { 
-        name: i18n.__({ phrase: 'tickets.claimedTickets', locale }), 
+        name: t( 'tickets.claimedTickets'), 
         value: stats.claimed.toString(), 
         inline: true 
       },
       { 
-        name: i18n.__({ phrase: 'tickets.closedTickets', locale }), 
+        name: t( 'tickets.closedTickets'), 
         value: stats.closed.toString(), 
         inline: true 
       },
       { 
-        name: i18n.__({ phrase: 'tickets.lockedTickets', locale }), 
+        name: t( 'tickets.lockedTickets'), 
         value: stats.locked.toString(), 
         inline: true 
       },
       { 
-        name: i18n.__({ phrase: 'tickets.frozenTickets', locale }), 
+        name: t( 'tickets.frozenTickets'), 
         value: stats.frozen.toString(), 
         inline: true 
       },

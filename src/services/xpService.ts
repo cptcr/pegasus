@@ -1,11 +1,10 @@
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
-import { db } from '../database/connection';
-import { userXp, xpRewards, xpMultipliers } from '../database/schema/xp';
-import { guildSettings } from '../database/schema/guilds';
+import { getDatabase } from '../database/connection';
+import { userXp, xpMultipliers } from '../database/schema/xp';
 import { users } from '../database/schema/users';
 import { logger } from '../utils/logger';
 import { configurationService } from './configurationService';
-import type { Guild, GuildMember, Role } from 'discord.js';
+import type { GuildMember } from 'discord.js';
 
 export interface XPGainResult {
   xpGained: number;
@@ -27,6 +26,8 @@ export interface RankData {
   nextLevelXp: number;
   currentLevelXp: number;
   progress: number;
+  requiredXp?: number;
+  totalXp?: number;
 }
 
 export interface LeaderboardEntry {
@@ -112,7 +113,7 @@ export class XPService {
       }
 
       // Get database multipliers
-      const dbMultipliers = await db
+      const dbMultipliers = await getDatabase()
         .select()
         .from(xpMultipliers)
         .where(eq(xpMultipliers.guildId, member.guild.id));
@@ -163,7 +164,7 @@ export class XPService {
       }
 
       // Get or create user XP data
-      const [userXpData] = await db
+    const [userXpData] = await getDatabase()
         .select()
         .from(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)))
@@ -176,7 +177,7 @@ export class XPService {
 
       // Update or insert XP data
       if (userXpData) {
-        await db
+        await getDatabase()
           .update(userXp)
           .set({
             xp: newXp,
@@ -186,7 +187,7 @@ export class XPService {
           })
           .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
       } else {
-        await db
+        await getDatabase()
           .insert(userXp)
           .values({
             userId,
@@ -240,7 +241,7 @@ export class XPService {
   async getUserRank(userId: string, guildId: string): Promise<RankData | null> {
     try {
       // Get user XP data
-      const [userXpData] = await db
+    const [userXpData] = await getDatabase()
         .select({
           userId: userXp.userId,
           guildId: userXp.guildId,
@@ -259,7 +260,8 @@ export class XPService {
       }
 
       // Get user rank
-      const [rankResult] = await db
+      const db3 = getDatabase();
+      const [rankResult] = await db3
         .select({
           rank: sql<number>`COUNT(*) + 1`,
         })
@@ -305,7 +307,7 @@ export class XPService {
       const offset = (page - 1) * limit;
 
       // Get total count
-      const [countResult] = await db
+      const [countResult] = await getDatabase()
         .select({ count: sql<number>`COUNT(*)` })
         .from(userXp)
         .where(eq(userXp.guildId, guildId));
@@ -314,7 +316,7 @@ export class XPService {
       const totalPages = Math.ceil(totalCount / limit);
 
       // Get leaderboard entries
-      const entries = await db
+      const entries = await getDatabase()
         .select({
           userId: userXp.userId,
           xp: userXp.xp,
@@ -357,7 +359,7 @@ export class XPService {
   // Reset user XP
   async resetUserXP(userId: string, guildId: string): Promise<boolean> {
     try {
-      await db
+      await getDatabase()
         .delete(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
       
@@ -371,7 +373,7 @@ export class XPService {
   // Get rank card customization
   async getRankCardCustomization(userId: string): Promise<RankCardCustomization> {
     try {
-      const [user] = await db
+      const [user] = await getDatabase()
         .select({
           rankCardData: users.rankCardData,
         })
@@ -380,7 +382,7 @@ export class XPService {
         .limit(1);
 
       if (user?.rankCardData) {
-        return JSON.parse(user.rankCardData);
+        return JSON.parse(user.rankCardData) as RankCardCustomization;
       }
 
       return {
@@ -403,7 +405,7 @@ export class XPService {
   // Save rank card customization
   async saveRankCardCustomization(userId: string, customization: RankCardCustomization): Promise<boolean> {
     try {
-      await db
+      await getDatabase()
         .update(users)
         .set({
           rankCardData: JSON.stringify(customization),
@@ -441,7 +443,7 @@ export class XPService {
     const xpToAdd = minutes * config.perVoiceMinute;
     
     // Update last voice activity
-    await db
+    await getDatabase()
       .update(userXp)
       .set({
         lastVoiceActivity: new Date(),

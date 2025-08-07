@@ -1,5 +1,7 @@
 import {
   ButtonInteraction,
+  ButtonBuilder,
+  ButtonStyle,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -616,7 +618,7 @@ async function handleWelcomeConfigButton(interaction: ButtonInteraction, action:
   }
 }
 
-async function handleAutoroleConfigButton(interaction: ButtonInteraction, action: string) {
+async function handleAutoroleConfigButton(interaction: ButtonInteraction, action: string): Promise<any> {
   switch (action) {
     case 'toggle': {
       await interaction.deferUpdate();

@@ -28,12 +28,12 @@ export async function initializeI18n(): Promise<void> {
   }
 }
 
-export function t(key: string, options?: any): string {
+export function t(key: string, options?: Record<string, unknown>): string {
   return i18next.t(key, options);
 }
 
 export function setLanguage(language: string): void {
-  i18next.changeLanguage(language);
+  void i18next.changeLanguage(language);
 }
 
 // Guild locale management
@@ -67,5 +67,29 @@ export function clearUserLocale(userId: string): void {
 }
 
 export const availableLocales = ['en', 'de', 'es', 'fr'];
+
+// Type for locale object structure
+export interface LocaleObject {
+  common: Record<string, string>;
+  commands?: {
+    xp?: {
+      levelUp?: {
+        defaultMessage?: string;
+        title?: string;
+        rolesEarned?: string;
+      };
+    };
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export async function getTranslation(guildId: string, userId: string): Promise<LocaleObject> {
+  const userLocale = getUserLocale(userId);
+  const guildLocale = getGuildLocale(guildId);
+  const locale = userLocale || guildLocale || 'en';
+  
+  return i18next.getResourceBundle(locale, 'translation') as LocaleObject || {} as LocaleObject;
+}
 
 export { i18next };

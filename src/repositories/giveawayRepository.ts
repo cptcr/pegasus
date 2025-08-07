@@ -1,5 +1,5 @@
-import { eq, and, sql, lt, isNull } from 'drizzle-orm';
-import { db } from '../database/drizzle';
+import { eq, and, sql, lt } from 'drizzle-orm';
+import { getDatabase } from '../../database/connection';
 import { giveaways, giveawayEntries } from '../database/schema/giveaways';
 
 export interface CreateGiveawayData {
@@ -12,15 +12,21 @@ export interface CreateGiveawayData {
   winnerCount: number;
   endTime: Date;
   description: string | null;
-  requirements: any;
-  bonusEntries: any;
+  requirements: Record<string, unknown>;
+  bonusEntries: Record<string, unknown>;
   embedColor: number;
 }
 
 export class GiveawayRepository {
+  private get db() {
+    return getDatabase();
+  }
+
   async createGiveaway(data: CreateGiveawayData) {
-    const [giveaway] = await db.insert(giveaways).values({
+    const [giveaway] = await this.db.insert(giveaways).values({
       ...data,
+      requirements: JSON.stringify(data.requirements),
+      bonusEntries: JSON.stringify(data.bonusEntries),
       status: 'active',
       entries: 0,
     }).returning();
@@ -29,7 +35,7 @@ export class GiveawayRepository {
   }
 
   async getGiveaway(giveawayId: string) {
-    const [giveaway] = await db.select()
+    const [giveaway] = await this.db.select()
       .from(giveaways)
       .where(eq(giveaways.giveawayId, giveawayId))
       .limit(1);
@@ -38,7 +44,7 @@ export class GiveawayRepository {
   }
 
   async updateGiveaway(giveawayId: string, updates: Partial<typeof giveaways.$inferInsert>) {
-    const [updated] = await db.update(giveaways)
+    const [updated] = await this.db.update(giveaways)
       .set({
         ...updates,
         updatedAt: new Date(),
@@ -51,7 +57,7 @@ export class GiveawayRepository {
 
   async addEntry(giveawayId: string, userId: string, entryCount: number) {
     // Check if user already has an entry
-    const [existing] = await db.select()
+    const [existing] = await this.db.select()
       .from(giveawayEntries)
       .where(
         and(
@@ -63,7 +69,7 @@ export class GiveawayRepository {
 
     if (existing) {
       // Update existing entry
-      await db.update(giveawayEntries)
+      await this.db.update(giveawayEntries)
         .set({
           entries: entryCount,
           updatedAt: new Date(),
@@ -76,14 +82,14 @@ export class GiveawayRepository {
         );
     } else {
       // Create new entry
-      await db.insert(giveawayEntries).values({
+      await this.db.insert(giveawayEntries).values({
         giveawayId,
         userId,
         entries: entryCount,
       });
 
       // Increment entry count on giveaway
-      await db.update(giveaways)
+      await this.db.update(giveaways)
         .set({
           entries: sql`${giveaways.entries} + 1`,
         })
@@ -92,7 +98,7 @@ export class GiveawayRepository {
   }
 
   async removeEntry(giveawayId: string, userId: string) {
-    const deleted = await db.delete(giveawayEntries)
+    const deleted = await this.db.delete(giveawayEntries)
       .where(
         and(
           eq(giveawayEntries.giveawayId, giveawayId),
@@ -103,7 +109,7 @@ export class GiveawayRepository {
 
     if (deleted.length > 0) {
       // Decrement entry count on giveaway
-      await db.update(giveaways)
+      await this.db.update(giveaways)
         .set({
           entries: sql`GREATEST(${giveaways.entries} - 1, 0)`,
         })
@@ -112,13 +118,13 @@ export class GiveawayRepository {
   }
 
   async getEntries(giveawayId: string) {
-    return db.select()
+    return this.db.select()
       .from(giveawayEntries)
       .where(eq(giveawayEntries.giveawayId, giveawayId));
   }
 
   async getUserEntry(giveawayId: string, userId: string) {
-    const [entry] = await db.select()
+    const [entry] = await this.db.select()
       .from(giveawayEntries)
       .where(
         and(
@@ -162,7 +168,7 @@ export class GiveawayRepository {
   }
 
   async getUserGiveawayStats(userId: string) {
-    const entries = await db.select({
+    const entries = await this.db.select({
       totalEntries: sql<number>`count(*)::int`,
       totalWins: sql<number>`count(case when ${giveaways.winners}::jsonb ? ${userId} then 1 end)::int`,
     })

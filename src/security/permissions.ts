@@ -13,7 +13,7 @@ import {
   GuildChannel,
   Role
 } from 'discord.js';
-import { db } from '../database/drizzle';
+import { getDatabase } from '../../database/connection';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 

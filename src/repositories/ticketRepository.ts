@@ -1,5 +1,5 @@
 import { eq, and, desc, count, sql, or } from 'drizzle-orm';
-import { db } from '../database/connection';
+import { getDatabase } from '../database/connection';
 import { ticketPanels, tickets, ticketMessages } from '../database/schema/tickets';
 
 export interface TicketPanelData {
@@ -28,9 +28,13 @@ export interface TicketData {
 }
 
 export class TicketRepository {
+  private get db() {
+    return getDatabase();
+  }
+
   // Panel operations
   async createPanel(data: TicketPanelData) {
-    const [panel] = await db.insert(ticketPanels).values({
+    const [panel] = await this.db.insert(ticketPanels).values({
       ...data,
       supportRoles: data.supportRoles || [],
     }).returning();
@@ -38,7 +42,7 @@ export class TicketRepository {
   }
 
   async updatePanel(panelId: string, guildId: string, updates: Partial<TicketPanelData>) {
-    const [panel] = await db.update(ticketPanels)
+    const [panel] = await this.db.update(ticketPanels)
       .set(updates)
       .where(and(
         eq(ticketPanels.panelId, panelId),
@@ -49,7 +53,7 @@ export class TicketRepository {
   }
 
   async getPanel(panelId: string, guildId: string) {
-    const [panel] = await db.select()
+    const [panel] = await this.db.select()
       .from(ticketPanels)
       .where(and(
         eq(ticketPanels.panelId, panelId),
@@ -59,14 +63,14 @@ export class TicketRepository {
   }
 
   async getPanelById(id: string) {
-    const [panel] = await db.select()
+    const [panel] = await this.db.select()
       .from(ticketPanels)
       .where(eq(ticketPanels.id, id));
     return panel;
   }
 
   async getPanelByMessage(messageId: string, channelId: string) {
-    const [panel] = await db.select()
+    const [panel] = await this.db.select()
       .from(ticketPanels)
       .where(and(
         eq(ticketPanels.messageId, messageId),
@@ -76,14 +80,14 @@ export class TicketRepository {
   }
 
   async getGuildPanels(guildId: string) {
-    return await db.select()
+    return await this.db.select()
       .from(ticketPanels)
       .where(eq(ticketPanels.guildId, guildId))
       .orderBy(desc(ticketPanels.createdAt));
   }
 
   async deletePanel(panelId: string, guildId: string) {
-    const [deleted] = await db.delete(ticketPanels)
+    const [deleted] = await this.db.delete(ticketPanels)
       .where(and(
         eq(ticketPanels.panelId, panelId),
         eq(ticketPanels.guildId, guildId)
@@ -93,7 +97,7 @@ export class TicketRepository {
   }
 
   async setPanelMessage(panelId: string, guildId: string, messageId: string, channelId: string) {
-    const [panel] = await db.update(ticketPanels)
+    const [panel] = await this.db.update(ticketPanels)
       .set({ messageId, channelId })
       .where(and(
         eq(ticketPanels.panelId, panelId),
@@ -105,26 +109,26 @@ export class TicketRepository {
 
   // Ticket operations
   async createTicket(data: TicketData) {
-    const [ticket] = await db.insert(tickets).values(data).returning();
+    const [ticket] = await this.db.insert(tickets).values(data).returning();
     return ticket;
   }
 
   async getTicket(ticketId: string) {
-    const [ticket] = await db.select()
+    const [ticket] = await this.db.select()
       .from(tickets)
       .where(eq(tickets.id, ticketId));
     return ticket;
   }
 
   async getTicketByChannel(channelId: string) {
-    const [ticket] = await db.select()
+    const [ticket] = await this.db.select()
       .from(tickets)
       .where(eq(tickets.channelId, channelId));
     return ticket;
   }
 
   async getUserOpenTickets(userId: string, guildId: string) {
-    return await db.select()
+    return await this.db.select()
       .from(tickets)
       .where(and(
         eq(tickets.userId, userId),
@@ -137,7 +141,7 @@ export class TicketRepository {
   }
 
   async getUserOpenTicketsByPanel(userId: string, panelId: string) {
-    return await db.select()
+    return await this.db.select()
       .from(tickets)
       .where(and(
         eq(tickets.userId, userId),
@@ -150,7 +154,7 @@ export class TicketRepository {
   }
 
   async getNextTicketNumber(guildId: string): Promise<number> {
-    const [result] = await db.select({ max: sql<number>`COALESCE(MAX(ticket_number), 0)` })
+    const [result] = await this.db.select({ max: sql<number>`COALESCE(MAX(ticket_number), 0)` })
       .from(tickets)
       .where(eq(tickets.guildId, guildId));
     return (result?.max || 0) + 1;
@@ -178,7 +182,7 @@ export class TicketRepository {
         break;
     }
 
-    const [ticket] = await db.update(tickets)
+    const [ticket] = await this.db.update(tickets)
       .set(updates)
       .where(eq(tickets.id, ticketId))
       .returning();
@@ -186,7 +190,7 @@ export class TicketRepository {
   }
 
   async closeTicket(ticketId: string, closedBy: string, reason?: string) {
-    const [ticket] = await db.update(tickets)
+    const [ticket] = await this.db.update(tickets)
       .set({
         status: 'closed',
         closedBy,
@@ -199,7 +203,7 @@ export class TicketRepository {
   }
 
   async setTicketTranscript(ticketId: string, transcript: string) {
-    const [ticket] = await db.update(tickets)
+    const [ticket] = await this.db.update(tickets)
       .set({ transcript })
       .where(eq(tickets.id, ticketId))
       .returning();
@@ -208,7 +212,7 @@ export class TicketRepository {
 
   // Message operations
   async addTicketMessage(ticketId: string, userId: string, content: string, attachments: any[] = []) {
-    const [message] = await db.insert(ticketMessages).values({
+    const [message] = await this.db.insert(ticketMessages).values({
       ticketId,
       userId,
       content,
@@ -218,7 +222,7 @@ export class TicketRepository {
   }
 
   async getTicketMessages(ticketId: string) {
-    return await db.select()
+    return await this.db.select()
       .from(ticketMessages)
       .where(eq(ticketMessages.ticketId, ticketId))
       .orderBy(ticketMessages.createdAt);
@@ -226,7 +230,7 @@ export class TicketRepository {
 
   // Stats
   async getTicketStats(guildId: string) {
-    const [stats] = await db.select({
+    const [stats] = await this.db.select({
       total: count(),
       open: sql<number>`COUNT(*) FILTER (WHERE status = 'open')`,
       claimed: sql<number>`COUNT(*) FILTER (WHERE status = 'claimed')`,

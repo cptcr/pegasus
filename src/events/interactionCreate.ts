@@ -21,9 +21,6 @@ import { handleTicketButton } from '../interactions/buttons/ticketButtons';
 import { handleTicketModal } from '../interactions/modals/ticketModals';
 import { handleXPButtons } from '../interactions/buttons/xpButtons';
 import { handleXPModals } from '../interactions/modals/xpModals';
-import { db } from '../database/drizzle';
-import { blacklist } from '../database/schema';
-import { eq, and } from 'drizzle-orm';
 import { securityMiddleware } from '../security/middleware';
 import { SecurityErrorHandler } from '../security/errors';
 

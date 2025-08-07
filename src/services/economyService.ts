@@ -2,7 +2,6 @@ import { economyRepository } from '../repositories/economyRepository';
 import type {
   EconomyBalance,
   EconomyTransaction,
-  EconomyShopItem,
   EconomyUserItem,
   EconomySettings,
   EconomyGamblingStats,
@@ -66,7 +65,7 @@ export class EconomyService {
     metadata?: any
   ): Promise<TransactionResult> {
     try {
-      const balance = await this.getOrCreateBalance(userId, guildId);
+      await this.getOrCreateBalance(userId, guildId);
       
       const updatedBalance = await economyRepository.addToBalance(userId, guildId, amount);
       if (!updatedBalance) {
@@ -357,7 +356,7 @@ export class EconomyService {
         return { success: false, error: 'This item is not available for purchase' };
       }
       
-      if (item.stock !== -1 && item.stock < quantity) {
+      if (item.stock !== null && item.stock !== -1 && item.stock < quantity) {
         return { success: false, error: 'Not enough stock available' };
       }
       
@@ -416,7 +415,7 @@ export class EconomyService {
       }
       
       // Update stock if not unlimited
-      if (item.stock !== -1) {
+      if (item.stock !== null && item.stock !== -1) {
         await economyRepository.updateShopItem(itemId, {
           stock: item.stock - quantity,
         });

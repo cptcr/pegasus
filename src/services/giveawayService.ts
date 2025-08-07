@@ -5,13 +5,13 @@ import {
   Guild,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle,
-  Message,
+  ButtonStyle
 } from 'discord.js';
 import { giveawayRepository } from '../repositories/giveawayRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
-import { nanoid } from 'nanoid';
+// import { nanoid } from 'nanoid';
+const nanoid = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export interface CreateGiveawayData {
   guildId: string;
@@ -216,7 +216,7 @@ export class GiveawayService {
 
     // Update the giveaway embed
     const updatedGiveaway = await giveawayRepository.getGiveaway(giveawayId);
-    await this.updateGiveawayEmbed(updatedGiveaway!);
+    await this.updateGiveawayEmbed(updatedGiveaway);
 
     // Log the action
     await auditLogger.logAction({

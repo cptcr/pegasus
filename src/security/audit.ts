@@ -1,5 +1,5 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../database/drizzle';
+import { getDatabase } from '../../database/connection';
 import { auditLogs } from '../database/schema';
 
 export interface AuditLogData {
@@ -12,6 +12,7 @@ export interface AuditLogData {
 
 export class AuditLogger {
   async logAction(data: AuditLogData): Promise<void> {
+  const db = getDatabase();
     try {
       await db.insert(auditLogs).values({
         action: data.action,

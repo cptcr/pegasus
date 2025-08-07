@@ -48,5 +48,5 @@ export async function closeDatabase() {
   }
 }
 
-// Re-export for convenience
-export { db };
+// Export db as a getter function since it may not be initialized immediately
+export { getDatabase as db };

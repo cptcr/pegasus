@@ -1,18 +1,13 @@
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ComponentType
+  EmbedBuilder
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyGamblingService } from '../../services/economyGamblingService';
 import { economyRepository } from '../../repositories/economyRepository';
 import { embedBuilder } from '../../handlers/embedBuilder';
 import { Validator, CommandSchemas } from '../../security/validator';
-import { Sanitizer } from '../../security/sanitizer';
 import { RateLimitError } from '../../security/errors';
 import { auditLogger } from '../../security/audit';
 import type { 
@@ -188,7 +183,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     // Validate gambling input
-    const validatedInput = Validator.validate(gamblingSchema, {
+    Validator.validate(gamblingSchema, {
       amount: bet,
       game: subcommand as any,
     });
@@ -205,11 +200,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const settings = await economyRepository.ensureSettings(guildId);
 
     // Check balance before allowing bet
-    const userBalance = await economyRepository.getUserBalance(userId, guildId);
-    if (userBalance.balance < bet) {
+    const userBalance = await economyRepository.getBalance(userId, guildId);
+    if (!userBalance || userBalance.balance < bet) {
       await interaction.editReply({
         embeds: [embedBuilder.createErrorEmbed(
-          `Insufficient balance. You have ${settings.currencySymbol}${userBalance.balance.toLocaleString()}`
+          `Insufficient balance. You have ${settings.currencySymbol}${userBalance?.balance.toLocaleString() || 0}`
         )]
       });
       return;
@@ -232,7 +227,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       details: {
         game: subcommand,
         amount: bet,
-        balance: userBalance.balance,
+        balance: userBalance?.balance || 0,
       },
     });
 
@@ -274,13 +269,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           betValue = betType.split(':')[1];
         } else if (betType === 'number') {
           rouletteBetType = 'number';
-          betValue = interaction.options.getInteger('number');
-          if (betValue === null) {
+          const numberBet = interaction.options.getInteger('number');
+          if (numberBet === null) {
             await interaction.editReply({
               embeds: [embedBuilder.createErrorEmbed('Please specify a number to bet on (0-36)')]
             });
             return;
           }
+          betValue = numberBet;
         } else {
           rouletteBetType = betType;
         }
@@ -343,12 +339,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 function createDiceEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as DiceResult;
   const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-  
-  // Sanitize currency symbol to prevent injection
-  const safeCurrency = Sanitizer.sanitizeText(settings.currencySymbol, { 
-    escapeMentions: true, 
-    escapeMarkdown: true 
-  });
   
   return new EmbedBuilder()
     .setTitle('🎲 Dice Game')
@@ -510,7 +500,7 @@ function createRouletteEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as RouletteResult;
   const colorEmoji = details.color === 'red' ? '🔴' : (details.color === 'black' ? '⚫' : '🟢');
   
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle('🎰 Roulette')
     .setDescription(`The ball landed on **${colorEmoji} ${details.number}**`)
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)

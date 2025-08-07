@@ -11,11 +11,12 @@ import {
 } from 'discord.js';
 import { Command, CommandCategory } from '../../types/command';
 import { t, getGuildLocale } from '../../i18n';
-import { SteamService } from '../../services/steamService';
+// import { SteamService } from '../../services/steamService';
+import { SteamService } from '../../services/steamServiceMock';
 import { HelpService } from '../../services/helpService';
 import { logger } from '../../utils/logger';
 
-const steamService = new SteamService();
+// const steamService = new SteamService();
 const helpService = new HelpService();
 
 export const data = new SlashCommandBuilder()
@@ -299,66 +300,8 @@ async function handleSteam(interaction: ChatInputCommandInteraction, locale: str
   const username = interaction.options.getString('username', true);
   
   try {
-    const steamProfile = await steamService.getProfile(username);
-    
-    if (!steamProfile) {
-      await interaction.editReply({
-        content: t('commands.utils.steam.notFound', { lng: locale })
-      });
-      return;
-    }
-    
-    const embed = new EmbedBuilder()
-      .setTitle(steamProfile.personaname)
-      .setURL(steamProfile.profileurl)
-      .setThumbnail(steamProfile.avatarfull)
-      .setColor(0x1b2838)
-      .addFields([
-        {
-          name: t('commands.utils.steam.status', { lng: locale }),
-          value: steamService.getStatusText(steamProfile.personastate, locale),
-          inline: true
-        },
-        {
-          name: t('commands.utils.steam.visibility', { lng: locale }),
-          value: steamService.getVisibilityText(steamProfile.communityvisibilitystate, locale),
-          inline: true
-        },
-        {
-          name: t('commands.utils.steam.created', { lng: locale }),
-          value: steamProfile.timecreated 
-            ? `<t:${steamProfile.timecreated}:F>` 
-            : t('commands.utils.steam.unknown', { lng: locale }),
-          inline: true
-        }
-      ]);
-    
-    if (steamProfile.gameextrainfo) {
-      embed.addFields({
-        name: t('commands.utils.steam.playing', { lng: locale }),
-        value: steamProfile.gameextrainfo,
-        inline: false
-      });
-    }
-    
-    if (steamProfile.realname) {
-      embed.addFields({
-        name: t('commands.utils.steam.realName', { lng: locale }),
-        value: steamProfile.realname,
-        inline: true
-      });
-    }
-    
-    if (steamProfile.loccountrycode) {
-      embed.addFields({
-        name: t('commands.utils.steam.country', { lng: locale }),
-        value: `:flag_${steamProfile.loccountrycode.toLowerCase()}:`,
-        inline: true
-      });
-    }
-    
-    embed.setFooter({ text: t('commands.utils.steam.footer', { lng: locale }) })
-      .setTimestamp();
+    // Temporarily use mock service
+    const embed = await SteamService.getPlayerSummary(username);
     
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {

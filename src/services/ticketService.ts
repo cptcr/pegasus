@@ -1,7 +1,6 @@
 import { 
   TextChannel, 
   Guild, 
-  User, 
   PermissionFlagsBits, 
   ChannelType, 
   EmbedBuilder,
@@ -10,17 +9,14 @@ import {
   ButtonStyle,
   CategoryChannel,
   OverwriteType,
-  Message,
   GuildMember,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  ModalSubmitInteraction,
-  ButtonInteraction,
-  StringSelectMenuInteraction
+  ModalSubmitInteraction
 } from 'discord.js';
 import { TicketRepository, TicketPanelData } from '../repositories/ticketRepository';
-import { i18n } from '../i18n';
+import { t } from '../i18n';
 import { GuildService } from './guildService';
 
 export class TicketService {
@@ -46,7 +42,7 @@ export class TicketService {
     });
   }
 
-  async loadPanel(guild: Guild, panelId: string, channel: TextChannel, locale: string) {
+  async loadPanel(guild: Guild, panelId: string, channel: TextChannel, _locale: string) {
     const panel = await this.ticketRepository.getPanel(panelId, guild.id);
     if (!panel) {
       throw new Error('Panel not found');
@@ -119,7 +115,7 @@ export class TicketService {
     // Check user's open tickets
     const openTickets = await this.ticketRepository.getUserOpenTicketsByPanel(member.id, panel.id);
     if (openTickets.length >= panel.maxTicketsPerUser) {
-      throw new Error(i18n.__({ phrase: 'tickets.maxTicketsReached', locale }, { max: panel.maxTicketsPerUser }));
+      throw new Error(t('tickets.maxTicketsReached', { max: panel.maxTicketsPerUser }));
     }
 
     // Get next ticket number
@@ -186,17 +182,17 @@ export class TicketService {
 
     // Create ticket embed
     const ticketEmbed = new EmbedBuilder()
-      .setTitle(i18n.__({ phrase: 'tickets.ticketCreated', locale }, { number: ticketNumber }))
-      .setDescription(panel.welcomeMessage || i18n.__({ phrase: 'tickets.welcomeMessage', locale }))
+      .setTitle(t('tickets.ticketCreated', { number: ticketNumber }))
+      .setDescription(panel.welcomeMessage || t('tickets.welcomeMessage'))
       .addFields([
         {
-          name: i18n.__({ phrase: 'tickets.createdBy', locale }),
+          name: t('tickets.createdBy'),
           value: `<@${member.id}>`,
           inline: true,
         },
         {
-          name: i18n.__({ phrase: 'tickets.reason', locale }),
-          value: reason || i18n.__({ phrase: 'tickets.noReason', locale }),
+          name: t('tickets.reason'),
+          value: reason || t('tickets.noReason'),
           inline: false,
         },
       ])
@@ -207,27 +203,27 @@ export class TicketService {
     const controlButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`ticket_close:${ticket.id}`)
-        .setLabel(i18n.__({ phrase: 'tickets.close', locale }))
+        .setLabel(t('tickets.close'))
         .setStyle(ButtonStyle.Danger)
         .setEmoji('🔒'),
       new ButtonBuilder()
         .setCustomId(`ticket_close_reason:${ticket.id}`)
-        .setLabel(i18n.__({ phrase: 'tickets.closeWithReason', locale }))
+        .setLabel(t('tickets.closeWithReason'))
         .setStyle(ButtonStyle.Danger)
         .setEmoji('📝'),
       new ButtonBuilder()
         .setCustomId(`ticket_lock:${ticket.id}`)
-        .setLabel(i18n.__({ phrase: 'tickets.lock', locale }))
+        .setLabel(t('tickets.lock'))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🔐'),
       new ButtonBuilder()
         .setCustomId(`ticket_freeze:${ticket.id}`)
-        .setLabel(i18n.__({ phrase: 'tickets.freeze', locale }))
+        .setLabel(t('tickets.freeze'))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('❄️'),
       new ButtonBuilder()
         .setCustomId(`ticket_claim:${ticket.id}`)
-        .setLabel(i18n.__({ phrase: 'tickets.claim', locale }))
+        .setLabel(t('tickets.claim'))
         .setStyle(ButtonStyle.Primary)
         .setEmoji('🙋'),
     );
@@ -244,7 +240,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticket.id,
       member.id,
-      i18n.__({ phrase: 'tickets.ticketCreatedLog', locale }, { user: member.user.tag, reason }),
+      t('tickets.ticketCreatedLog', { user: member.user.tag, reason }),
     );
 
     return { ticket, channel: ticketChannel };
@@ -258,14 +254,14 @@ export class TicketService {
     }
 
     if (ticket.status !== 'open') {
-      throw new Error(i18n.__({ phrase: 'tickets.alreadyClaimed', locale }));
+      throw new Error(t('tickets.alreadyClaimed'));
     }
 
     await this.ticketRepository.updateTicketStatus(ticketId, 'claimed', claimedBy.id);
     await this.ticketRepository.addTicketMessage(
       ticketId,
       claimedBy.id,
-      i18n.__({ phrase: 'tickets.claimedBy', locale }, { user: claimedBy.user.tag }),
+      t('tickets.claimedBy', { user: claimedBy.user.tag }),
     );
 
     return ticket;
@@ -293,7 +289,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       closedBy.id,
-      i18n.__({ phrase: 'tickets.closedBy', locale: locale || 'en' }, { 
+      t('tickets.closedBy', { 
         user: closedBy.user.tag, 
         reason: reason || 'No reason provided' 
       }),
@@ -322,7 +318,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       lockedBy.id,
-      i18n.__({ phrase: 'tickets.lockedBy', locale }, { user: lockedBy.user.tag }),
+      t('tickets.lockedBy', { user: lockedBy.user.tag }),
     );
 
     return ticket;
@@ -362,7 +358,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       frozenBy.id,
-      i18n.__({ phrase: 'tickets.frozenBy', locale }, { user: frozenBy.user.tag }),
+      t('tickets.frozenBy', { user: frozenBy.user.tag }),
     );
 
     return ticket;
@@ -376,7 +372,7 @@ export class TicketService {
     transcript += `User: ${ticket.userId}\n`;
     transcript += `Reason: ${ticket.reason || 'No reason provided'}\n\n`;
     transcript += `Messages:\n`;
-    transcript += '='.repeat(50) + '\n\n';
+    transcript += `${'='.repeat(50)  }\n\n`;
 
     for (const msg of messages) {
       transcript += `[${msg.createdAt}] ${msg.userId}: ${msg.content}\n`;
@@ -393,13 +389,13 @@ export class TicketService {
   createTicketModal(panelId: string, locale: string): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId(`ticket_modal:${panelId}`)
-      .setTitle(i18n.__({ phrase: 'tickets.createTicket', locale }));
+      .setTitle(t('tickets.createTicket'));
 
     const reasonInput = new TextInputBuilder()
       .setCustomId('reason')
-      .setLabel(i18n.__({ phrase: 'tickets.reasonLabel', locale }))
+      .setLabel(t('tickets.reasonLabel'))
       .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder(i18n.__({ phrase: 'tickets.reasonPlaceholder', locale }))
+      .setPlaceholder(t('tickets.reasonPlaceholder'))
       .setRequired(true)
       .setMinLength(10)
       .setMaxLength(1000);
@@ -413,13 +409,13 @@ export class TicketService {
   createCloseReasonModal(ticketId: string, locale: string): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId(`ticket_close_modal:${ticketId}`)
-      .setTitle(i18n.__({ phrase: 'tickets.closeTicket', locale }));
+      .setTitle(t('tickets.closeTicket'));
 
     const reasonInput = new TextInputBuilder()
       .setCustomId('closeReason')
-      .setLabel(i18n.__({ phrase: 'tickets.closeReasonLabel', locale }))
+      .setLabel(t('tickets.closeReasonLabel'))
       .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder(i18n.__({ phrase: 'tickets.closeReasonPlaceholder', locale }))
+      .setPlaceholder(t('tickets.closeReasonPlaceholder'))
       .setRequired(false)
       .setMaxLength(1000);
 

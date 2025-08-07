@@ -4,15 +4,8 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   ActionRowBuilder,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  ModalActionRowComponentBuilder,
-  StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
-  Role,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';

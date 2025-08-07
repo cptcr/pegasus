@@ -57,7 +57,7 @@ export class Sanitizer {
     
     // Truncate if needed
     if (options.maxLength && sanitized.length > options.maxLength) {
-      sanitized = sanitized.substring(0, options.maxLength - 3) + '...';
+      sanitized = `${sanitized.substring(0, options.maxLength - 3)  }...`;
     }
     
     return sanitized;
@@ -179,7 +179,7 @@ export class Sanitizer {
     // Limit length
     if (safe.length > 255) {
       const ext = safe.split('.').pop() || '';
-      safe = safe.substring(0, 250 - ext.length) + '.' + ext;
+      safe = `${safe.substring(0, 250 - ext.length)  }.${  ext}`;
     }
     
     return safe || 'unnamed';
@@ -234,7 +234,7 @@ export class Sanitizer {
     const cut = sanitized.lastIndexOf(' ', maxLength);
     const preview = sanitized.substring(0, cut > 0 ? cut : maxLength);
     
-    return preview + '...';
+    return `${preview  }...`;
   }
   
   /**

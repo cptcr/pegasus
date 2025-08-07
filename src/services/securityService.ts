@@ -1,6 +1,5 @@
 import { 
   Guild, 
-  GuildMember, 
   User, 
   TextChannel,
   EmbedBuilder,
@@ -9,18 +8,14 @@ import {
   ButtonStyle,
   PermissionFlagsBits
 } from 'discord.js';
-import { db } from '../database/drizzle';
-import { eq, and, desc, gte, sql } from 'drizzle-orm';
+import { getDatabase } from '../database/connection';
+import { eq, and, desc, gte } from 'drizzle-orm';
 import { securityLogs, blacklist } from '../database/schema/security';
 import { guilds } from '../database/schema/guilds';
-import { rateLimiter, RateLimitConfigs } from '../security/rateLimiter';
-import { PermissionManager } from '../security/permissions';
-import { Sanitizer } from '../security/sanitizer';
+import { rateLimiter } from '../security/rateLimiter';
 import { auditLogger } from '../security/audit';
-import { CryptoUtils } from '../security/crypto';
 import { logger } from '../utils/logger';
 import { 
-  SecurityError, 
   SuspiciousActivityError,
   RateLimitError,
   BlacklistError 
@@ -79,7 +74,7 @@ export class SecurityService {
   async logIncident(incident: SecurityIncident): Promise<void> {
     try {
       // Save to database
-      await db.insert(securityLogs).values({
+      await getDatabase().insert(securityLogs).values({
         guildId: incident.guildId,
         userId: incident.userId,
         action: incident.type,
@@ -263,7 +258,7 @@ export class SecurityService {
     reason: string,
     addedBy: string
   ): Promise<void> {
-    await db.insert(blacklist).values({
+    await getDatabase().insert(blacklist).values({
       entityType: type,
       entityId,
       reason,
@@ -289,7 +284,7 @@ export class SecurityService {
    * Check if entity is blacklisted
    */
   async isBlacklisted(type: 'user' | 'guild', entityId: string): Promise<boolean> {
-    const result = await db.select()
+    const result = await getDatabase().select()
       .from(blacklist)
       .where(
         and(
@@ -346,7 +341,7 @@ export class SecurityService {
     if (incident.metadata) {
       embed.addFields({
         name: 'Additional Information',
-        value: '```json\n' + JSON.stringify(incident.metadata, null, 2) + '\n```',
+        value: `\`\`\`json\n${  JSON.stringify(incident.metadata, null, 2)  }\n\`\`\``,
         inline: false,
       });
     }
@@ -359,9 +354,11 @@ export class SecurityService {
    */
   private async alertAdmins(incident: SecurityIncident): Promise<void> {
     try {
-      const guild = await db.query.guilds.findFirst({
-        where: eq(guilds.id, incident.guildId),
-      });
+      const [guild] = await getDatabase()
+        .select()
+        .from(guilds)
+        .where(eq(guilds.id, incident.guildId))
+        .limit(1);
       
       if (!guild || !guild.securityAlertRole) return;
       
@@ -475,7 +472,7 @@ export class SecurityService {
   }
   
   // Placeholder methods - implement based on your database schema
-  private async getRecentJoins(guildId: string, seconds: number): Promise<any[]> {
+  private async getRecentJoins(_guildId: string, _seconds: number): Promise<any[]> {
     // TODO: Implement based on your member tracking
     return [];
   }
@@ -483,7 +480,7 @@ export class SecurityService {
   private async getUserIncidents(userId: string, guildId: string, days: number): Promise<any[]> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     
-    return db.select()
+    return getDatabase().select()
       .from(securityLogs)
       .where(
         and(

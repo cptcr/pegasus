@@ -4,7 +4,6 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   Guild,
-  GuildMember,
   TextChannel,
   User
 } from 'discord.js';
@@ -208,7 +207,18 @@ export class WarningService {
     }
   }
 
-  async getWarningEmbed(warning: any, guild: Guild): Promise<EmbedBuilder> {
+  async getWarningEmbed(warning: {
+    warnId: string;
+    userId: string;
+    moderatorId: string;
+    title: string;
+    description?: string | null;
+    level: number;
+    proof?: string | null;
+    createdAt: Date;
+    editedAt?: Date | null;
+    editedBy?: string | null;
+  }, guild: Guild): Promise<EmbedBuilder> {
     const user = await guild.client.users.fetch(warning.userId).catch(() => null);
     const moderator = await guild.client.users.fetch(warning.moderatorId).catch(() => null);
 

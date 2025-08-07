@@ -5,7 +5,11 @@ const { combine, timestamp, printf, colorize, errors } = winston.format;
 
 // Custom log format
 const logFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} [${level}]: ${stack || message}`;
+  const timestampStr = String(timestamp);
+  const levelStr = level;
+  const messageStr = String(message);
+  const stackStr = stack ? String(stack) : '';
+  return `${timestampStr} [${levelStr}]: ${stackStr || messageStr}`;
 });
 
 // Create logger instance

@@ -1,5 +1,5 @@
 import { Guild, Role, GuildChannel } from 'discord.js';
-import { db } from '../database/connection';
+import { getDatabase } from '../database/connection';
 import { guilds, guildSettings, xpSettings, xpRewards, economySettings, economyShopItems } from '../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger';
@@ -69,13 +69,13 @@ export class ConfigurationService {
   // XP Configuration Methods
   async getXPConfig(guildId: string): Promise<XPConfig> {
     try {
-      const [settings] = await db
+      const [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
         .limit(1);
 
-      const [xpConfig] = await db
+      const [xpConfig] = await getDatabase()
         .select()
         .from(xpSettings)
         .where(eq(xpSettings.guildId, guildId))
@@ -125,7 +125,7 @@ export class ConfigurationService {
       if (config.boosterMultiplier !== undefined) updateData.xpBoosterMultiplier = config.boosterMultiplier;
 
       if (Object.keys(updateData).length > 0) {
-        await db
+        await getDatabase()
           .update(guildSettings)
           .set({ ...updateData, updatedAt: new Date() })
           .where(eq(guildSettings.guildId, guildId));
@@ -142,7 +142,7 @@ export class ConfigurationService {
       if (config.stackRoleRewards !== undefined) xpUpdateData.stackRoleRewards = config.stackRoleRewards;
 
       if (Object.keys(xpUpdateData).length > 0) {
-        await db
+        await getDatabase()
           .insert(xpSettings)
           .values({ guildId, ...xpUpdateData })
           .onConflictDoUpdate({
@@ -158,7 +158,7 @@ export class ConfigurationService {
 
   async setXPRoleReward(guildId: string, level: number, roleId: string): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .insert(xpRewards)
         .values({ guildId, level, roleId })
         .onConflictDoNothing();
@@ -170,7 +170,7 @@ export class ConfigurationService {
 
   async removeXPRoleReward(guildId: string, level: number): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .delete(xpRewards)
         .where(and(eq(xpRewards.guildId, guildId), eq(xpRewards.level, level)));
     } catch (error) {
@@ -181,7 +181,7 @@ export class ConfigurationService {
 
   async getXPRoleRewards(guildId: string): Promise<Array<{ level: number; roleId: string }>> {
     try {
-      const rewards = await db
+      const rewards = await getDatabase()
         .select()
         .from(xpRewards)
         .where(eq(xpRewards.guildId, guildId))
@@ -197,7 +197,7 @@ export class ConfigurationService {
   // Economy Configuration Methods
   async getEconomyConfig(guildId: string) {
     try {
-      const [settings] = await db
+      const [settings] = await getDatabase()
         .select()
         .from(economySettings)
         .where(eq(economySettings.guildId, guildId))
@@ -205,7 +205,7 @@ export class ConfigurationService {
 
       if (!settings) {
         // Create default settings
-        const [newSettings] = await db
+        const [newSettings] = await getDatabase()
           .insert(economySettings)
           .values({ guildId })
           .returning();
@@ -221,7 +221,7 @@ export class ConfigurationService {
 
   async updateEconomyConfig(guildId: string, config: Partial<typeof economySettings.$inferInsert>): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .insert(economySettings)
         .values({ guildId, ...config })
         .onConflictDoUpdate({
@@ -236,7 +236,7 @@ export class ConfigurationService {
 
   async getShopItems(guildId: string): Promise<ShopItem[]> {
     try {
-      const items = await db
+      const items = await getDatabase()
         .select()
         .from(economyShopItems)
         .where(eq(economyShopItems.guildId, guildId))
@@ -262,7 +262,7 @@ export class ConfigurationService {
 
   async addShopItem(guildId: string, item: Omit<ShopItem, 'id'>): Promise<string> {
     try {
-      const [newItem] = await db
+      const [newItem] = await getDatabase()
         .insert(economyShopItems)
         .values({
           guildId,
@@ -287,7 +287,7 @@ export class ConfigurationService {
 
   async updateShopItem(itemId: string, updates: Partial<Omit<ShopItem, 'id'>>): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .update(economyShopItems)
         .set({ ...updates, updatedAt: new Date() })
         .where(eq(economyShopItems.id, itemId));
@@ -299,7 +299,7 @@ export class ConfigurationService {
 
   async deleteShopItem(itemId: string): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .delete(economyShopItems)
         .where(eq(economyShopItems.id, itemId));
     } catch (error) {
@@ -311,7 +311,7 @@ export class ConfigurationService {
   // Welcome Configuration Methods
   async getWelcomeConfig(guildId: string): Promise<WelcomeConfig> {
     try {
-      const [settings] = await db
+      const [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
@@ -354,7 +354,7 @@ export class ConfigurationService {
       if (config.dmEnabled !== undefined) updateData.welcomeDmEnabled = config.dmEnabled;
       if (config.dmMessage !== undefined) updateData.welcomeDmMessage = config.dmMessage;
 
-      await db
+      await getDatabase()
         .update(guildSettings)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(guildSettings.guildId, guildId));
@@ -367,7 +367,7 @@ export class ConfigurationService {
   // Goodbye Configuration Methods
   async getGoodbyeConfig(guildId: string): Promise<GoodbyeConfig> {
     try {
-      const [settings] = await db
+      const [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
@@ -406,7 +406,7 @@ export class ConfigurationService {
       if (config.embedImage !== undefined) updateData.goodbyeEmbedImage = config.embedImage;
       if (config.embedThumbnail !== undefined) updateData.goodbyeEmbedThumbnail = config.embedThumbnail;
 
-      await db
+      await getDatabase()
         .update(guildSettings)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(guildSettings.guildId, guildId));
@@ -419,7 +419,7 @@ export class ConfigurationService {
   // Autorole Configuration Methods
   async getAutoroleConfig(guildId: string): Promise<AutoroleConfig> {
     try {
-      const [settings] = await db
+      const [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
@@ -446,7 +446,7 @@ export class ConfigurationService {
       if (config.enabled !== undefined) updateData.autoroleEnabled = config.enabled;
       if (config.roles !== undefined) updateData.autoroleRoles = JSON.stringify(config.roles);
 
-      await db
+      await getDatabase()
         .update(guildSettings)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(guildSettings.guildId, guildId));
@@ -459,7 +459,7 @@ export class ConfigurationService {
   // Language Configuration Methods
   async getGuildLanguage(guildId: string): Promise<string> {
     try {
-      const [guild] = await db
+      const [guild] = await getDatabase()
         .select()
         .from(guilds)
         .where(eq(guilds.id, guildId))
@@ -474,7 +474,7 @@ export class ConfigurationService {
 
   async setGuildLanguage(guildId: string, language: string): Promise<void> {
     try {
-      await db
+      await getDatabase()
         .update(guilds)
         .set({ language, updatedAt: new Date() })
         .where(eq(guilds.id, guildId));

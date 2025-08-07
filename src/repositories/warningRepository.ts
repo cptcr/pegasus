@@ -1,5 +1,5 @@
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
-import { db } from '../database/drizzle';
+import { getDatabase } from '../../database/connection';
 import { warnings, warningAutomations } from '../database/schema';
 import { nanoid } from 'nanoid';
 
@@ -30,10 +30,14 @@ export interface CreateAutomationData {
 }
 
 export class WarningRepository {
+  private get db() {
+    return getDatabase();
+  }
+
   async createWarning(data: CreateWarningData) {
     const warnId = `W${nanoid(10)}`;
     
-    const [warning] = await db.insert(warnings).values({
+    const [warning] = await this.db.insert(warnings).values({
       warnId,
       guildId: data.guildId,
       userId: data.userId,
@@ -48,7 +52,7 @@ export class WarningRepository {
   }
 
   async updateWarning(warnId: string, data: UpdateWarningData) {
-    const [updated] = await db.update(warnings)
+    const [updated] = await this.db.update(warnings)
       .set({
         ...data,
         editedAt: new Date(),
@@ -60,7 +64,7 @@ export class WarningRepository {
   }
 
   async getWarningById(warnId: string) {
-    const [warning] = await db.select()
+    const [warning] = await this.db.select()
       .from(warnings)
       .where(eq(warnings.warnId, warnId))
       .limit(1);
@@ -69,7 +73,7 @@ export class WarningRepository {
   }
 
   async getUserWarnings(guildId: string, userId: string) {
-    return db.select()
+    return this.db.select()
       .from(warnings)
       .where(
         and(
@@ -82,7 +86,7 @@ export class WarningRepository {
   }
 
   async getUserWarningStats(guildId: string, userId: string) {
-    const activeWarnings = await db.select({
+    const activeWarnings = await this.db.select({
       count: sql<number>`count(*)::int`,
       totalLevel: sql<number>`COALESCE(sum(${warnings.level}), 0)::int`
     })
@@ -104,7 +108,7 @@ export class WarningRepository {
   async createAutomation(data: CreateAutomationData) {
     const automationId = `AUTO${nanoid(8)}`;
     
-    const [automation] = await db.insert(warningAutomations).values({
+    const [automation] = await this.db.insert(warningAutomations).values({
       automationId,
       guildId: data.guildId,
       name: data.name,
@@ -119,14 +123,14 @@ export class WarningRepository {
   }
 
   async getGuildAutomations(guildId: string) {
-    return db.select()
+    return this.db.select()
       .from(warningAutomations)
       .where(eq(warningAutomations.guildId, guildId))
       .orderBy(desc(warningAutomations.createdAt));
   }
 
   async deleteAutomation(automationId: string) {
-    const [deleted] = await db.delete(warningAutomations)
+    const [deleted] = await this.db.delete(warningAutomations)
       .where(eq(warningAutomations.automationId, automationId))
       .returning();
 
@@ -134,7 +138,7 @@ export class WarningRepository {
   }
 
   async getActiveAutomations(guildId: string) {
-    return db.select()
+    return this.db.select()
       .from(warningAutomations)
       .where(
         and(
@@ -145,7 +149,7 @@ export class WarningRepository {
   }
 
   async updateAutomationLastTriggered(automationId: string) {
-    await db.update(warningAutomations)
+    await this.db.update(warningAutomations)
       .set({ lastTriggeredAt: new Date() })
       .where(eq(warningAutomations.automationId, automationId));
   }
@@ -153,7 +157,7 @@ export class WarningRepository {
   async getRecentWarnings(guildId: string, userId: string, hours: number = 24) {
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     
-    return db.select()
+    return this.db.select()
       .from(warnings)
       .where(
         and(

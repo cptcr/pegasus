@@ -8,7 +8,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalActionRowComponentBuilder,
-  AttachmentBuilder,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -209,7 +208,7 @@ async function handleWarnHelp(interaction: ChatInputCommandInteraction) {
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
-async function handleWarnCreate(interaction: ChatInputCommandInteraction) {
+async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -300,7 +299,7 @@ async function handleWarnCreate(interaction: ChatInputCommandInteraction) {
   }
 }
 
-async function handleWarnEdit(interaction: ChatInputCommandInteraction) {
+async function handleWarnEdit(interaction: ChatInputCommandInteraction): Promise<any> {
   const warnId = interaction.options.getString('warnid', true);
 
   // Get the warning
@@ -341,7 +340,7 @@ async function handleWarnEdit(interaction: ChatInputCommandInteraction) {
   await interaction.showModal(modal);
 }
 
-async function handleWarnLookup(interaction: ChatInputCommandInteraction) {
+async function handleWarnLookup(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const warnId = interaction.options.getString('warnid', true);
@@ -357,7 +356,7 @@ async function handleWarnLookup(interaction: ChatInputCommandInteraction) {
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleWarnView(interaction: ChatInputCommandInteraction) {
+async function handleWarnView(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const user = interaction.options.getUser('user', true);
@@ -398,7 +397,7 @@ async function handleWarnView(interaction: ChatInputCommandInteraction) {
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleAutomationCreate(interaction: ChatInputCommandInteraction) {
+async function handleAutomationCreate(interaction: ChatInputCommandInteraction): Promise<any> {
   const modal = new ModalBuilder()
     .setCustomId('warn_automation_create')
     .setTitle(t('commands.warn.subcommands.automation.create.modal.title'));
@@ -450,7 +449,7 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction) 
   await interaction.showModal(modal);
 }
 
-async function handleAutomationView(interaction: ChatInputCommandInteraction) {
+async function handleAutomationView(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const automations = await warningRepository.getGuildAutomations(interaction.guild!.id);
@@ -490,7 +489,7 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction) {
   await interaction.editReply({ embeds: [embed] });
 }
 
-async function handleAutomationDelete(interaction: ChatInputCommandInteraction) {
+async function handleAutomationDelete(interaction: ChatInputCommandInteraction): Promise<any> {
   await interaction.deferReply();
 
   const automationId = interaction.options.getString('automationid', true);

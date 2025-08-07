@@ -12,7 +12,8 @@ import {
 } from 'discord.js';
 import { Command, CommandCategory } from '../../types/command';
 import { xpService } from '../../services/xpService';
-import { rankCardService } from '../../services/rankCardService';
+// import { rankCardService } from '../../services/rankCardService';
+import { RankCardService as rankCardService } from '../../services/rankCardServiceMock';
 import { configurationService } from '../../services/configurationService';
 import { logger } from '../../utils/logger';
 import { getTranslation } from '../../i18n';
@@ -101,7 +102,15 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
     const customization = await xpService.getRankCardCustomization(targetUser.id);
 
     // Generate rank card
-    const rankCard = await rankCardService.generateRankCard(rankData, customization);
+    const rankCard = await rankCardService.generateRankCard(
+      targetUser,
+      rankData.rank || 0,
+      rankData.level || 0,
+      rankData.xp || 0,
+      rankData.requiredXp || 100,
+      rankData.totalXp || 0,
+      customization
+    );
 
     if (!rankCard) {
       const embed = new EmbedBuilder()

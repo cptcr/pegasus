@@ -35,7 +35,7 @@ async function handleVoiceJoin(state: VoiceState) {
 
   try {
     // Ensure guild exists in database
-    await guildService.ensureGuildExists(state.guild.id);
+    await guildService.ensureGuild(state.guild);
 
     const config = await configurationService.getXPConfig(state.guild.id);
     
@@ -43,7 +43,7 @@ async function handleVoiceJoin(state: VoiceState) {
     if (!config.enabled) return;
 
     // Check if channel is ignored
-    if (config.ignoredChannels.includes(state.channel!.id)) return;
+    if (state.channel && config.ignoredChannels.includes(state.channel.id)) return;
 
     // Don't track if user is muted or deafened
     if (state.mute || state.deaf || state.selfMute || state.selfDeaf) return;
@@ -68,7 +68,7 @@ async function handleVoiceLeave(state: VoiceState) {
 
     // Handle level up if needed (similar to messageCreate)
     if (result && result.leveledUp) {
-      const config = await configurationService.getXPConfig(state.guild.id);
+      // config is fetched but not used for level up announcements in voice state changes
       
       // Add role rewards
       if (result.rewardRoles && result.rewardRoles.length > 0) {

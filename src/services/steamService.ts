@@ -140,7 +140,7 @@ export class SteamService {
         params: {
           key: this.apiKey,
           steamid: steamId,
-          count: count
+          count
         }
       });
 
