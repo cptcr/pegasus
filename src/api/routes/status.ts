@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import * as si from 'systeminformation';
 import { client } from '../../index';
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
+import { getDetailedSystemInfo, getProcessInfo } from '../utils/systemInfo';
 
 const router = Router();
 
@@ -154,29 +154,8 @@ async function getApiLatency(url: string): Promise<number | null> {
 
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const [
-      osInfo,
-      cpuInfo,
-      cpuUsage,
-      cpuTemp,
-      memInfo,
-      gpuInfo,
-      diskInfo,
-      networkInfo,
-      networkStats,
-      processes
-    ] = await Promise.all([
-      si.osInfo(),
-      si.cpu(),
-      si.currentLoad(),
-      si.cpuTemperature(),
-      si.mem(),
-      si.graphics(),
-      si.fsSize(),
-      si.networkInterfaces(),
-      si.networkStats(),
-      si.processes()
-    ]);
+    const systemInfo = await getDetailedSystemInfo();
+    const botProcess = await getProcessInfo(process.pid);
 
     const dbLatency = await getDatabaseLatency();
     
@@ -192,14 +171,13 @@ router.get('/', async (_req: Request, res: Response) => {
       ? await getApiLatency('https://newsapi.org/v2/top-headlines?country=us')
       : null;
 
-    const botProcess = processes.list.find((p: any) => p.pid === process.pid);
     const botMemory = botProcess ? {
-      used: botProcess.memRss,
-      total: memInfo.total,
-      percentage: (botProcess.memRss / memInfo.total) * 100
+      used: botProcess.memoryRss || 0,
+      total: systemInfo.memory.total,
+      percentage: botProcess.memoryRss ? (botProcess.memoryRss / systemInfo.memory.total) * 100 : 0
     } : {
       used: 0,
-      total: memInfo.total,
+      total: systemInfo.memory.total,
       percentage: 0
     };
 
@@ -220,71 +198,14 @@ router.get('/', async (_req: Request, res: Response) => {
         ping: client.ws.ping,
         memory: botMemory
       },
-      system: {
-        platform: osInfo.platform,
-        distro: osInfo.distro,
-        release: osInfo.release,
-        arch: osInfo.arch,
-        hostname: osInfo.hostname,
-        uptime: si.time().uptime,
-        loadAverage: cpuUsage.avgLoad ? [cpuUsage.avgLoad] : []
-      },
-      cpu: {
-        manufacturer: cpuInfo.manufacturer,
-        brand: cpuInfo.brand,
-        cores: cpuInfo.cores,
-        physicalCores: cpuInfo.physicalCores,
-        speed: cpuInfo.speed,
-        temperature: cpuTemp.main || null,
-        usage: cpuUsage.currentLoad
-      },
-      memory: {
-        total: memInfo.total,
-        free: memInfo.free,
-        used: memInfo.used,
-        percentage: (memInfo.used / memInfo.total) * 100,
-        swap: {
-          total: memInfo.swaptotal,
-          used: memInfo.swapused,
-          free: memInfo.swapfree
-        }
-      },
-      gpu: gpuInfo.controllers.map(gpu => ({
-        vendor: gpu.vendor,
-        model: gpu.model,
-        vram: gpu.vram || 0,
-        temperature: gpu.temperatureGpu || null,
-        utilizationGpu: gpu.utilizationGpu || null,
-        utilizationMemory: gpu.utilizationMemory || null
-      })),
-      disk: diskInfo.map(disk => ({
-        filesystem: disk.fs,
-        size: disk.size,
-        used: disk.used,
-        available: disk.available,
-        use: disk.use,
-        mount: disk.mount
-      })),
-      network: {
-        interfaces: networkInfo.map(iface => ({
-          iface: iface.iface,
-          ip4: iface.ip4,
-          ip6: iface.ip6,
-          mac: iface.mac,
-          speed: iface.speed
-        })),
-        stats: networkStats[0] ? {
-          rx_bytes: networkStats[0].rx_bytes,
-          tx_bytes: networkStats[0].tx_bytes,
-          rx_sec: networkStats[0].rx_sec,
-          tx_sec: networkStats[0].tx_sec
-        } : {
-          rx_bytes: 0,
-          tx_bytes: 0,
-          rx_sec: 0,
-          tx_sec: 0
-        }
-      },
+      system: systemInfo.os,
+      cpu: systemInfo.cpu,
+      memory: systemInfo.memory,
+      gpu: systemInfo.gpu,
+      disk: systemInfo.disk,
+      network: systemInfo.network,
+      processes: systemInfo.processes,
+      docker: systemInfo.docker,
       services: {
         discord: {
           connected: client.ws.status === 0,
