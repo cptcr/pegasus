@@ -11,7 +11,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalActionRowComponentBuilder,
-  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -132,7 +131,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (!interaction.guild) {
     return interaction.reply({
       content: t('common.guildOnly'),
-      flags: MessageFlags.Ephemeral,
+      ephemeral: true,
     });
   }
 
@@ -152,7 +151,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     default:
       return interaction.reply({
         content: t('common.unknownSubcommand'),
-        flags: MessageFlags.Ephemeral,
+        ephemeral: true,
       });
   }
 }
@@ -170,7 +169,7 @@ async function handleStart(interaction: ChatInputCommandInteraction): Promise<an
   if (!durationMs) {
     return interaction.reply({
       content: t('commands.giveaway.invalidDuration'),
-      flags: MessageFlags.Ephemeral,
+      ephemeral: true,
     });
   }
 
@@ -231,7 +230,7 @@ async function handleStart(interaction: ChatInputCommandInteraction): Promise<an
 }
 
 async function handleSimple(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ ephemeral: true });
 
   const prize = interaction.options.getString('prize', true);
   const duration = interaction.options.getString('duration', true);
@@ -318,7 +317,7 @@ async function handleSimple(interaction: ChatInputCommandInteraction): Promise<a
 }
 
 async function handleEnd(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ ephemeral: true });
 
   const giveawayId = interaction.options.getString('giveaway_id', true);
 
@@ -346,7 +345,7 @@ async function handleEnd(interaction: ChatInputCommandInteraction): Promise<any>
 }
 
 async function handleReroll(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply({ ephemeral: true });
 
   const giveawayId = interaction.options.getString('giveaway_id', true);
   const newWinnerCount = interaction.options.getInteger('winners');
@@ -386,14 +385,14 @@ async function handleConfigure(interaction: ChatInputCommandInteraction): Promis
   if (!giveaway || giveaway.guildId !== interaction.guild!.id) {
     return interaction.reply({
       content: t('commands.giveaway.notFound'),
-      flags: MessageFlags.Ephemeral,
+      ephemeral: true,
     });
   }
 
   if (giveaway.status !== 'active') {
     return interaction.reply({
       content: t('commands.giveaway.notActive'),
-      flags: MessageFlags.Ephemeral,
+      ephemeral: true,
     });
   }
 
