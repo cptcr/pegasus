@@ -205,9 +205,18 @@ async function validateCommandInput(
 ): Promise<SecurityCheckResult> {
   const commandName = command.data.name;
   const subcommand = interaction.options.getSubcommand(false);
+  const subcommandGroup = interaction.options.getSubcommandGroup(false);
 
   // Get validation schema
-  const schema = (CommandSchemas as any)[commandName]?.[subcommand || 'default'];
+  let schema = null;
+  if (subcommandGroup && subcommand) {
+    schema = (CommandSchemas as any)[commandName]?.[subcommandGroup]?.[subcommand];
+  } else if (subcommand) {
+    schema = (CommandSchemas as any)[commandName]?.[subcommand];
+  } else {
+    schema = (CommandSchemas as any)[commandName]?.['default'];
+  }
+  
   if (!schema) {
     return { passed: true }; // No schema defined, skip validation
   }
@@ -215,12 +224,33 @@ async function validateCommandInput(
   try {
     // Extract options
     const options: Record<string, any> = {};
-    interaction.options.data.forEach(opt => {
-      if (opt.type === 1) {
-        // Subcommand
-        opt.options?.forEach(subOpt => {
-          options[subOpt.name] = subOpt.value;
-        });
+    
+    // Navigate through the command structure
+    let targetOptions = interaction.options.data;
+    
+    // If there's a subcommand group, navigate to it
+    if (subcommandGroup) {
+      const group = targetOptions.find(opt => opt.name === subcommandGroup && opt.type === 2);
+      if (group?.options) {
+        targetOptions = group.options;
+      }
+    }
+    
+    // If there's a subcommand, navigate to it
+    if (subcommand) {
+      const sub = targetOptions.find(opt => opt.name === subcommand && opt.type === 1);
+      if (sub?.options) {
+        targetOptions = sub.options;
+      }
+    }
+    
+    // Now extract the actual option values
+    targetOptions.forEach(opt => {
+      // Map user option to userId for validation
+      if (opt.name === 'user' && commandName === 'warn') {
+        options['userId'] = opt.value;
+      } else if (opt.name === 'user' && (commandName === 'moderation' || commandName === 'blacklist')) {
+        options['userId'] = opt.value;
       } else {
         options[opt.name] = opt.value;
       }

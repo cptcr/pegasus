@@ -47,8 +47,8 @@ export const CommandSchemas = {
     create: z.object({
       userId: ValidationSchemas.snowflake,
       title: ValidationSchemas.title,
-      description: ValidationSchemas.description,
-      level: ValidationSchemas.level.default(1),
+      description: ValidationSchemas.description.optional(),
+      level: ValidationSchemas.level.optional().default(1),
       proof: ValidationSchemas.attachment.optional(),
     }),
 
@@ -101,20 +101,24 @@ export const CommandSchemas = {
   moderation: {
     ban: z.object({
       userId: ValidationSchemas.snowflake,
-      reason: ValidationSchemas.description,
+      reason: ValidationSchemas.description.optional(),
       duration: ValidationSchemas.duration.optional(),
-      deleteMessages: z.boolean().default(false),
+      deleteMessages: z.boolean().optional().default(false),
     }),
 
     kick: z.object({
       userId: ValidationSchemas.snowflake,
-      reason: ValidationSchemas.description,
+      reason: ValidationSchemas.description.optional(),
     }),
 
     timeout: z.object({
       userId: ValidationSchemas.snowflake,
       duration: ValidationSchemas.duration,
-      reason: ValidationSchemas.description,
+      reason: ValidationSchemas.description.optional(),
+    }),
+    
+    'reset-xp': z.object({
+      userId: ValidationSchemas.snowflake,
     }),
   },
 

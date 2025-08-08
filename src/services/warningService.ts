@@ -10,6 +10,7 @@ import {
 import { warningRepository } from '../repositories/warningRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
+import { ensureUserAndGuildExist } from '../utils/userUtils';
 
 export interface WarningAction {
   type: 'ban' | 'kick' | 'mute' | 'role' | 'message';
@@ -28,6 +29,10 @@ export class WarningService {
     level: number = 1,
     proof?: string
   ) {
+    // Ensure user and guild exist in database
+    await ensureUserAndGuildExist(user, guild);
+    await ensureUserAndGuildExist(moderator, guild);
+    
     // Create the warning
     const warning = await warningRepository.createWarning({
       guildId: guild.id,

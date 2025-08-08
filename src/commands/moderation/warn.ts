@@ -8,6 +8,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalActionRowComponentBuilder,
+  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -163,7 +164,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     return interaction.reply({
       content: t('common.guildOnly'),
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -243,7 +244,7 @@ async function handleWarnHelp(interaction: ChatInputCommandInteraction) {
     )
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promise<any> {
@@ -345,7 +346,7 @@ async function handleWarnEdit(interaction: ChatInputCommandInteraction): Promise
   if (!warning || warning.guildId !== interaction.guild!.id) {
     return interaction.reply({
       content: t('commands.warn.subcommands.edit.notFound'),
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
