@@ -16,7 +16,7 @@ export async function initializeI18n(): Promise<void> {
         escapeValue: false,
       },
       returnObjects: true,
-      debug: process.env.NODE_ENV === 'development',
+      debug: false,
     });
 
     logger.info('i18n initialized successfully');
