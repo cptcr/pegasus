@@ -176,33 +176,11 @@ export const CommandSchemas = {
       language: z.enum(['en', 'de', 'es', 'fr']),
     }),
 
-    xp: z.object({
-      enabled: z.boolean(),
-      messageXp: z.object({
-        min: z.number().int().min(0).max(100),
-        max: z.number().int().min(0).max(100),
-      }),
-      voiceXp: z.number().int().min(0).max(100),
-      cooldown: z.number().int().min(0).max(300),
-      multipliers: z
-        .array(
-          z.object({
-            roleId: ValidationSchemas.snowflake,
-            multiplier: z.number().min(0.1).max(10),
-          })
-        )
-        .max(10)
-        .optional(),
-      rewards: z
-        .array(
-          z.object({
-            level: z.number().int().min(1).max(1000),
-            roleId: ValidationSchemas.snowflake,
-          })
-        )
-        .max(50)
-        .optional(),
-    }),
+    xp: z.object({}).optional(), // No input required - just shows config UI
+    eco: z.object({}).optional(), // No input required - just shows config UI  
+    welcome: z.object({}).optional(), // No input required - just shows config UI
+    autorole: z.object({}).optional(), // No input required - just shows config UI
+    goodbye: z.object({}).optional(), // No input required - just shows config UI
   },
 };
 
