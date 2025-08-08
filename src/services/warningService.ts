@@ -29,6 +29,11 @@ export class WarningService {
     level: number = 1,
     proof?: string
   ) {
+    // Validate inputs
+    if (!guild || !user || !moderator) {
+      throw new Error('Invalid parameters: guild, user, and moderator are required');
+    }
+    
     // Ensure user and guild exist in database
     await ensureUserAndGuildExist(user, guild);
     await ensureUserAndGuildExist(moderator, guild);
