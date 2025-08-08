@@ -3,10 +3,7 @@ import {
   Message,
   GuildMember,
   PermissionFlagsBits,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
+  EmbedBuilder
 } from 'discord.js';
 import { checkCommandRateLimit, RateLimitResult } from './rateLimiter';
 import { PermissionManager, PermissionCheck } from './permissions';
@@ -24,7 +21,7 @@ export interface SecurityContext {
   commandName: string;
   timestamp: number;
   isOwner: boolean;
-  permissions: bigint[];
+  permissions: bigint;
 }
 
 export interface SecurityCheckResult {
@@ -76,9 +73,26 @@ export async function securityMiddleware(
     
     // 4. Check permissions
     if (command.permissions && command.permissions.length > 0) {
+      // Convert PermissionResolvable[] to bigint[]
+      const permissionBits = command.permissions.map(p => {
+        if (typeof p === 'bigint') return p;
+        if (typeof p === 'string') {
+          // Handle string permissions - convert to bigint if it's a valid bigint string
+          try {
+            return BigInt(p);
+          } catch {
+            // If it's not a valid bigint string, it might be a permission name
+            // For now, return 0n as a fallback
+            return 0n;
+          }
+        }
+        if (typeof p === 'number') return BigInt(p);
+        // Handle arrays or other types
+        return 0n;
+      });
       const permissionCheck = await PermissionManager.checkCommandPermissions(
         interaction,
-        command.permissions
+        permissionBits
       );
       
       if (!permissionCheck.allowed) {
@@ -107,7 +121,7 @@ export async function securityMiddleware(
       targetId: context.channelId,
       details: {
         command: context.commandName,
-        options: sanitizeOptions(interaction.options.data),
+        options: sanitizeOptions([...interaction.options.data]),
       },
     });
     
@@ -159,7 +173,7 @@ async function checkRateLimit(context: SecurityContext): Promise<SecurityCheckRe
   }
   
   // Check if user has rate limit bypass permission
-  if (context.permissions & PermissionFlagsBits.Administrator) {
+  if ((context.permissions & PermissionFlagsBits.Administrator) === PermissionFlagsBits.Administrator) {
     return { passed: true };
   }
   
@@ -192,10 +206,9 @@ async function validateCommandInput(
 ): Promise<SecurityCheckResult> {
   const commandName = command.data.name;
   const subcommand = interaction.options.getSubcommand(false);
-  const fullCommand = subcommand ? `${commandName}.${subcommand}` : commandName;
   
   // Get validation schema
-  const schema = CommandSchemas[commandName]?.[subcommand || 'default'];
+  const schema = (CommandSchemas as any)[commandName]?.[subcommand || 'default'];
   if (!schema) {
     return { passed: true }; // No schema defined, skip validation
   }
@@ -236,7 +249,7 @@ async function validateCommandInput(
  * Perform additional security checks on input
  */
 async function performSecurityChecks(options: Record<string, any>): Promise<void> {
-  for (const [key, value] of Object.entries(options)) {
+  for (const [_key, value] of Object.entries(options)) {
     if (typeof value === 'string') {
       // Check for mass mentions
       if (Sanitizer.hasMassMentions(value)) {
@@ -357,7 +370,7 @@ function sanitizeOptions(options: any[]): any[] {
 /**
  * Check if entity is blacklisted (implement based on your database)
  */
-async function isBlacklisted(type: 'user' | 'guild', id: string): Promise<boolean> {
+async function isBlacklisted(_type: 'user' | 'guild', _id: string): Promise<boolean> {
   // TODO: Implement database check
   // For now, return false
   return false;

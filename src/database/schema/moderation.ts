@@ -45,21 +45,4 @@ export const warningAutomations = pgTable('warning_automations', {
   lastTriggeredAt: timestamp('last_triggered_at'),
 });
 
-export const auditLogs = pgTable('audit_logs', {
-  id: serial('id').primaryKey(),
-  action: varchar('action', { length: 50 }).notNull(),
-  userId: varchar('user_id', { length: 20 }).references(() => users.id, { onDelete: 'set null' }).notNull(),
-  guildId: varchar('guild_id', { length: 20 }).references(() => guilds.id, { onDelete: 'cascade' }).notNull(),
-  targetId: varchar('target_id', { length: 20 }),
-  details: jsonb('details'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-export const blacklist = pgTable('blacklist', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id', { length: 20 }).references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  guildId: varchar('guild_id', { length: 20 }).references(() => guilds.id, { onDelete: 'cascade' }).notNull(),
-  reason: text('reason').notNull(),
-  blacklistedBy: varchar('blacklisted_by', { length: 20 }).references(() => users.id, { onDelete: 'set null' }).notNull(),
-  blacklistedAt: timestamp('blacklisted_at').defaultNow().notNull(),
-});
+// Note: auditLogs and blacklist tables have been moved to security.ts for better organization

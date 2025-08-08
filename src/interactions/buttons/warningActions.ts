@@ -1,10 +1,7 @@
 import { 
   ButtonInteraction, 
   PermissionFlagsBits,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle 
+  EmbedBuilder
 } from 'discord.js';
 import { warningRepository } from '../../repositories/warningRepository';
 import { t } from '../../i18n';
@@ -26,20 +23,22 @@ async function handleWarningAction(
 ) {
   // Check permissions
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ModerateMembers)) {
-    return interaction.reply({
+    await interaction.reply({
       content: t('common.noPermission'),
       ephemeral: true,
     });
+    return;
   }
 
   const userId = params[0];
   const member = await interaction.guild!.members.fetch(userId).catch(() => null);
 
   if (!member) {
-    return interaction.reply({
+    await interaction.reply({
       content: 'Member not found in this server',
       ephemeral: true,
     });
+    return;
   }
 
   // Check role hierarchy
@@ -47,17 +46,19 @@ async function handleWarningAction(
   const executorMember = interaction.member as any;
 
   if (member.roles.highest.position >= botMember.roles.highest.position) {
-    return interaction.reply({
+    await interaction.reply({
       content: 'I cannot moderate this member due to role hierarchy',
       ephemeral: true,
     });
+    return;
   }
 
   if (member.roles.highest.position >= executorMember.roles.highest.position) {
-    return interaction.reply({
+    await interaction.reply({
       content: 'You cannot moderate this member due to role hierarchy',
       ephemeral: true,
     });
+    return;
   }
 
   await interaction.deferReply({ ephemeral: true });
@@ -83,9 +84,10 @@ async function handleWarningAction(
         const muteRole = interaction.guild!.roles.cache.find(r => r.name.toLowerCase() === 'muted');
         
         if (!muteRole) {
-          return interaction.editReply({
+          await interaction.editReply({
             content: 'Mute role not found. Please create a role named "Muted"',
           });
+          return;
         }
 
         await member.roles.add(muteRole, 'Warning threshold reached');
@@ -103,6 +105,12 @@ async function handleWarningAction(
           content: `Successfully muted ${member.user.tag} for ${duration} minutes`,
         });
         break;
+        
+      default:
+        await interaction.editReply({
+          content: 'Unknown action',
+        });
+        return;
     }
 
     // Update the original message to show action taken
@@ -135,9 +143,10 @@ async function handleWarningView(interaction: ButtonInteraction, userId: string)
   const user = await interaction.client.users.fetch(userId).catch(() => null);
 
   if (warnings.length === 0) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: t('commands.warn.subcommands.view.noWarnings', { user: user?.tag || userId }),
     });
+    return;
   }
 
   const embed = new EmbedBuilder()

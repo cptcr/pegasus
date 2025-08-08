@@ -127,26 +127,26 @@ export const apiKeys = pgTable('api_keys', {
 });
 
 // Relations
-export const securityLogsRelations = relations(securityLogs, ({ one }) => ({
+export const securityLogsRelations = relations(securityLogs, () => ({
   // Add relations as needed
 }));
 
-export const blacklistRelations = relations(blacklist, ({ one }) => ({
+export const blacklistRelations = relations(blacklist, () => ({
   // Add relations as needed
 }));
 
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+export const auditLogsRelations = relations(auditLogs, () => ({
   // Add relations as needed
 }));
 
-export const rateLimitViolationsRelations = relations(rateLimitViolations, ({ one }) => ({
+export const rateLimitViolationsRelations = relations(rateLimitViolations, () => ({
   // Add relations as needed
 }));
 
-export const securityIncidentsRelations = relations(securityIncidents, ({ many }) => ({
+export const securityIncidentsRelations = relations(securityIncidents, () => ({
   // Add relations as needed
 }));
 
-export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+export const apiKeysRelations = relations(apiKeys, () => ({
   // Add relations as needed
 }));

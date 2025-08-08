@@ -1,4 +1,4 @@
-import { createCanvas, loadImage, CanvasRenderingContext2D } from 'canvas';
+import { createCanvas, loadImage } from 'canvas';
 import { AttachmentBuilder } from 'discord.js';
 import type { RankData, RankCardCustomization } from './xpService';
 import { logger } from '../utils/logger';
@@ -17,7 +17,7 @@ export class RankCardService {
     try {
       // Create canvas
       const canvas = createCanvas(this.cardWidth, this.cardHeight);
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d') as any;
 
       // Default colors
       const bgColor = customization.backgroundColor || '#23272A';
@@ -149,7 +149,7 @@ export class RankCardService {
   }
 
   private drawRoundedRect(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     x: number,
     y: number,
     width: number,
@@ -170,7 +170,7 @@ export class RankCardService {
   }
 
   private drawPlaceholderAvatar(
-    ctx: CanvasRenderingContext2D,
+    ctx: any,
     x: number,
     y: number,
     color: string
@@ -189,7 +189,7 @@ export class RankCardService {
     ctx.textBaseline = 'alphabetic';
   }
 
-  private truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  private truncateText(ctx: any, text: string, maxWidth: number): string {
     const ellipsis = '...';
     let truncated = text;
     

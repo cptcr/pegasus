@@ -5,7 +5,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,

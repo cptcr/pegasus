@@ -1,5 +1,5 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { getDatabase } from '../../database/connection';
+import { getDatabase } from '../database/connection';
 import { auditLogs } from '../database/schema';
 
 export interface AuditLogData {
@@ -12,7 +12,7 @@ export interface AuditLogData {
 
 export class AuditLogger {
   async logAction(data: AuditLogData): Promise<void> {
-  const db = getDatabase();
+    const db = getDatabase();
     try {
       await db.insert(auditLogs).values({
         action: data.action,
@@ -27,6 +27,7 @@ export class AuditLogger {
   }
 
   async getAuditLogs(guildId: string, limit: number = 50) {
+    const db = getDatabase();
     return db.select()
       .from(auditLogs)
       .where(eq(auditLogs.guildId, guildId))
@@ -35,6 +36,7 @@ export class AuditLogger {
   }
 
   async getUserAuditLogs(guildId: string, userId: string, limit: number = 50) {
+    const db = getDatabase();
     return db.select()
       .from(auditLogs)
       .where(
@@ -48,6 +50,7 @@ export class AuditLogger {
   }
 
   async getTargetAuditLogs(guildId: string, targetId: string, limit: number = 50) {
+    const db = getDatabase();
     return db.select()
       .from(auditLogs)
       .where(

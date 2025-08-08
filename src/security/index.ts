@@ -1,15 +1,14 @@
 import {
   ChatInputCommandInteraction,
   Message,
-  GuildMember,
   EmbedBuilder,
   WebhookClient,
   Colors,
 } from 'discord.js';
 import { rateLimiterInstance, RateLimitPresets } from '../middleware/rateLimiter';
-import { PermissionChecker, PermissionPresets } from '../middleware/permissions';
-import { EnhancedSanitizer, sanitizeUserInput, sanitizeForDatabase } from '../utils/sanitizer';
-import { CommandValidationSchemas, SchemaValidator } from '../validation/schemas';
+import { PermissionChecker } from '../middleware/permissions';
+import { EnhancedSanitizer, sanitizeUserInput } from '../utils/sanitizer';
+import { SchemaValidator } from '../validation/schemas';
 import { logger } from '../utils/logger';
 import type { Command } from '../types/command';
 
@@ -359,7 +358,7 @@ export class SecurityManager {
     record.violations.push({
       type,
       timestamp: Date.now(),
-      guildId: 'guildId' in context ? context.guildId! : context.guild?.id,
+      guildId: 'guildId' in context ? (context as any).guildId : ((context as any).guild?.id || undefined),
     });
     record.totalCount++;
     
@@ -633,10 +632,16 @@ export default SecurityManager;
 
 // Re-export existing modules
 export * from './audit';
-export * from './validator';
+export { Validator, CommandSchemas } from './validator';
 export * from './rateLimiter';
 export * from './sanitizer';
 export * from './permissions';
 export * from './middleware';
-export * from './errors';
+export { 
+  SecurityError,
+  RateLimitError,
+  BlacklistError,
+  SuspiciousActivityError,
+  ValidationError as SecurityValidationError 
+} from './errors';
 export * from './crypto';

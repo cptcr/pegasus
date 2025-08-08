@@ -15,7 +15,12 @@ export class GuildRepository {
       .where(eq(guilds.id, id))
       .limit(1);
     
-    return result[0] || null;
+    if (!result[0]) return null;
+    return {
+      ...result[0],
+      prefix: result[0].prefix ?? undefined,
+      language: result[0].language ?? undefined,
+    };
   }
 
   async create(guildId: string): Promise<Guild> {
@@ -24,7 +29,11 @@ export class GuildRepository {
       .values({ id: guildId })
       .returning();
     
-    return guild;
+    return {
+      ...guild,
+      prefix: guild.prefix ?? undefined,
+      language: guild.language ?? undefined,
+    };
   }
 
   async update(guildId: string, data: Partial<Omit<Guild, 'id' | 'createdAt'>>): Promise<Guild | null> {
@@ -34,7 +43,12 @@ export class GuildRepository {
       .where(eq(guilds.id, guildId))
       .returning();
     
-    return updated || null;
+    if (!updated) return null;
+    return {
+      ...updated,
+      prefix: updated.prefix ?? undefined,
+      language: updated.language ?? undefined,
+    };
   }
 
   async delete(guildId: string): Promise<boolean> {
@@ -52,7 +66,20 @@ export class GuildRepository {
       .where(eq(guildSettings.guildId, guildId))
       .limit(1);
     
-    return result[0] || null;
+    if (!result[0]) return null;
+    
+    // Map null values to undefined for optional fields
+    const settings = result[0];
+    return {
+      ...settings,
+      welcomeChannel: settings.welcomeChannel ?? undefined,
+      welcomeMessage: settings.welcomeMessage ?? undefined,
+      goodbyeChannel: settings.goodbyeChannel ?? undefined,
+      goodbyeMessage: settings.goodbyeMessage ?? undefined,
+      logsChannel: settings.logsChannel ?? undefined,
+      levelUpMessage: settings.levelUpMessage ?? undefined,
+      levelUpChannel: settings.levelUpChannel ?? undefined,
+    } as GuildSettings;
   }
 
   async updateSettings(guildId: string, settings: Partial<Omit<GuildSettings, 'guildId' | 'createdAt'>>): Promise<GuildSettings> {
@@ -65,7 +92,17 @@ export class GuildRepository {
       })
       .returning();
     
-    return updated;
+    // Map null values to undefined for optional fields
+    return {
+      ...updated,
+      welcomeChannel: updated.welcomeChannel ?? undefined,
+      welcomeMessage: updated.welcomeMessage ?? undefined,
+      goodbyeChannel: updated.goodbyeChannel ?? undefined,
+      goodbyeMessage: updated.goodbyeMessage ?? undefined,
+      logsChannel: updated.logsChannel ?? undefined,
+      levelUpMessage: updated.levelUpMessage ?? undefined,
+      levelUpChannel: updated.levelUpChannel ?? undefined,
+    } as GuildSettings;
   }
 }
 

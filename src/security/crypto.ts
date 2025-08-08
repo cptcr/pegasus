@@ -149,7 +149,22 @@ export class CryptoUtils {
    */
   static generateTOTP(secret: string, window: number = 30): string {
     const counter = Math.floor(Date.now() / 1000 / window);
-    const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'base32'));
+    // Simple base32 decode (you may want to use a library for production)
+    const base32Decode = (str: string): Buffer => {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+      let bits = '';
+      for (const char of str.toUpperCase()) {
+        const val = alphabet.indexOf(char);
+        if (val === -1) continue;
+        bits += val.toString(2).padStart(5, '0');
+      }
+      const bytes = [];
+      for (let i = 0; i + 8 <= bits.length; i += 8) {
+        bytes.push(parseInt(bits.substr(i, 8), 2));
+      }
+      return Buffer.from(bytes);
+    };
+    const hmac = crypto.createHmac('sha1', base32Decode(secret));
     
     const counterBuffer = Buffer.alloc(8);
     counterBuffer.writeBigInt64BE(BigInt(counter));
@@ -166,10 +181,7 @@ export class CryptoUtils {
    * Verify time-based OTP
    */
   static verifyTOTP(token: string, secret: string, window: number = 30, tolerance: number = 1): boolean {
-    const currentWindow = Math.floor(Date.now() / 1000 / window);
-    
     for (let i = -tolerance; i <= tolerance; i++) {
-      const testWindow = currentWindow + i;
       const testToken = this.generateTOTP(secret, window);
       
       if (crypto.timingSafeEqual(Buffer.from(token), Buffer.from(testToken))) {

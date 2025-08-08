@@ -1,5 +1,5 @@
 import { eq, and, sql, lt } from 'drizzle-orm';
-import { getDatabase } from '../../database/connection';
+import { getDatabase } from '../database/connection';
 import { giveaways, giveawayEntries } from '../database/schema/giveaways';
 
 export interface CreateGiveawayData {
@@ -138,6 +138,7 @@ export class GiveawayRepository {
   }
 
   async getActiveGiveaways() {
+    const db = getDatabase();
     return db.select()
       .from(giveaways)
       .where(eq(giveaways.status, 'active'));
@@ -150,6 +151,7 @@ export class GiveawayRepository {
       conditions.push(eq(giveaways.status, status));
     }
 
+    const db = getDatabase();
     return db.select()
       .from(giveaways)
       .where(and(...conditions))
@@ -157,6 +159,7 @@ export class GiveawayRepository {
   }
 
   async getExpiredGiveaways() {
+    const db = getDatabase();
     return db.select()
       .from(giveaways)
       .where(

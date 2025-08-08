@@ -1,6 +1,5 @@
 import { db, createQueryTimer, withTransaction } from '../database';
 import { logger } from '../utils/logger';
-import { eq, and, gt, gte, lt, lte, desc, asc, sql } from 'drizzle-orm';
 
 export abstract class BaseRepository {
   protected db = db;

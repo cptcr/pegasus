@@ -93,7 +93,7 @@ async function handleXPChannelType(interaction: StringSelectMenuInteraction) {
   await interaction.showModal(modal);
 }
 
-async function handleXPRewardAction(interaction: StringSelectMenuInteraction) {
+async function handleXPRewardAction(interaction: StringSelectMenuInteraction): Promise<void> {
   const action = interaction.values[0];
   
   switch (action) {
@@ -129,10 +129,11 @@ async function handleXPRewardAction(interaction: StringSelectMenuInteraction) {
       const rewards = await configurationService.getXPRoleRewards(interaction.guildId!);
       
       if (rewards.length === 0) {
-        return interaction.reply({
+        await interaction.reply({
           content: 'No rewards to remove',
           ephemeral: true,
         });
+        return;
       }
 
       const modal = new ModalBuilder()
@@ -177,7 +178,7 @@ async function handleXPRewardAction(interaction: StringSelectMenuInteraction) {
   }
 }
 
-async function handleEcoShopAction(interaction: StringSelectMenuInteraction) {
+async function handleEcoShopAction(interaction: StringSelectMenuInteraction): Promise<void> {
   const action = interaction.values[0];
   
   switch (action) {
@@ -237,10 +238,11 @@ async function handleEcoShopAction(interaction: StringSelectMenuInteraction) {
       
       const items = await configurationService.getShopItems(interaction.guildId!);
       if (items.length === 0) {
-        return interaction.editReply({
+        await interaction.editReply({
           content: 'No items to ' + action,
           components: [],
         });
+        return;
       }
       
       // Show item selection menu
@@ -267,14 +269,15 @@ async function handleEcoShopAction(interaction: StringSelectMenuInteraction) {
   }
 }
 
-async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteraction) {
+async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteraction): Promise<void> {
   const channel = interaction.channels.first();
   
-  if (!channel || !channel.isTextBased()) {
-    return interaction.reply({
+  if (!channel || !('isTextBased' in channel && channel.isTextBased())) {
+    await interaction.reply({
       content: 'Please select a valid text channel',
       ephemeral: true,
     });
+    return;
   }
 
   await interaction.deferUpdate();
@@ -295,14 +298,15 @@ async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteract
   });
 }
 
-async function handleGoodbyeChannelSelect(interaction: ChannelSelectMenuInteraction) {
+async function handleGoodbyeChannelSelect(interaction: ChannelSelectMenuInteraction): Promise<void> {
   const channel = interaction.channels.first();
   
-  if (!channel || !channel.isTextBased()) {
-    return interaction.reply({
+  if (!channel || !('isTextBased' in channel && channel.isTextBased())) {
+    await interaction.reply({
       content: 'Please select a valid text channel',
       ephemeral: true,
     });
+    return;
   }
 
   await interaction.deferUpdate();

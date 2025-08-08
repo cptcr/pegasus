@@ -106,7 +106,11 @@ export class XPRepository {
         .limit(limit)
         .offset(offset);
 
-      return results;
+      return results.map(r => ({
+        ...r,
+        username: r.username ?? undefined,
+        avatarUrl: r.avatarUrl ?? undefined,
+      }));
     } catch (error) {
       logger.error('Failed to get leaderboard:', error);
       return [];

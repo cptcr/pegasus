@@ -6,7 +6,7 @@ import {
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
 import { GuildService } from '../../services/guildService';
-import { i18n } from '../../i18n';
+import { t } from '../../i18n';
 
 export async function handleTicketModal(interaction: ModalSubmitInteraction): Promise<void> {
   const [action, id] = interaction.customId.split(':');
@@ -26,7 +26,7 @@ export async function handleTicketModal(interaction: ModalSubmitInteraction): Pr
     }
   } catch (error: any) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -37,7 +37,7 @@ async function handleTicketCreation(
   panelId: string,
   ticketService: TicketService,
   ticketRepository: TicketRepository,
-  locale: string
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -47,7 +47,7 @@ async function handleTicketCreation(
   const panel = await ticketRepository.getPanelById(panelId);
   if (!panel || !panel.isActive) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.panelNotFound', locale }),
+      content: t('tickets.panelNotFound'),
     });
     return;
   }
@@ -56,8 +56,8 @@ async function handleTicketCreation(
     const { ticket, channel } = await ticketService.createTicket(interaction, panel, reason);
 
     const embed = new EmbedBuilder()
-      .setTitle(i18n.__({ phrase: 'tickets.ticketCreated', locale }, { number: ticket.ticketNumber }))
-      .setDescription(i18n.__({ phrase: 'tickets.ticketCreatedDesc', locale }, { channel: channel.toString() }))
+      .setTitle(t('tickets.ticketCreated', { number: ticket.ticketNumber }))
+      .setDescription(t('tickets.ticketCreatedDesc', { channel: channel.toString() }))
       .setColor(0x00FF00)
       .setTimestamp();
 
@@ -66,7 +66,7 @@ async function handleTicketCreation(
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -85,7 +85,7 @@ async function handleTicketCloseReason(
   const ticket = await ticketRepository.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.ticketNotFound', locale }),
+      content: t('tickets.ticketNotFound'),
     });
     return;
   }
@@ -94,7 +94,7 @@ async function handleTicketCloseReason(
     await ticketService.closeTicket(ticketId, interaction.member as any, closeReason || undefined, locale);
     
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.closingWithReason', locale }, { reason: closeReason || 'No reason provided' }),
+      content: t('tickets.closingWithReason', { reason: closeReason || 'No reason provided' }),
     });
 
     // Delete channel after 5 seconds
@@ -107,7 +107,7 @@ async function handleTicketCloseReason(
     }, 5000);
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }

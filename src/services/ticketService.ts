@@ -17,15 +17,12 @@ import {
 } from 'discord.js';
 import { TicketRepository, TicketPanelData } from '../repositories/ticketRepository';
 import { t } from '../i18n';
-import { GuildService } from './guildService';
 
 export class TicketService {
   private ticketRepository: TicketRepository;
-  private guildService: GuildService;
 
   constructor() {
     this.ticketRepository = new TicketRepository();
-    this.guildService = new GuildService();
   }
 
   // Panel management
@@ -110,7 +107,6 @@ export class TicketService {
   async createTicket(interaction: ModalSubmitInteraction, panel: any, reason: string) {
     const guild = interaction.guild!;
     const member = interaction.member as GuildMember;
-    const locale = await this.guildService.getGuildLanguage(guild.id);
 
     // Check user's open tickets
     const openTickets = await this.ticketRepository.getUserOpenTicketsByPanel(member.id, panel.id);
@@ -247,7 +243,7 @@ export class TicketService {
   }
 
   // Ticket actions
-  async claimTicket(ticketId: string, claimedBy: GuildMember, locale: string) {
+  async claimTicket(ticketId: string, claimedBy: GuildMember, _locale: string) {
     const ticket = await this.ticketRepository.getTicket(ticketId);
     if (!ticket) {
       throw new Error('Ticket not found');
@@ -267,7 +263,7 @@ export class TicketService {
     return ticket;
   }
 
-  async closeTicket(ticketId: string, closedBy: GuildMember, reason?: string, locale?: string) {
+  async closeTicket(ticketId: string, closedBy: GuildMember, reason?: string, _locale?: string) {
     const ticket = await this.ticketRepository.getTicket(ticketId);
     if (!ticket) {
       throw new Error('Ticket not found');
@@ -298,7 +294,7 @@ export class TicketService {
     return { ticket, transcript };
   }
 
-  async lockTicket(ticketId: string, lockedBy: GuildMember, guild: Guild, locale: string) {
+  async lockTicket(ticketId: string, lockedBy: GuildMember, guild: Guild, _locale: string) {
     const ticket = await this.ticketRepository.getTicket(ticketId);
     if (!ticket) {
       throw new Error('Ticket not found');
@@ -324,7 +320,7 @@ export class TicketService {
     return ticket;
   }
 
-  async freezeTicket(ticketId: string, frozenBy: GuildMember, guild: Guild, locale: string) {
+  async freezeTicket(ticketId: string, frozenBy: GuildMember, guild: Guild, _locale: string) {
     const ticket = await this.ticketRepository.getTicket(ticketId);
     if (!ticket) {
       throw new Error('Ticket not found');
@@ -386,7 +382,7 @@ export class TicketService {
   }
 
   // Modal builders
-  createTicketModal(panelId: string, locale: string): ModalBuilder {
+  createTicketModal(panelId: string, _locale: string): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId(`ticket_modal:${panelId}`)
       .setTitle(t('tickets.createTicket'));
@@ -406,7 +402,7 @@ export class TicketService {
     return modal;
   }
 
-  createCloseReasonModal(ticketId: string, locale: string): ModalBuilder {
+  createCloseReasonModal(ticketId: string, _locale: string): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId(`ticket_close_modal:${ticketId}`)
       .setTitle(t('tickets.closeTicket'));

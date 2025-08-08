@@ -3,10 +3,8 @@ import {
   GuildMember,
   PermissionFlagsBits,
   Role,
-  Guild,
   TextChannel,
   VoiceChannel,
-  CategoryChannel,
 } from 'discord.js';
 import { logger } from '../utils/logger';
 

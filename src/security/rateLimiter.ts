@@ -155,7 +155,6 @@ export class RateLimiter {
     if (!this.redis) throw new Error('Redis not configured');
     
     const fullKey = `ratelimit:${key}`;
-    const now = Date.now();
     
     // Check if blocked
     const blockedKey = `${fullKey}:blocked`;
@@ -291,7 +290,7 @@ export async function checkCommandRateLimit(
     // Per-command limit
     {
       key: RateLimiter.createKey('command', userId, commandName),
-      config: RateLimitConfigs.commands[commandName] || RateLimitConfigs.global.command,
+      config: (RateLimitConfigs.commands as any)[commandName] || RateLimitConfigs.global.command,
     },
   ];
   

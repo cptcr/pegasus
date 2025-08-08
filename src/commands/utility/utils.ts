@@ -3,11 +3,8 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder,
   User,
-  GuildMember,
   Role,
-  PermissionsBitField,
-  ChannelType,
-  GuildFeature
+  ChannelType
 } from 'discord.js';
 import { Command, CommandCategory } from '../../types/command';
 import { t, getGuildLocale } from '../../i18n';

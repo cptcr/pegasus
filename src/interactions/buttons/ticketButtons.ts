@@ -1,6 +1,5 @@
 import { 
   ButtonInteraction, 
-  ModalBuilder,
   TextChannel,
   PermissionFlagsBits,
   EmbedBuilder
@@ -8,7 +7,7 @@ import {
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
 import { GuildService } from '../../services/guildService';
-import { i18n } from '../../i18n';
+import { t } from '../../i18n';
 
 export async function handleTicketButton(interaction: ButtonInteraction): Promise<void> {
   const [action, id] = interaction.customId.split(':');
@@ -40,7 +39,7 @@ export async function handleTicketButton(interaction: ButtonInteraction): Promis
     }
   } catch (error: any) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -57,7 +56,7 @@ async function handleTicketCreate(
   const panel = await ticketRepository.getPanelById(panelId);
   if (!panel || !panel.isActive) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.panelNotFound', locale }),
+      content: t('tickets.panelNotFound'),
       ephemeral: true,
     });
     return;
@@ -67,7 +66,7 @@ async function handleTicketCreate(
   const openTickets = await ticketRepository.getUserOpenTicketsByPanel(interaction.user.id, panel.id);
   if (openTickets.length >= panel.maxTicketsPerUser) {
     await interaction.reply({
-      content: i18n.__({ phrase: 'tickets.maxTicketsReached', locale }, { max: panel.maxTicketsPerUser }),
+      content: t('tickets.maxTicketsReached', { max: panel.maxTicketsPerUser }),
       ephemeral: true,
     });
     return;
@@ -90,7 +89,7 @@ async function handleTicketClose(
   const ticket = await ticketRepository.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.ticketNotFound', locale }),
+      content: t('tickets.ticketNotFound'),
     });
     return;
   }
@@ -102,7 +101,7 @@ async function handleTicketClose(
 
   if (!hasPermission) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.noPermission', locale }),
+      content: t('common.noPermission'),
     });
     return;
   }
@@ -111,7 +110,7 @@ async function handleTicketClose(
     await ticketService.closeTicket(ticketId, member, undefined, locale);
     
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.closing', locale }),
+      content: t('tickets.closing'),
     });
 
     // Delete channel after 5 seconds
@@ -124,7 +123,7 @@ async function handleTicketClose(
     }, 5000);
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -152,7 +151,7 @@ async function handleTicketLock(
   const ticket = await ticketRepository.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.ticketNotFound', locale }),
+      content: t('tickets.ticketNotFound'),
     });
     return;
   }
@@ -161,7 +160,7 @@ async function handleTicketLock(
   const member = interaction.member as any;
   if (!member.permissions.has(PermissionFlagsBits.ManageChannels)) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.noPermission', locale }),
+      content: t('common.noPermission'),
     });
     return;
   }
@@ -170,19 +169,19 @@ async function handleTicketLock(
     await ticketService.lockTicket(ticketId, member, interaction.guild!, locale);
     
     const embed = new EmbedBuilder()
-      .setTitle(i18n.__({ phrase: 'tickets.ticketLocked', locale }))
-      .setDescription(i18n.__({ phrase: 'tickets.ticketLockedDesc', locale }))
+      .setTitle(t('tickets.ticketLocked'))
+      .setDescription(t('tickets.ticketLockedDesc'))
       .setColor(0xFFA500)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
 
     // Update button to unlock
-    const components = interaction.message.components;
+    // const components = interaction.message.components;
     // TODO: Update button state
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -199,7 +198,7 @@ async function handleTicketFreeze(
   const ticket = await ticketRepository.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.ticketNotFound', locale }),
+      content: t('tickets.ticketNotFound'),
     });
     return;
   }
@@ -208,7 +207,7 @@ async function handleTicketFreeze(
   const member = interaction.member as any;
   if (!member.permissions.has(PermissionFlagsBits.ManageChannels)) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.noPermission', locale }),
+      content: t('common.noPermission'),
     });
     return;
   }
@@ -217,15 +216,15 @@ async function handleTicketFreeze(
     await ticketService.freezeTicket(ticketId, member, interaction.guild!, locale);
     
     const embed = new EmbedBuilder()
-      .setTitle(i18n.__({ phrase: 'tickets.ticketFrozen', locale }))
-      .setDescription(i18n.__({ phrase: 'tickets.ticketFrozenDesc', locale }))
+      .setTitle(t('tickets.ticketFrozen'))
+      .setDescription(t('tickets.ticketFrozenDesc'))
       .setColor(0x00BFFF)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -242,7 +241,7 @@ async function handleTicketClaim(
   const ticket = await ticketRepository.getTicket(ticketId);
   if (!ticket) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'tickets.ticketNotFound', locale }),
+      content: t('tickets.ticketNotFound'),
     });
     return;
   }
@@ -258,7 +257,7 @@ async function handleTicketClaim(
 
     if (!hasSupportRole && !member.permissions.has(PermissionFlagsBits.ManageChannels)) {
       await interaction.editReply({
-        content: i18n.__({ phrase: 'tickets.notSupportStaff', locale }),
+        content: t('tickets.notSupportStaff'),
       });
       return;
     }
@@ -268,15 +267,15 @@ async function handleTicketClaim(
     await ticketService.claimTicket(ticketId, member, locale);
     
     const embed = new EmbedBuilder()
-      .setTitle(i18n.__({ phrase: 'tickets.ticketClaimed', locale }))
-      .setDescription(i18n.__({ phrase: 'tickets.claimedBy', locale }, { user: member.user.tag }))
+      .setTitle(t('tickets.ticketClaimed'))
+      .setDescription(t('tickets.claimedBy', { user: member.user.tag }))
       .setColor(0x00FF00)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
     await interaction.editReply({
-      content: i18n.__({ phrase: 'common.error', locale }, { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }

@@ -1,6 +1,5 @@
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import { config } from 'dotenv';
-import { join } from 'path';
 import chalk from 'chalk';
 import { initializeDatabase } from './database/connection';
 import { loadCommands } from './handlers/commandHandler';

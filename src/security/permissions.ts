@@ -2,19 +2,11 @@ import {
   PermissionFlagsBits, 
   PermissionsBitField,
   GuildMember,
-  User,
   Guild,
   ChatInputCommandInteraction,
-  Message,
-  TextChannel,
-  VoiceChannel,
-  CategoryChannel,
-  ThreadChannel,
   GuildChannel,
   Role
 } from 'discord.js';
-import { getDatabase } from '../../database/connection';
-import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 
 export interface PermissionCheck {

@@ -1,5 +1,5 @@
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
-import { getDatabase } from '../../database/connection';
+import { getDatabase } from '../database/connection';
 import { warnings, warningAutomations } from '../database/schema';
 import { nanoid } from 'nanoid';
 

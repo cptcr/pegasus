@@ -1,4 +1,3 @@
-import { Guild, Role, GuildChannel } from 'discord.js';
 import { getDatabase } from '../database/connection';
 import { guilds, guildSettings, xpSettings, xpRewards, economySettings, economyShopItems } from '../database/schema';
 import { eq, and } from 'drizzle-orm';
@@ -60,7 +59,7 @@ export interface ShopItem {
   type: string;
   effectType?: string;
   effectValue?: any;
-  stock: number;
+  stock: number | null;
   requiresRole?: string;
   enabled: boolean;
 }

@@ -379,7 +379,6 @@ class RateLimitBucket {
 
 export class DistributedRateLimiter {
   private limiter: EnhancedRateLimiter;
-  private syncInterval: NodeJS.Timeout | null = null;
   
   constructor() {
     this.limiter = new EnhancedRateLimiter();
@@ -532,7 +531,6 @@ export async function applyRateLimit(
   commandName: string,
   category?: string
 ): Promise<RateLimitResult> {
-  const limiter = rateLimiterInstance.getInstance();
   
   // Get appropriate config for command
   let config = RateLimitPresets.general;

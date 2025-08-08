@@ -10,8 +10,7 @@ import {
 import { giveawayRepository } from '../repositories/giveawayRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
-// import { nanoid } from 'nanoid';
-const nanoid = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
+import { nanoid } from 'nanoid';
 
 export interface CreateGiveawayData {
   guildId: string;

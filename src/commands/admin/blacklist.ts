@@ -7,7 +7,7 @@ import {
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { getDatabase } from '../../database/connection';
-import { blacklist } from '../../database/schema/moderation';
+import { blacklist } from '../../database/schema/security';
 import { eq, and, desc } from 'drizzle-orm';
 
 export const data = new SlashCommandBuilder()
@@ -106,8 +106,8 @@ async function handleBlacklistUser(interaction: ChatInputCommandInteraction): Pr
     .from(blacklist)
     .where(
       and(
-        eq(blacklist.userId, user.id),
-        eq(blacklist.guildId, guildId)
+        eq(blacklist.entityId, user.id),
+        eq(blacklist.entityType, 'user')
       )
     )
     .limit(1);
@@ -138,10 +138,10 @@ async function handleBlacklistUser(interaction: ChatInputCommandInteraction): Pr
   try {
     // Add to blacklist
     await db.insert(blacklist).values({
-      userId: user.id,
-      guildId: interaction.guild!.id,
+      entityType: 'user',
+      entityId: user.id,
       reason,
-      blacklistedBy: interaction.user.id,
+      addedBy: interaction.user.id,
     });
 
     const embed = new EmbedBuilder()
@@ -186,8 +186,8 @@ async function handleBlacklistView(interaction: ChatInputCommandInteraction): Pr
   const blacklistedUsers = await db
     .select()
     .from(blacklist)
-    .where(eq(blacklist.guildId, interaction.guild!.id))
-    .orderBy(desc(blacklist.blacklistedAt))
+    .where(eq(blacklist.entityType, 'user'))
+    .orderBy(desc(blacklist.createdAt))
     .limit(pageSize)
     .offset(offset);
 
@@ -200,9 +200,9 @@ async function handleBlacklistView(interaction: ChatInputCommandInteraction): Pr
 
   // Get total count
   const [{ count }] = await db
-    .select({ count: blacklist.userId })
+    .select({ count: blacklist.entityId })
     .from(blacklist)
-    .where(eq(blacklist.guildId, interaction.guild!.id));
+    .where(eq(blacklist.entityType, 'user'));
 
   const totalPages = Math.ceil(Number(count) / pageSize);
 
@@ -217,15 +217,15 @@ async function handleBlacklistView(interaction: ChatInputCommandInteraction): Pr
 
   // Add blacklisted users
   for (const entry of blacklistedUsers) {
-    const user = await interaction.client.users.fetch(entry.userId).catch(() => null);
-    const blacklistedBy = await interaction.client.users.fetch(entry.blacklistedBy).catch(() => null);
+    const user = await interaction.client.users.fetch(entry.entityId).catch(() => null);
+    const blacklistedBy = await interaction.client.users.fetch(entry.addedBy).catch(() => null);
 
     embed.addFields({
-      name: user ? user.tag : entry.userId,
+      name: user ? user.tag : entry.entityId,
       value: [
         `**${t('commands.blacklist.subcommands.view.reason')}:** ${entry.reason}`,
-        `**${t('commands.blacklist.subcommands.view.blacklistedBy')}:** ${blacklistedBy ? blacklistedBy.tag : entry.blacklistedBy}`,
-        `**${t('commands.blacklist.subcommands.view.date')}:** <t:${Math.floor(entry.blacklistedAt.getTime() / 1000)}:F>`,
+        `**${t('commands.blacklist.subcommands.view.blacklistedBy')}:** ${blacklistedBy ? blacklistedBy.tag : entry.addedBy}`,
+        `**${t('commands.blacklist.subcommands.view.date')}:** <t:${Math.floor(entry.createdAt.getTime() / 1000)}:F>`,
       ].join('\n'),
       inline: false,
     });
@@ -247,8 +247,8 @@ async function handleBlacklistRemove(interaction: ChatInputCommandInteraction): 
       .delete(blacklist)
       .where(
         and(
-          eq(blacklist.userId, user.id),
-          eq(blacklist.guildId, interaction.guild!.id)
+          eq(blacklist.entityId, user.id),
+          eq(blacklist.entityType, 'user')
         )
       )
       .returning();

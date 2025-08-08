@@ -75,27 +75,31 @@ async function handleXPRatesModal(interaction: ModalSubmitInteraction) {
 
     // Validate inputs
     if (isNaN(perMessage) || perMessage < 0 || perMessage > 1000) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidPerMessage'),
       });
+      return;
     }
 
     if (isNaN(perVoiceMinute) || perVoiceMinute < 0 || perVoiceMinute > 1000) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidPerVoiceMinute'),
       });
+      return;
     }
 
     if (isNaN(cooldown) || cooldown < 0 || cooldown > 3600) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidCooldown'),
       });
+      return;
     }
 
     if (isNaN(boosterMultiplier) || boosterMultiplier < 100 || boosterMultiplier > 1000) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidBoosterMultiplier'),
       });
+      return;
     }
 
     await configurationService.updateXPConfig(interaction.guildId!, {
@@ -155,16 +159,18 @@ async function handleXPRolesModal(interaction: ModalSubmitInteraction) {
 
     // Validate role IDs
     if (boosterRole && !interaction.guild!.roles.cache.has(boosterRole)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidBoosterRole'),
       });
+      return;
     }
 
     const invalidRoles = ignoredRoles.filter(id => !interaction.guild!.roles.cache.has(id));
     if (invalidRoles.length > 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.xp.validation.invalidIgnoredRoles', { roles: invalidRoles.join(', ') }),
       });
+      return;
     }
 
     await configurationService.updateXPConfig(interaction.guildId!, {
@@ -210,9 +216,10 @@ async function handleEcoCurrencyModal(interaction: ModalSubmitInteraction) {
     const startingBalance = parseInt(interaction.fields.getTextInputValue('startingBalance'));
 
     if (isNaN(startingBalance) || startingBalance < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidStartingBalance'),
       });
+      return;
     }
 
     await configurationService.updateEconomyConfig(interaction.guildId!, {
@@ -265,27 +272,31 @@ async function handleEcoRewardsModal(interaction: ModalSubmitInteraction) {
 
     // Validate inputs
     if (isNaN(dailyAmount) || dailyAmount < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidDailyAmount'),
       });
+      return;
     }
 
     if (isNaN(dailyStreakBonus) || dailyStreakBonus < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidDailyStreakBonus'),
       });
+      return;
     }
 
     if (isNaN(workMin) || isNaN(workMax) || workMin < 0 || workMax < workMin) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidWorkAmounts'),
       });
+      return;
     }
 
     if (isNaN(workCooldownHours) || workCooldownHours < 0 || workCooldownHours > 24) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidWorkCooldown'),
       });
+      return;
     }
 
     const workCooldown = Math.floor(workCooldownHours * 3600);
@@ -350,21 +361,24 @@ async function handleEcoRobModal(interaction: ModalSubmitInteraction) {
 
     // Validate inputs
     if (isNaN(minAmount) || minAmount < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidRobMinAmount'),
       });
+      return;
     }
 
     if (isNaN(successRate) || successRate < 0 || successRate > 100) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidRobSuccessRate'),
       });
+      return;
     }
 
     if (isNaN(protectionCost) || protectionCost < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.eco.validation.invalidRobProtectionCost'),
       });
+      return;
     }
 
     await configurationService.updateEconomyConfig(interaction.guildId!, {
@@ -458,22 +472,25 @@ async function handleWelcomeEmbedModal(interaction: ModalSubmitInteraction) {
 
     // Validate color
     if (!/^#[0-9A-F]{6}$/i.test(color)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidColor'),
       });
+      return;
     }
 
     // Validate URLs
     if (image && !isValidUrl(image)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidImageUrl'),
       });
+      return;
     }
 
     if (thumbnail && !isValidUrl(thumbnail)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidThumbnailUrl'),
       });
+      return;
     }
 
     await configurationService.updateWelcomeConfig(interaction.guildId!, {
@@ -548,6 +565,7 @@ async function handleWelcomeDMModal(interaction: ModalSubmitInteraction) {
         value: message.substring(0, 1024),
         inline: false,
       });
+      return;
     }
 
     embed.setFooter({ text: t('config.welcome.placeholders') });
@@ -606,22 +624,25 @@ async function handleGoodbyeEmbedModal(interaction: ModalSubmitInteraction) {
 
     // Validate color
     if (!/^#[0-9A-F]{6}$/i.test(color)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidColor'),
       });
+      return;
     }
 
     // Validate URLs
     if (image && !isValidUrl(image)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidImageUrl'),
       });
+      return;
     }
 
     if (thumbnail && !isValidUrl(thumbnail)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: t('config.validation.invalidThumbnailUrl'),
       });
+      return;
     }
 
     await configurationService.updateGoodbyeConfig(interaction.guildId!, {
@@ -686,12 +707,12 @@ async function handleXPChannelsModal(interaction: ModalSubmitInteraction, type: 
     // Validate channel IDs
     const invalidChannels = channels.filter(id => !interaction.guild!.channels.cache.has(id));
     if (invalidChannels.length > 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: `Invalid channel IDs: ${invalidChannels.join(', ')}`,
       });
+      return;
     }
 
-    const config = await configurationService.getXPConfig(interaction.guildId!);
     const updateData: any = {};
 
     switch (type) {
@@ -739,15 +760,17 @@ async function handleXPRewardAddModal(interaction: ModalSubmitInteraction) {
 
     // Validate inputs
     if (isNaN(level) || level < 1 || level > 100) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Level must be between 1 and 100',
       });
+      return;
     }
 
     if (!interaction.guild!.roles.cache.has(roleId)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Invalid role ID',
       });
+      return;
     }
 
     await configurationService.setXPRoleReward(interaction.guildId!, level, roleId);
@@ -786,9 +809,10 @@ async function handleXPRewardRemoveModal(interaction: ModalSubmitInteraction) {
     const level = parseInt(interaction.fields.getTextInputValue('level'));
 
     if (isNaN(level)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Invalid level',
       });
+      return;
     }
 
     await configurationService.removeXPRoleReward(interaction.guildId!, level);
@@ -820,22 +844,25 @@ async function handleEcoShopAddModal(interaction: ModalSubmitInteraction) {
 
     // Validate inputs
     if (isNaN(price) || price < 0) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Invalid price',
       });
+      return;
     }
 
     if (isNaN(stock)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Invalid stock amount',
       });
+      return;
     }
 
     const validTypes = ['protection', 'booster', 'role', 'custom'];
     if (!validTypes.includes(type)) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: `Invalid type. Must be one of: ${validTypes.join(', ')}`,
       });
+      return;
     }
 
     // Set effect based on type
@@ -908,9 +935,10 @@ async function handleEcoShopEditModal(interaction: ModalSubmitInteraction) {
     const item = items.find(i => i.id === itemId);
     
     if (!item) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Item not found',
       });
+      return;
     }
 
     // In a real implementation, you'd have more fields to edit
@@ -939,9 +967,10 @@ async function handleEcoShopRemoveModal(interaction: ModalSubmitInteraction) {
     const item = items.find(i => i.id === itemId);
     
     if (!item) {
-      return interaction.editReply({
+      await interaction.editReply({
         content: 'Item not found',
       });
+      return;
     }
 
     await configurationService.deleteShopItem(itemId);

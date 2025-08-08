@@ -1,4 +1,4 @@
-import { escapeMarkdown, escapeCodeBlock, escapeSpoiler, escapeInlineCode } from 'discord.js';
+import { escapeMarkdown } from 'discord.js';
 
 /**
  * Sanitization utilities for Discord content

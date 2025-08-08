@@ -149,11 +149,11 @@ async function handleSet(interaction: ChatInputCommandInteraction) {
     // Reply in the new language
     const embed = new EmbedBuilder()
       .setColor(0x00FF00)
-      .setTitle(t('commands.language.subcommands.set.success.title', {}, newLocale))
+      .setTitle(t('commands.language.subcommands.set.success.title', {}))
       .setDescription(
         t('commands.language.subcommands.set.success.description', {
           language: languageNames[newLocale],
-        }, newLocale)
+        })
       )
       .setTimestamp();
 

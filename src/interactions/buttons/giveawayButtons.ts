@@ -2,8 +2,7 @@ import {
   ButtonInteraction, 
   EmbedBuilder,
   ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle 
+  ButtonBuilder
 } from 'discord.js';
 import { giveawayService } from '../../services/giveawayService';
 import { giveawayRepository } from '../../repositories/giveawayRepository';
@@ -67,9 +66,10 @@ async function handleGiveawayInfo(interaction: ButtonInteraction, giveawayId: st
 
   const giveaway = await giveawayRepository.getGiveaway(giveawayId);
   if (!giveaway) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: t('commands.giveaway.notFound'),
     });
+    return;
   }
 
   const userEntry = await giveawayRepository.getUserEntry(giveawayId, interaction.user.id);
@@ -123,14 +123,15 @@ async function handleGiveawayInfo(interaction: ButtonInteraction, giveawayId: st
   // Add requirements if any
   if (giveaway.requirements && Object.keys(giveaway.requirements).length > 0) {
     const reqLines = [];
-    if (giveaway.requirements.roleIds?.length > 0) {
-      reqLines.push(`• Roles: ${giveaway.requirements.roleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
+    const requirements = giveaway.requirements as any;
+    if (requirements.roleIds?.length > 0) {
+      reqLines.push(`• Roles: ${requirements.roleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
     }
-    if (giveaway.requirements.minLevel) {
-      reqLines.push(`• Minimum Level: ${giveaway.requirements.minLevel}`);
+    if (requirements.minLevel) {
+      reqLines.push(`• Minimum Level: ${requirements.minLevel}`);
     }
-    if (giveaway.requirements.minTimeInServer) {
-      reqLines.push(`• Time in Server: ${giveaway.requirements.minTimeInServer}`);
+    if (requirements.minTimeInServer) {
+      reqLines.push(`• Time in Server: ${requirements.minTimeInServer}`);
     }
     if (reqLines.length > 0) {
       embed.addFields({
@@ -144,13 +145,14 @@ async function handleGiveawayInfo(interaction: ButtonInteraction, giveawayId: st
   // Add bonus entries if any
   if (giveaway.bonusEntries && Object.keys(giveaway.bonusEntries).length > 0) {
     const bonusLines = [];
-    if (giveaway.bonusEntries.roles) {
-      for (const [roleId, multiplier] of Object.entries(giveaway.bonusEntries.roles)) {
+    const bonusEntries = giveaway.bonusEntries as any;
+    if (bonusEntries.roles) {
+      for (const [roleId, multiplier] of Object.entries(bonusEntries.roles)) {
         bonusLines.push(`• <@&${roleId}>: ${multiplier}x entries`);
       }
     }
-    if (giveaway.bonusEntries.booster) {
-      bonusLines.push(`• Server Booster: ${giveaway.bonusEntries.booster}x entries`);
+    if (bonusEntries.booster) {
+      bonusLines.push(`• Server Booster: ${bonusEntries.booster}x entries`);
     }
     if (bonusLines.length > 0) {
       embed.addFields({
@@ -173,19 +175,40 @@ async function updateButtonCount(interaction: ButtonInteraction, giveawayId: str
     if (!message.editable) return;
 
     // Update button label with entry count
-    const components = message.components[0].components as ButtonBuilder[];
-    const enterButton = components.find(c => c.data.custom_id?.startsWith('gw_enter:'));
-    
-    if (enterButton) {
-      const newButton = ButtonBuilder.from(enterButton)
-        .setLabel(`${t('commands.giveaway.buttons.enter')} (${giveaway.entries})`);
-      
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        newButton,
-        ...components.filter(c => !c.data.custom_id?.startsWith('gw_enter:'))
-      );
+    if (message.components && message.components[0]) {
+      const actionRow = message.components[0];
+      if ('components' in actionRow) {
+        const components = actionRow.components;
+        const enterButtonIndex = components.findIndex(c => 
+          'custom_id' in c && typeof c.custom_id === 'string' && c.custom_id.startsWith('gw_enter:')
+        );
+        
+        if (enterButtonIndex !== -1) {
+          const enterButton = components[enterButtonIndex];
+          if ('custom_id' in enterButton && 'style' in enterButton) {
+            const newButton = new ButtonBuilder()
+              .setCustomId(enterButton.custom_id as string)
+              .setLabel(`${t('commands.giveaway.buttons.enter')} (${giveaway.entries})`)
+              .setStyle(enterButton.style || 1);
+          
+            const row = new ActionRowBuilder<ButtonBuilder>();
+            components.forEach((c, i) => {
+              if (i === enterButtonIndex) {
+                row.addComponents(newButton);
+              } else if ('custom_id' in c && 'label' in c && 'style' in c) {
+                row.addComponents(
+                  new ButtonBuilder()
+                    .setCustomId(c.custom_id as string)
+                    .setLabel((c.label as string) || '')
+                    .setStyle(c.style || 1)
+                );
+              }
+            });
 
-      await message.edit({ components: [row] });
+            await message.edit({ components: [row] });
+          }
+        }
+      }
     }
   } catch (error) {
     // Silently fail - not critical

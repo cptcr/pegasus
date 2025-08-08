@@ -26,7 +26,7 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
       if (!hexColorRegex.test(value)) {
         const embed = new EmbedBuilder()
           .setColor(0xFF0000)
-          .setDescription(locale.commands.xp.card.invalidColor.replace('{{color}}', name).replace('{{value}}', value));
+          .setDescription(`Invalid color format for ${name}: ${value}`);
         
         await interaction.editReply({ embeds: [embed] });
         return;
@@ -58,7 +58,7 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     if (!rankData) {
       const embed = new EmbedBuilder()
         .setColor(0x00FF00)
-        .setDescription(locale.commands.xp.card.savedNoPreview);
+        .setDescription('Settings saved successfully!');
       
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -73,7 +73,7 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     if (!rankCard) {
       const embed = new EmbedBuilder()
         .setColor(0x00FF00)
-        .setDescription(locale.commands.xp.card.savedNoPreview);
+        .setDescription('Settings saved successfully!');
       
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -81,26 +81,26 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
 
     const embed = new EmbedBuilder()
       .setColor(0x00FF00)
-      .setTitle(locale.commands.xp.card.savedTitle)
-      .setDescription(locale.commands.xp.card.savedDescription)
+      .setTitle('Card Customization Saved')
+      .setDescription('Your rank card has been customized successfully!')
       .addFields(
         {
-          name: locale.commands.xp.card.backgroundColor,
+          name: 'Background Color',
           value: backgroundColor,
           inline: true,
         },
         {
-          name: locale.commands.xp.card.progressBarColor,
+          name: 'Progress Bar Color',
           value: progressBarColor,
           inline: true,
         },
         {
-          name: locale.commands.xp.card.textColor,
+          name: 'Text Color',
           value: textColor,
           inline: true,
         },
         {
-          name: locale.commands.xp.card.accentColor,
+          name: 'Accent Color',
           value: accentColor,
           inline: true,
         }

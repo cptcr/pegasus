@@ -11,15 +11,11 @@ import {
 import { getDatabase } from '../database/connection';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { securityLogs, blacklist } from '../database/schema/security';
-import { guilds } from '../database/schema/guilds';
-import { rateLimiter } from '../security/rateLimiter';
+import { guildSettings } from '../database/schema/guilds';
+// import { rateLimiter } from '../security/rateLimiter';
 import { auditLogger } from '../security/audit';
 import { logger } from '../utils/logger';
-import { 
-  SuspiciousActivityError,
-  RateLimitError,
-  BlacklistError 
-} from '../security/errors';
+import { CryptoUtils } from '../security/crypto';
 
 export interface SecurityIncident {
   type: string;
@@ -354,13 +350,13 @@ export class SecurityService {
    */
   private async alertAdmins(incident: SecurityIncident): Promise<void> {
     try {
-      const [guild] = await getDatabase()
+      const [guildSetting] = await getDatabase()
         .select()
-        .from(guilds)
-        .where(eq(guilds.id, incident.guildId))
+        .from(guildSettings)
+        .where(eq(guildSettings.guildId, incident.guildId))
         .limit(1);
       
-      if (!guild || !guild.securityAlertRole) return;
+      if (!guildSetting || !guildSetting.securityAlertRole) return;
       
       const alertEmbed = this.createIncidentEmbed(incident);
       alertEmbed.setFooter({ text: 'Immediate action may be required' });
@@ -379,7 +375,7 @@ export class SecurityService {
       
       if (this.securityChannel) {
         await this.securityChannel.send({
-          content: `<@&${guild.securityAlertRole}>`,
+          content: `<@&${guildSetting.securityAlertRole}>`,
           embeds: [alertEmbed],
           components: [row],
         });
@@ -492,7 +488,7 @@ export class SecurityService {
       .orderBy(desc(securityLogs.createdAt));
   }
   
-  private async getSecurityConfig(guildId: string): Promise<SecurityConfig> {
+  private async getSecurityConfig(_guildId: string): Promise<SecurityConfig> {
     // TODO: Implement based on your guild config schema
     return {
       enabled: true,

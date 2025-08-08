@@ -19,9 +19,10 @@ async function handleGiveawayStart(interaction: ModalSubmitInteraction, params: 
   const channel = interaction.guild!.channels.cache.get(channelId) as TextChannel;
 
   if (!channel) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: 'Channel not found',
     });
+    return;
   }
 
   // Get modal values
@@ -205,9 +206,10 @@ async function handleGiveawayConfigure(interaction: ModalSubmitInteraction, give
   const bonusEntriesText = interaction.fields.getTextInputValue('bonusEntries');
 
   if (isNaN(winners) || winners < 1 || winners > 20) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: 'Winner count must be between 1 and 20',
     });
+    return;
   }
 
   // Parse requirements

@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, gte, sql, or } from 'drizzle-orm';
+import { eq, and, desc, asc, gte, sql, or, isNull } from 'drizzle-orm';
 import { getDatabase } from '../database/connection';
 import {
   economyBalances,
@@ -73,8 +73,8 @@ export class EconomyRepository {
       .update(economyBalances)
       .set({
         balance: sql`${economyBalances.balance} + ${amount}`,
-        totalEarned: amount > 0 ? sql`${economyBalances.totalEarned} + ${amount}` : economyBalances.totalEarned,
-        totalSpent: amount < 0 ? sql`${economyBalances.totalSpent} + ${Math.abs(amount)}` : economyBalances.totalSpent,
+        totalEarned: amount > 0 ? sql`${economyBalances.totalEarned} + ${amount}` : undefined,
+        totalSpent: amount < 0 ? sql`${economyBalances.totalSpent} + ${Math.abs(amount)}` : undefined,
       })
       .where(and(
         eq(economyBalances.userId, userId),
@@ -223,7 +223,7 @@ export class EconomyRepository {
         eq(economyUserItems.active, true),
         eq(economyShopItems.effectType, 'rob_protection'),
         or(
-          eq(economyUserItems.expiresAt, null),
+          isNull(economyUserItems.expiresAt),
           gte(economyUserItems.expiresAt, new Date())
         )
       ))

@@ -48,16 +48,18 @@ async function handleAutomationCreate(interaction: ModalSubmitInteraction) {
 
   // Validate trigger type
   if (!['warn_count', 'warn_level'].includes(triggerType)) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: 'Invalid trigger type. Must be "warn_count" or "warn_level"',
     });
+    return;
   }
 
   // Validate trigger value
   if (isNaN(triggerValue) || triggerValue < 1) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: 'Invalid trigger value. Must be a positive number',
     });
+    return;
   }
 
   // Parse actions JSON
@@ -68,9 +70,10 @@ async function handleAutomationCreate(interaction: ModalSubmitInteraction) {
       throw new Error('Actions must be an array');
     }
   } catch (error) {
-    return interaction.editReply({
+    await interaction.editReply({
       content: t('commands.warn.subcommands.automation.create.invalidJson'),
     });
+    return;
   }
 
   try {

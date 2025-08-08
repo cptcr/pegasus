@@ -214,7 +214,7 @@ export const ticket: Command = {
 async function handlePanelCreate(
   interaction: ChatInputCommandInteraction,
   ticketService: TicketService,
-  locale: string
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -276,7 +276,7 @@ async function handlePanelCreate(
     categoryId: category?.id,
     supportRoles: supportRole ? [supportRole.id] : [],
     maxTicketsPerUser: maxTickets,
-    welcomeMessage,
+    welcomeMessage: welcomeMessage ?? undefined,
   };
 
   const message = await interaction.editReply({
@@ -378,7 +378,7 @@ async function handlePanelLoad(
 async function handlePanelDelete(
   interaction: ChatInputCommandInteraction,
   ticketService: TicketService,
-  locale: string
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -400,7 +400,7 @@ async function handlePanelDelete(
 async function handlePanelList(
   interaction: ChatInputCommandInteraction,
   ticketRepository: TicketRepository,
-  locale: string
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -430,8 +430,8 @@ async function handlePanelList(
 
 async function handlePanelEdit(
   interaction: ChatInputCommandInteraction,
-  ticketService: TicketService,
-  locale: string
+  _ticketService: TicketService,
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -522,7 +522,7 @@ async function handleClose(
 async function handleStats(
   interaction: ChatInputCommandInteraction,
   ticketRepository: TicketRepository,
-  locale: string
+  _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
