@@ -6,6 +6,7 @@ import { loadCommands } from './handlers/commandHandler';
 import { loadEvents } from './handlers/eventHandler';
 import { initializeI18n } from './i18n';
 import { logger } from './utils/logger';
+import { startApiServer } from './api/server';
 import type { Command } from './types/command';
 
 // Extend the Discord.js Client
@@ -93,6 +94,10 @@ class PegasusBot extends Client {
       // Login to Discord
       logger.info(chalk.blue('Logging in to Discord...'));
       await this.login(config.DISCORD_TOKEN);
+
+      // Start API server
+      logger.info(chalk.blue('Starting API server...'));
+      startApiServer();
     } catch (error) {
       logger.error(chalk.red('Failed to start bot:'), error);
       process.exit(1);
@@ -127,3 +132,6 @@ process.on('SIGTERM', async () => {
 
 // Start the bot
 bot.start();
+
+// Export client for API access
+export const client = bot;
