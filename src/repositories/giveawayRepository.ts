@@ -27,8 +27,8 @@ export class GiveawayRepository {
       .insert(giveaways)
       .values({
         ...data,
-        requirements: JSON.stringify(data.requirements),
-        bonusEntries: JSON.stringify(data.bonusEntries),
+        requirements: data.requirements, // Already handled by Drizzle json() type
+        bonusEntries: data.bonusEntries, // Already handled by Drizzle json() type
         status: 'active',
         entries: 0,
       })

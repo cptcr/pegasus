@@ -152,8 +152,11 @@ export class GiveawayService {
       this.activeTimers.delete(giveawayId);
     }
 
+    // Get updated giveaway with ended status
+    const updatedGiveaway = await giveawayRepository.getGiveaway(giveawayId);
+    
     // Update the giveaway message
-    await this.updateGiveawayEmbed(giveaway, winners);
+    await this.updateGiveawayEmbed(updatedGiveaway, winners);
 
     // Log the action
     await auditLogger.logAction({
@@ -401,18 +404,39 @@ export class GiveawayService {
                   .setEmoji('ℹ️')
               ),
             ]
-          : [];
+          : [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`gw_enter:${giveaway.giveawayId}`)
+                  .setLabel(t('commands.giveaway.buttons.enter'))
+                  .setStyle(ButtonStyle.Primary)
+                  .setEmoji('🎉')
+                  .setDisabled(true),
+                new ButtonBuilder()
+                  .setCustomId(`gw_info:${giveaway.giveawayId}`)
+                  .setLabel(t('commands.giveaway.buttons.info'))
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji('ℹ️')
+                  .setDisabled(true)
+              ),
+            ];
 
       await message.edit({ embeds: [embed], components });
 
       // Send winner announcement
-      if (giveaway.status === 'ended' && winners && winners.length > 0) {
+      if (giveaway.status === 'ended' && winners && winners.length > 0 && !giveaway.announcementSent) {
+        const winnerMentions = winners.map(w => `<@${w}>`).join(', ');
         await channel.send({
-          content: t('commands.giveaway.winnerAnnouncement', {
-            winners: winners.map(w => `<@${w}>`).join(', '),
-            prize: giveaway.prize,
-          }),
+          content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`,
+          reply: { messageReference: giveaway.messageId }
+        }).catch(() => {
+          // Fallback without reply
+          channel.send({
+            content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`
+          });
         });
+        // Mark announcement as sent to prevent duplicates
+        giveaway.announcementSent = true;
       }
     } catch (error) {
       console.error('Error updating giveaway embed:', error);
@@ -420,27 +444,61 @@ export class GiveawayService {
   }
 
   private scheduleGiveawayEnd(giveaway: any) {
-    const timeUntilEnd = giveaway.endTime.getTime() - Date.now();
+    const endTime = new Date(giveaway.endTime);
+    const now = new Date();
+    const timeUntilEnd = endTime.getTime() - now.getTime();
+
+    console.log(`Giveaway ${giveaway.giveawayId}: End time: ${endTime.toISOString()}, Now: ${now.toISOString()}, Time until end: ${timeUntilEnd}ms (${Math.floor(timeUntilEnd / 1000)}s)`);
 
     if (timeUntilEnd <= 0) {
       // Giveaway should have already ended
+      console.log(`Ending expired giveaway immediately: ${giveaway.giveawayId}`);
       this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
       return;
     }
 
+    // Use Math.min to prevent issues with very large timeouts
+    const timeoutValue = Math.min(timeUntilEnd, 2147483647); // Max setTimeout value
+
     const timer = setTimeout(() => {
+      console.log(`Timer triggered for giveaway: ${giveaway.giveawayId}`);
       this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
       this.activeTimers.delete(giveaway.giveawayId);
-    }, timeUntilEnd);
+    }, timeoutValue);
 
     this.activeTimers.set(giveaway.giveawayId, timer);
+    console.log(`Scheduled giveaway ${giveaway.giveawayId} to end in ${Math.floor(timeUntilEnd / 1000)}s`);
   }
 
   async initializeActiveGiveaways() {
     const activeGiveaways = await giveawayRepository.getActiveGiveaways();
 
+    console.log(`Found ${activeGiveaways.length} active giveaways`);
+
     for (const giveaway of activeGiveaways) {
       this.scheduleGiveawayEnd(giveaway);
+    }
+
+    // Start periodic check for expired giveaways (every minute)
+    this.startPeriodicExpiredCheck();
+  }
+
+  private startPeriodicExpiredCheck() {
+    setInterval(async () => {
+      try {
+        await this.processExpiredGiveaways();
+      } catch (error) {
+        console.error('Error processing expired giveaways:', error);
+      }
+    }, 60000); // Check every minute
+  }
+
+  private async processExpiredGiveaways() {
+    const expiredGiveaways = await giveawayRepository.getExpiredGiveaways();
+
+    for (const giveaway of expiredGiveaways) {
+      console.log(`Processing expired giveaway: ${giveaway.giveawayId}`);
+      await this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
     }
   }
 
