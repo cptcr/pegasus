@@ -1,10 +1,11 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t, setUserLocale, getUserLocale, availableLocales } from '../../i18n';
 import { getDatabase } from '../../database/connection';
 import { users } from '../../database/schema';
 import { eq } from 'drizzle-orm';
 import { ensureUserExists } from '../../utils/userUtils';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('language')
@@ -162,7 +163,7 @@ async function handleSet(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error setting user language:', error);
+    logger.error('Error setting user language:', error);
     await interaction.editReply({
       content: t('common.error'),
     });

@@ -310,7 +310,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
-    console.error('Error in gamble command:', error);
+    logger.error('Error in gamble command:', error);
 
     // Don't expose internal errors to users
     const userMessage =

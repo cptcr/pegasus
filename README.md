@@ -1,20 +1,21 @@
-# Pegasus Discord Bot
+# 🚀 Pegasus Discord Bot
 
 <div align="center">
   <img src="https://img.shields.io/badge/Discord.js-v14-blue?style=for-the-badge&logo=discord" alt="Discord.js">
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/TypeScript-5.0-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
 </div>
 
 <div align="center">
-  <h3>A powerful, feature-rich Discord bot built with TypeScript and Discord.js</h3>
+  <h3>🏆 A Production-Ready, Feature-Rich Discord Bot Built with TypeScript</h3>
   <p>
     <a href="https://discord.gg/vaultscope">Support Server</a> •
     <a href="https://cptcr.dev">Developer</a> •
-    <a href="#features">Features</a> •
-    <a href="#installation">Installation</a> •
-    <a href="#configuration">Configuration</a>
+    <a href="#-features">Features</a> •
+    <a href="#-installation">Installation</a> •
+    <a href="#-commands">Commands</a>
   </p>
 </div>
 
@@ -22,244 +23,446 @@
 
 ## 📋 Table of Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Commands](#commands)
-- [Contributing](#contributing)
-- [License](#license)
-- [Support](#support)
+- [✨ Features](#-features)
+- [🔧 Tech Stack](#-tech-stack)
+- [📦 Prerequisites](#-prerequisites)
+- [🚀 Installation](#-installation)
+- [⚙️ Configuration](#-configuration)
+- [📝 Commands](#-commands)
+- [🔒 Security Features](#-security-features)
+- [🌍 Internationalization](#-internationalization)
+- [🚢 Deployment](#-deployment)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [💬 Support](#-support)
 
 ## ✨ Features
 
-Pegasus is a comprehensive Discord bot that offers a wide range of features to enhance your server experience:
+### 🛡️ Advanced Moderation System
+- **Comprehensive Warning System** with automation rules and thresholds
+- **Multi-action Moderation** - Ban, kick, timeout with reason tracking
+- **Audit Logging** - Complete action history with user tracking
+- **Permission Hierarchy** - Role-based command access control
+- **Blacklist System** - Developer-only user management
 
-### 🛡️ Moderation & Security
-- **Advanced Warning System**: Create, edit, and track warnings with customizable levels and automation rules
-- **Comprehensive Moderation Tools**: Ban, kick, timeout, and manage users efficiently
-- **Blacklist System**: Manage user blacklists with ease
-- **Auto-moderation**: Automated actions based on warning levels
+### 💰 Full Economy System
+- **Virtual Currency** with balance tracking and transactions
+- **5 Gambling Games**:
+  - 🎲 Dice - Roll against the house
+  - 🪙 Coinflip - 50/50 chance game
+  - 🎰 Slots - Classic slot machine
+  - ♠️ Blackjack - Full blackjack implementation
+  - 🎯 Roulette - Multiple betting options
+- **Shop System** - Buy/sell items with inventory management
+- **Work & Rob** - Earn money with cooldowns and protection items
+- **Daily Rewards** - Streak bonuses for consecutive claims
 
-### 🎉 Engagement & Entertainment
-- **Giveaway System**: Create and manage giveaways with advanced features like re-entry and requirement-based entries
-- **Economy System**: Complete economy with daily rewards, comprehensive gambling games, shops, work, and robbery mechanics
-- **XP & Leveling System**: Track user activity with customizable XP rewards and role rewards
-- **Interactive Games**: Multiple gambling games including dice, coinflip, slots, blackjack, and roulette
+### 🎉 Advanced Giveaway System
+- **Multiple Entry Methods** - Bonus entries for roles/boosters
+- **Requirements System** - Role, level, or time-based requirements
+- **Live Timer Updates** - Real-time countdown display
+- **Automatic Winner Selection** - Fair, weighted random selection
+- **Reroll Capability** - Change winners after giveaway ends
 
-### 🎫 Support & Management
-- **Advanced Ticket System**: Create support panels, manage tickets with claiming, closing, and freezing capabilities
-- **Multi-language Support**: Full support for German, English, Spanish, and French
-- **Customizable Configuration**: Extensive configuration options for all systems
+### 🎟️ Professional Ticket System
+- **Custom Panels** - Design support panels with embeds
+- **Category Management** - Organize tickets by type
+- **Ticket Actions**:
+  - Claim - Assign ticket to staff
+  - Close - Close with optional reason
+  - Lock - Prevent user messages
+  - Freeze - Prevent all messages
+- **Transcript Generation** - Save ticket history
+- **Statistics Tracking** - Monitor support metrics
 
-### 🛠️ Utility
-- **User Information**: Avatar, banner, and detailed user/server information commands
-- **Server Management**: Welcome/goodbye messages, auto-roles, and server configuration
-- **Steam Integration**: View Steam profiles and game information
+### 📈 XP & Leveling System
+- **Voice & Text XP** - Earn XP through activity
+- **Role Rewards** - Automatic role assignment at levels
+- **Custom Rank Cards** - Personalized rank displays
+- **Leaderboards** - Server-wide rankings
+- **Booster Bonuses** - Extra XP for server boosters
+- **Channel Multipliers** - Configure XP rates per channel
+
+### 🌍 Multi-Language Support
+- **4 Languages**: English, German, Spanish, French
+- **Per-User Language** - Individual language preferences
+- **Localized Commands** - Command descriptions in all languages
+- **Dynamic Translations** - All bot responses translated
+
+### 🔧 Server Configuration
+- **Welcome/Goodbye System** - Custom messages with embeds
+- **Auto-Role Assignment** - Automatic roles for new members
+- **Language Settings** - Server-wide language preference
+- **XP Configuration** - Customize leveling system
+- **Economy Settings** - Adjust currency and rewards
 
 ## 🔧 Tech Stack
 
-- **Language**: TypeScript
-- **Framework**: Discord.js v14
-- **Database**: PostgreSQL with Drizzle ORM
-- **Multi-language**: i18n with support for 4 languages (DE, EN, ES, FR)
-- **Architecture**: Modular command and event handling system
+| Technology | Purpose |
+|------------|---------|
+| **TypeScript 5.0** | Type-safe development with strict mode |
+| **Discord.js v14** | Latest Discord API features |
+| **PostgreSQL 16** | Robust relational database |
+| **Drizzle ORM** | Type-safe database queries |
+| **Zod** | Runtime validation and type safety |
+| **i18next** | Internationalization framework |
+| **Winston** | Advanced logging system |
+| **Node.js 18+** | Modern JavaScript runtime |
 
 ## 📦 Prerequisites
 
-Before installing Pegasus, ensure you have the following:
+- **Node.js**: v18.0.0 or higher
+- **PostgreSQL**: v14 or higher
+- **npm**: v9.0.0 or higher
+- **Discord Application**: [Create here](https://discord.com/developers/applications)
 
-- Node.js 18.0.0 or higher
-- PostgreSQL 14 or higher
-- npm or yarn package manager
-- A Discord Bot Token ([Create one here](https://discord.com/developers/applications))
+### Required Bot Permissions
+```
+- View Channels
+- Send Messages
+- Embed Links
+- Attach Files
+- Manage Messages
+- Manage Roles
+- Manage Channels
+- Use External Emojis
+- Add Reactions
+- Read Message History
+- Connect (for voice XP)
+- Move Members
+- Moderate Members
+```
 
 ## 🚀 Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/cptcr/pegasus.git
-   cd pegasus
-   ```
+### 1. Clone Repository
+```bash
+git clone https://github.com/cptcr/pegasus.git
+cd pegasus
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-3. **Set up environment variables**
-   
-   Create a `.env` file in the root directory:
-   ```env
-   # Discord Configuration
-   DISCORD_TOKEN=your_bot_token_here
-   CLIENT_ID=your_client_id_here
-   GUILD_ID=your_development_guild_id # Optional, for guild-specific commands
-   
-   # Database Configuration
-   DATABASE_URL=postgresql://user:password@localhost:5432/pegasus
-   
-   # Optional Configuration
-   NODE_ENV=development
-   LOG_LEVEL=info
-   ```
+### 3. Database Setup
+Create a PostgreSQL database:
+```sql
+CREATE DATABASE pegasus;
+```
 
-4. **Set up the database**
-   ```bash
-   # Run database migrations
-   npm run db:migrate
-   # or
-   yarn db:migrate
-   ```
+### 4. Environment Configuration
+Create `.env` file in root directory:
+```env
+# Required Configuration
+DISCORD_TOKEN=your_bot_token_here
+DISCORD_CLIENT_ID=your_application_id_here
+DATABASE_URL=postgresql://username:password@localhost:5432/pegasus
+DEVELOPER_IDS=["your_discord_id_here"]
+SUPPORT_SERVER_INVITE=https://discord.gg/your_invite
 
-5. **Build the project**
-   ```bash
-   npm run build
-   # or
-   yarn build
-   ```
+# Optional Configuration
+NODE_ENV=development
+DEFAULT_LANGUAGE=en
+LOG_LEVEL=info
 
-6. **Start the bot**
-   ```bash
-   # Production
-   npm start
-   # or
-   yarn start
-   
-   # Development (with hot reload)
-   npm run dev
-   # or
-   yarn dev
-   ```
+# Security (Generate a 32-character key)
+ENCRYPTION_KEY=your_32_character_encryption_key_here
+
+# Optional Services
+REDIS_URL=redis://localhost:6379
+STEAM_API_KEY=your_steam_api_key
+```
+
+### 5. Build Project
+```bash
+npm run build
+```
+
+### 6. Start Bot
+```bash
+# Production
+npm start
+
+# Development (with auto-reload)
+npm run dev
+```
 
 ## ⚙️ Configuration
 
-### Initial Setup
+### First-Time Setup
+After inviting the bot to your server:
 
-After inviting the bot to your server, use the following commands to configure it:
+1. **Set Server Language**
+   ```
+   /config lang
+   ```
 
-1. **Set server language**: `/config lang`
-2. **Configure XP system**: `/config xp`
-3. **Set up economy**: `/config eco`
-4. **Configure welcome messages**: `/config welcome`
-5. **Set up auto-roles**: `/config autorole`
+2. **Configure XP System**
+   ```
+   /config xp
+   ```
 
-### Database Schema
+3. **Setup Economy**
+   ```
+   /config eco
+   ```
 
-Pegasus uses Drizzle ORM with PostgreSQL. The database schema is automatically managed through migrations. Key tables include:
+4. **Configure Welcome Messages**
+   ```
+   /config welcome
+   ```
 
-- `users` - User data and preferences
+5. **Setup Auto-Roles**
+   ```
+   /config autorole
+   ```
+
+### Database Tables (Auto-Created)
+The bot automatically creates all required tables on first startup:
+- `users` - User profiles and preferences
 - `guilds` - Server configurations
-- `warnings` - Warning system data
-- `tickets` - Support ticket information
-- `giveaways` - Active and past giveaways
-- `economy` - User balances and transactions
-- `xp_data` - XP and leveling information
+- `guild_settings` - Detailed server settings
+- `members` - Per-server user data
+- `warnings` - Warning records
+- `warning_automations` - Automated moderation rules
+- `economy_balances` - User balances
+- `economy_transactions` - Transaction history
+- `economy_shop_items` - Shop inventory
+- `tickets` - Support tickets
+- `ticket_panels` - Ticket panel configurations
+- `giveaways` - Giveaway data
+- `giveaway_entries` - User entries
+- `user_xp` - XP and level data
+- `xp_rewards` - Level role rewards
+- `audit_logs` - Complete action history
 
 ## 📝 Commands
 
-### Warning System
-- `/warn` - Display all warning commands
-- `/warn create` - Issue a warning to a user
-- `/warn edit` - Edit an existing warning
-- `/warn lookup` - Look up a specific warning
-- `/warn view` - View all warnings for a user
-- `/warn automation create` - Create warning automation rules
-- `/warn automation view` - View all automations
-- `/warn automation delete` - Delete an automation
+### 🛡️ Moderation Commands
 
-### Moderation
-- `/moderation ban` - Ban a user
-- `/moderation kick` - Kick a user
-- `/moderation timeout` - Timeout a user
-- `/moderation reset-xp` - Reset a user's XP
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `/warn create` | Issue warning with title, description, level | Moderate Members |
+| `/warn edit` | Edit existing warning via modal | Moderate Members |
+| `/warn lookup` | View specific warning by ID | Moderate Members |
+| `/warn view` | View all warnings for a user | Moderate Members |
+| `/warn automation create` | Setup automated actions | Administrator |
+| `/warn automation view` | List all automations | Administrator |
+| `/warn automation delete` | Remove automation | Administrator |
+| `/moderation ban` | Ban user with optional reason | Ban Members |
+| `/moderation kick` | Kick user with optional reason | Kick Members |
+| `/moderation timeout` | Timeout user for duration | Moderate Members |
+| `/moderation reset-xp` | Reset user's XP to 0 | Manage Guild |
 
-### Giveaways
-- `/gw start` - Start a customizable giveaway
-- `/gw end` - End an active giveaway
-- `/gw configure` - Configure an active giveaway
-- `/gw reroll` - Reroll giveaway winners
-- `/gw simple` - Create a simple giveaway
+### 💰 Economy Commands
 
-### Economy
-- `/eco balance` - Check your balance
-- `/eco daily` - Claim daily rewards
-- `/eco gamble dice` - Roll dice against the dealer
-- `/eco gamble coinflip` - Flip a coin (heads or tails)
-- `/eco gamble slots` - Play the slot machine
-- `/eco gamble blackjack` - Play blackjack against the dealer
-- `/eco gamble roulette` - Play roulette with various betting options
-- `/eco shop view` - View available shop items
-- `/eco shop buy` - Purchase items from the shop
-- `/eco shop inventory` - View your purchased items
-- `/eco work` - Work for rewards
-- `/eco rob` - Attempt to rob another user
+| Command | Description | Cooldown |
+|---------|-------------|----------|
+| `/balance [user]` | Check balance | None |
+| `/daily` | Claim daily reward (100-500) | 24 hours |
+| `/work` | Work for money (50-200) | 1 hour |
+| `/rob <user>` | Attempt to rob another user | 24 hours |
+| `/shop view` | Browse available items | None |
+| `/shop buy <item>` | Purchase an item | None |
+| `/shop inventory` | View your items | None |
+| `/gamble dice <amount>` | Roll dice (1-6 vs dealer) | None |
+| `/gamble coinflip <amount> <side>` | Flip coin (heads/tails) | None |
+| `/gamble slots <amount>` | Play slot machine | None |
+| `/gamble blackjack <amount>` | Play blackjack | None |
+| `/gamble roulette <amount> <bet>` | Play roulette | None |
 
-### Tickets
-- `/ticket panel create` - Create a support panel
-- `/ticket panel load` - Load a saved panel
-- `/ticket panel delete` - Delete a panel
-- `/ticket claim` - Claim a ticket
-- `/ticket close` - Close a ticket
+### 🎉 Giveaway Commands
 
-### XP System
-- `/xp rank` - View your rank
-- `/xp leaderboard` - View server leaderboard
-- `/xp configuration` - View XP configuration
-- `/xp card` - Customize your rank card
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `/gw start` | Advanced giveaway with modal | Manage Guild |
+| `/gw simple` | Quick giveaway setup | Manage Guild |
+| `/gw end <id>` | Manually end giveaway | Manage Guild |
+| `/gw reroll <id>` | Select new winners | Manage Guild |
+| `/gw configure <id>` | Edit active giveaway | Manage Guild |
 
-### Utility
-- `/utils avatar` - View user avatar
-- `/utils banner` - View user banner
-- `/utils steam` - View Steam profile
-- `/utils userinfo` - Get user information
-- `/utils whois` - Detailed user lookup
-- `/utils roleinfo` - Get role information
-- `/utils serverinfo` - Get server information
-- `/utils help` - Get help with commands
-- `/utils support` - Get support server link
+### 🎟️ Ticket Commands
 
-### Configuration
-- `/config xp` - Configure XP system
-- `/config eco` - Configure economy
-- `/config lang` - Set server language
-- `/config welcome` - Configure welcome messages
-- `/config autorole` - Configure auto-roles
-- `/config goodbye` - Configure goodbye messages
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `/ticket panel create` | Design ticket panel | Manage Guild |
+| `/ticket panel load <id>` | Send panel to channel | Manage Guild |
+| `/ticket panel delete <id>` | Remove panel | Manage Guild |
+| `/ticket panel list` | View all panels | Manage Guild |
+| `/ticket claim` | Claim ticket | Support Role |
+| `/ticket close [reason]` | Close ticket | Support Role |
+| `/ticket stats` | View statistics | Manage Guild |
 
-### Language
-- `/language available` - View available languages
-- `/language current` - View current language
-- `/language set` - Set your preferred language
+### 📈 XP Commands
 
-### Blacklist
-- `/blacklist user` - Blacklist a user
-- `/blacklist view` - View blacklisted users
-- `/blacklist remove` - Remove from blacklist
+| Command | Description |
+|---------|-------------|
+| `/xp rank [user]` | View rank card |
+| `/xp leaderboard` | Top 10 users |
+| `/xp configuration` | View XP settings |
+| `/xp card` | Customize rank card |
+
+### ⚙️ Configuration Commands
+
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `/config xp` | XP system settings | Manage Guild |
+| `/config eco` | Economy settings | Manage Guild |
+| `/config lang` | Server language | Manage Guild |
+| `/config welcome` | Welcome messages | Manage Guild |
+| `/config goodbye` | Goodbye messages | Manage Guild |
+| `/config autorole` | Auto-role setup | Manage Guild |
+
+### 🔧 Utility Commands
+
+| Command | Description |
+|---------|-------------|
+| `/utils help [command]` | Dynamic help menu |
+| `/utils avatar [user]` | Display avatar |
+| `/utils banner [user]` | Display banner |
+| `/utils steam <profile>` | Steam profile info |
+| `/utils userinfo [user]` | User details |
+| `/utils whois <user>` | Detailed lookup |
+| `/utils roleinfo <role>` | Role information |
+| `/utils serverinfo` | Server statistics |
+| `/utils support` | Support server link |
+| `/utils stats` | Bot statistics |
+| `/ping` | Check latency |
+
+### 🎮 Fun Commands
+
+| Command | Description |
+|---------|-------------|
+| `/fun meme` | Random meme |
+| `/fun fact` | Fun fact |
+| `/fun joke` | Random joke |
+| `/fun quote` | Inspirational quote |
+| `/fun dadjoke` | Dad joke |
+
+### 🌍 Language Commands
+
+| Command | Description |
+|---------|-------------|
+| `/language available` | List languages |
+| `/language current` | Your language |
+| `/language set <lang>` | Change language |
+
+### 👑 Admin Commands
+
+| Command | Description | Permission |
+|---------|-------------|-----------|
+| `/blacklist user <user>` | Blacklist user | Developer Only |
+| `/blacklist view` | View blacklist | Developer Only |
+| `/blacklist remove <user>` | Unblacklist | Developer Only |
+
+## 🔒 Security Features
+
+### Input Validation
+- **Zod Schemas** - Runtime validation for all inputs
+- **SQL Injection Prevention** - Parameterized queries
+- **XSS Protection** - Input sanitization
+- **Rate Limiting** - Per-user and global limits
+
+### Permission System
+- **Hierarchical Permissions** - Role-based access
+- **Developer Override** - Emergency access
+- **Audit Logging** - Track all actions
+- **Blacklist System** - Block malicious users
+
+### Data Protection
+- **Encryption** - Sensitive data encryption
+- **Secure Tokens** - Environment variable storage
+- **HTTPS Only** - Secure API communications
+- **Privacy Compliance** - User data protection
+
+## 🌍 Internationalization
+
+### Supported Languages
+- 🇬🇧 **English** (en) - Default
+- 🇩🇪 **German** (de) - Deutsch
+- 🇪🇸 **Spanish** (es) - Español
+- 🇫🇷 **French** (fr) - Français
+
+### Translation Coverage
+- ✅ All command descriptions
+- ✅ All bot responses
+- ✅ Error messages
+- ✅ Embed content
+- ✅ Button/Modal text
+
+## 🚢 Deployment
+
+### Using Docker
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+RUN npm run build
+CMD ["npm", "start"]
+```
+
+### Using PM2
+```bash
+npm install -g pm2
+pm2 start dist/index.js --name pegasus
+pm2 save
+pm2 startup
+```
+
+### Hosting Recommendations
+- **VPS**: DigitalOcean, Linode, Vultr
+- **Cloud**: AWS EC2, Google Cloud, Azure
+- **Managed**: Railway, Heroku, Render
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+### Code Standards
+- TypeScript strict mode enabled
+- No production comments
+- Comprehensive error handling
+- Unit tests for new features
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 ## 💬 Support
 
-- **Support Server**: [discord.gg/vaultscope](https://discord.gg/vaultscope)
+- **Discord Server**: [discord.gg/vaultscope](https://discord.gg/vaultscope)
 - **Developer**: [cptcr.dev](https://cptcr.dev)
-- **GitHub Issues**: [Report bugs or request features](https://github.com/cptcr/pegasus/issues)
+- **GitHub Issues**: [Report bugs](https://github.com/cptcr/pegasus/issues)
+- **Email**: support@cptcr.dev
 
-## 🔒 Security
+## 🙏 Acknowledgments
 
-For security concerns, please refer to our [Security Policy](SECURITY.md).
+- Discord.js team for the excellent library
+- PostgreSQL team for the robust database
+- All contributors and community members
+- Open source projects that made this possible
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ by <a href="https://cptcr.dev">cptcr</a></p>
+  <h3>⭐ Star this repository if you find it helpful!</h3>
+  <p>Made with ❤️ by <a href="https://github.com/cptcr">cptcr</a></p>
+  <p>
+    <a href="https://github.com/cptcr/pegasus/stargazers">
+      <img src="https://img.shields.io/github/stars/cptcr/pegasus?style=social" alt="Stars">
+    </a>
+    <a href="https://github.com/cptcr/pegasus/network/members">
+      <img src="https://img.shields.io/github/forks/cptcr/pegasus?style=social" alt="Forks">
+    </a>
+  </p>
 </div>

@@ -7,11 +7,13 @@ import {
   ButtonStyle,
   ComponentType,
   ButtonInteraction,
+  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
 import { embedBuilder } from '../../handlers/embedBuilder';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('shop')
@@ -238,7 +240,7 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
       });
     }
   } catch (error) {
-    console.error('Error viewing shop:', error);
+    logger.error('Error viewing shop:', error);
     await interaction.editReply({
       embeds: [embedBuilder.createErrorEmbed('Failed to load shop. Please try again later.')],
     });
@@ -303,7 +305,7 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error buying item:', error);
+    logger.error('Error buying item:', error);
     await interaction.editReply({
       embeds: [embedBuilder.createErrorEmbed('Failed to purchase item. Please try again later.')],
     });
@@ -356,7 +358,7 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error viewing inventory:', error);
+    logger.error('Error viewing inventory:', error);
     await interaction.editReply({
       embeds: [embedBuilder.createErrorEmbed('Failed to load inventory. Please try again later.')],
     });
@@ -380,7 +382,7 @@ export async function autocomplete(interaction: any) {
       }))
     );
   } catch (error) {
-    console.error('Error in shop autocomplete:', error);
+    logger.error('Error in shop autocomplete:', error);
     await interaction.respond([]);
   }
 }
@@ -459,7 +461,7 @@ async function createDefaultShopItems(guildId: string) {
     try {
       await economyRepository.createShopItem(item as any);
     } catch (error) {
-      console.error(`Error creating default shop item ${item.name}:`, error);
+      logger.error(`Error creating default shop item ${item.name}:`, error);
     }
   }
 }

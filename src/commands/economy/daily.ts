@@ -1,8 +1,9 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
 import { embedBuilder } from '../../handlers/embedBuilder';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('daily')
@@ -71,7 +72,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error in daily command:', error);
+    logger.error('Error in daily command:', error);
     await interaction.editReply({
       embeds: [
         embedBuilder.createErrorEmbed('Failed to claim daily reward. Please try again later.'),

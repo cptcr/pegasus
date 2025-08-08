@@ -16,6 +16,7 @@ import {
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { giveawayService } from '../../services/giveawayService';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('gw')
@@ -309,7 +310,7 @@ async function handleSimple(interaction: ChatInputCommandInteraction): Promise<a
       content: t('commands.giveaway.subcommands.simple.success', { id: giveaway.giveawayId }),
     });
   } catch (error) {
-    console.error('Error creating simple giveaway:', error);
+    logger.error('Error creating simple giveaway:', error);
     await interaction.editReply({
       content: t('commands.giveaway.error'),
     });
@@ -337,7 +338,7 @@ async function handleEnd(interaction: ChatInputCommandInteraction): Promise<any>
       }),
     });
   } catch (error) {
-    console.error('Error ending giveaway:', error);
+    logger.error('Error ending giveaway:', error);
     await interaction.editReply({
       content: t('commands.giveaway.error'),
     });
@@ -370,7 +371,7 @@ async function handleReroll(interaction: ChatInputCommandInteraction): Promise<a
       }),
     });
   } catch (error) {
-    console.error('Error rerolling giveaway:', error);
+    logger.error('Error rerolling giveaway:', error);
     await interaction.editReply({
       content: t('commands.giveaway.error'),
     });

@@ -20,6 +20,7 @@ import {
   subcommandDescriptions,
   optionDescriptions,
 } from '../../utils/localization';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('warn')
@@ -331,7 +332,7 @@ async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promi
       // User has DMs disabled
     }
   } catch (error) {
-    console.error('Error creating warning:', error);
+    logger.error('Error creating warning:', error);
     await interaction.editReply({
       content: t('common.error'),
     });

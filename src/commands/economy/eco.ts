@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 
 // Import all economy command handlers
@@ -275,7 +275,7 @@ export const data = new SlashCommandBuilder()
 export const category = CommandCategory.Economy;
 export const cooldown = 3;
 
-export async function execute(interaction: any) {
+export async function execute(interaction: ChatInputCommandInteraction) {
   const group = interaction.options.getSubcommandGroup();
   const subcommand = interaction.options.getSubcommand();
 
@@ -304,7 +304,7 @@ export async function execute(interaction: any) {
   }
 }
 
-export async function autocomplete(interaction: any) {
+export async function autocomplete(interaction: ChatInputCommandInteraction) {
   const group = interaction.options.getSubcommandGroup();
 
   if (group === 'shop') {

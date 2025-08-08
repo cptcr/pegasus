@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
   EmbedBuilder,
+  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -11,6 +12,7 @@ import { blacklist } from '../../database/schema/security';
 import { eq, and, desc } from 'drizzle-orm';
 import { isDeveloper } from '../../config/env';
 import { createLocalizationMap, commandDescriptions } from '../../utils/localization';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('blacklist')
@@ -174,7 +176,7 @@ async function handleBlacklistUser(interaction: ChatInputCommandInteraction): Pr
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error blacklisting user:', error);
+    logger.error('Error blacklisting user:', error);
     await interaction.editReply({
       content: t('commands.blacklist.error'),
     });
@@ -277,7 +279,7 @@ async function handleBlacklistRemove(interaction: ChatInputCommandInteraction): 
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error removing user from blacklist:', error);
+    logger.error('Error removing user from blacklist:', error);
     await interaction.editReply({
       content: t('commands.blacklist.error'),
     });

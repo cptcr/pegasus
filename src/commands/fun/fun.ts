@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import axios from 'axios';
 import { CommandCategory } from '../../types/command';
 import { createLocalizationMap, commandDescriptions } from '../../utils/localization';

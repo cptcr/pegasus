@@ -1,9 +1,10 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
-import { createErrorEmbed } from '../../handlers/embedBuilder';
+import { embedBuilder } from '../../handlers/embedBuilder';
 import { t } from '../../i18n';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('balance')
@@ -98,9 +99,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error in balance command:', error);
+    logger.error('Error in balance command:', error);
     await interaction.editReply({
-      embeds: [createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.')],
+      embeds: [embedBuilder.createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.')],
     });
   }
 }

@@ -9,6 +9,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  MessageFlags,
 } from 'discord.js';
 import { Command } from '../../types/command';
 import { TicketService } from '../../services/ticketService';
@@ -18,7 +19,7 @@ import { t } from '../../i18n';
 import { CommandCategory } from '../../types/command';
 
 export const ticket: Command = {
-  category: CommandCategory.Utility,
+  category: CommandCategory.Tickets,
   data: new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Manage ticket system')

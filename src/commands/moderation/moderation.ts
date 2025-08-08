@@ -4,6 +4,7 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   GuildMember,
+  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -12,6 +13,7 @@ import { getDatabase } from '../../database/connection';
 import { userXp } from '../../database/schema/xp';
 import { eq, and } from 'drizzle-orm';
 import { ensureUserAndGuildExist } from '../../utils/userUtils';
+import { logger } from '../../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('moderation')
@@ -271,7 +273,7 @@ async function handleBan(interaction: ChatInputCommandInteraction): Promise<any>
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error banning member:', error);
+    logger.error('Error banning member:', error);
     await interaction.editReply({
       content: t('commands.moderation.subcommands.ban.error'),
     });
@@ -384,7 +386,7 @@ async function handleKick(interaction: ChatInputCommandInteraction): Promise<any
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error kicking member:', error);
+    logger.error('Error kicking member:', error);
     await interaction.editReply({
       content: t('commands.moderation.subcommands.kick.error'),
     });
@@ -504,7 +506,7 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error timing out member:', error);
+    logger.error('Error timing out member:', error);
     await interaction.editReply({
       content: t('commands.moderation.subcommands.timeout.error'),
     });
@@ -568,7 +570,7 @@ async function handleResetXP(interaction: ChatInputCommandInteraction): Promise<
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error resetting XP:', error);
+    logger.error('Error resetting XP:', error);
     await interaction.editReply({
       content: t('commands.moderation.subcommands.resetxp.error'),
     });
