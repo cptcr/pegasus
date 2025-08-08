@@ -16,23 +16,53 @@ export class HelpService {
   private async loadCommands(): Promise<void> {
     try {
       const commandsPath = join(__dirname, '..', 'commands');
-      const categoryFolders = readdirSync(commandsPath);
+      const categoryFolders = readdirSync(commandsPath, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
 
       for (const category of categoryFolders) {
         const categoryPath = join(commandsPath, category);
         const commandFiles = readdirSync(categoryPath).filter(
-          file => file.endsWith('.ts') || file.endsWith('.js')
+          file => (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts')
         );
 
         for (const file of commandFiles) {
           try {
             const filePath = join(categoryPath, file);
-            const command = await import(filePath);
+            const commandModule = await import(filePath);
 
-            if (command.default && 'data' in command.default && 'execute' in command.default) {
-              const cmd = command.default as Command;
+            let commandData: any = null;
+            let commandCategory: CommandCategory = this.getCategoryFromPath(category);
+            let executeFunction: any = null;
+
+            // Handle different export patterns
+            if (commandModule.default) {
+              // Default export pattern
+              if ('data' in commandModule.default && 'execute' in commandModule.default) {
+                commandData = commandModule.default.data;
+                commandCategory = commandModule.default.category || this.getCategoryFromPath(category);
+                executeFunction = commandModule.default.execute;
+              }
+            } else {
+              // Named export pattern (data, execute, category)
+              if (commandModule.data && commandModule.execute) {
+                commandData = commandModule.data;
+                commandCategory = commandModule.category || this.getCategoryFromPath(category);
+                executeFunction = commandModule.execute;
+              }
+            }
+
+            if (commandData && executeFunction) {
+              const cmd: Command = {
+                data: commandData,
+                execute: executeFunction,
+                category: commandCategory,
+                cooldown: commandModule.cooldown,
+                permissions: commandModule.permissions,
+                autocomplete: commandModule.autocomplete,
+              };
+
               const commandName = cmd.data.name;
-
               this.commands.set(commandName, cmd);
 
               if (!this.commandsByCategory.has(cmd.category)) {
@@ -40,15 +70,33 @@ export class HelpService {
               }
 
               this.commandsByCategory.get(cmd.category)!.push(cmd);
+              logger.debug(`Loaded command: ${commandName} (${cmd.category})`);
             }
           } catch (error) {
             logger.error(`Error loading command ${file}:`, error);
           }
         }
       }
+
+      logger.info(`Loaded ${this.commands.size} commands across ${this.commandsByCategory.size} categories`);
     } catch (error) {
       logger.error('Error loading commands for help service:', error);
     }
+  }
+
+  private getCategoryFromPath(categoryPath: string): CommandCategory {
+    const categoryMap: Record<string, CommandCategory> = {
+      'utility': CommandCategory.Utility,
+      'moderation': CommandCategory.Moderation,
+      'economy': CommandCategory.Economy,
+      'xp': CommandCategory.XP,
+      'giveaways': CommandCategory.Giveaways,
+      'tickets': CommandCategory.Tickets,
+      'fun': CommandCategory.Fun,
+      'admin': CommandCategory.Admin,
+    };
+
+    return categoryMap[categoryPath.toLowerCase()] || CommandCategory.Utility;
   }
 
   async getHelpMenu(locale: string): Promise<EmbedBuilder> {
@@ -224,8 +272,18 @@ export class HelpService {
   }
 
   async getCommandList(): Promise<string[]> {
-    await this.loadCommands(); // Refresh command list
-    return Array.from(this.commands.keys());
+    // Only reload if we don't have any commands loaded
+    if (this.commands.size === 0) {
+      await this.loadCommands();
+    }
+    return Array.from(this.commands.keys()).sort();
+  }
+
+  // Force reload commands (useful for development)
+  async reloadCommands(): Promise<void> {
+    this.commands.clear();
+    this.commandsByCategory.clear();
+    await this.loadCommands();
   }
 
   getCategoryCommands(category: CommandCategory): Command[] {

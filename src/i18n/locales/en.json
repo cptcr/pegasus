@@ -591,12 +591,12 @@
         "simpleDescription": "**Prize:** {{prize}}",
         "hostedBy": "Hosted By",
         "winners": "Winners",
+        "winnersField": "🏆 Winners",
+        "noWinners": "No valid entries",
         "endsAt": "Ends",
         "footer": "Giveaway ID: {{id}}",
         "requirements": "Requirements",
-        "bonusEntries": "Bonus Entries",
-        "winnersField": "Winner(s)",
-        "noWinners": "No valid entries"
+        "bonusEntries": "Bonus Entries"
       },
       "buttons": {
         "enter": "Enter Giveaway",
