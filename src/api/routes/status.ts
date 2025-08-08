@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { client } from '../../index';
-import { db } from '../../db';
+import { db } from '../../database/connection';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { getDetailedSystemInfo, getProcessInfo } from '../utils/systemInfo';
@@ -24,66 +24,14 @@ interface SystemStatus {
       percentage: number;
     };
   };
-  system: {
-    platform: string;
-    distro: string;
-    release: string;
-    arch: string;
-    hostname: string;
-    uptime: number;
-    loadAverage: number[];
-  };
-  cpu: {
-    manufacturer: string;
-    brand: string;
-    cores: number;
-    physicalCores: number;
-    speed: number;
-    temperature: number | null;
-    usage: number;
-  };
-  memory: {
-    total: number;
-    free: number;
-    used: number;
-    percentage: number;
-    swap: {
-      total: number;
-      used: number;
-      free: number;
-    };
-  };
-  gpu: Array<{
-    vendor: string;
-    model: string;
-    vram: number;
-    temperature: number | null;
-    utilizationGpu: number | null;
-    utilizationMemory: number | null;
-  }>;
-  disk: Array<{
-    filesystem: string;
-    size: number;
-    used: number;
-    available: number;
-    use: number;
-    mount: string;
-  }>;
-  network: {
-    interfaces: Array<{
-      iface: string;
-      ip4: string;
-      ip6: string;
-      mac: string;
-      speed: number | null;
-    }>;
-    stats: {
-      rx_bytes: number;
-      tx_bytes: number;
-      rx_sec: number;
-      tx_sec: number;
-    };
-  };
+  system: any;
+  cpu: any;
+  memory: any;
+  gpu: any;
+  disk: any;
+  network: any;
+  processes: any;
+  docker: any;
   services: {
     discord: {
       connected: boolean;
@@ -124,7 +72,8 @@ interface SystemStatus {
 async function getDatabaseLatency(): Promise<number> {
   const start = Date.now();
   try {
-    await db.execute(sql`SELECT 1`);
+    const database = db();
+    await database.select().from(sql`(SELECT 1) as t`);
     return Date.now() - start;
   } catch (error) {
     logger.error('Database ping failed:', error);

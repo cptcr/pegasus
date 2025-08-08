@@ -9,22 +9,24 @@ const PORT = process.env.API_PORT || 2000;
 app.use(cors());
 app.use(express.json());
 
-const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       error: 'Unauthorized', 
       message: 'No token provided' 
     });
+    return;
   }
 
   if (token !== process.env.API_TOKEN) {
-    return res.status(403).json({ 
+    res.status(403).json({ 
       error: 'Forbidden', 
       message: 'Invalid token' 
     });
+    return;
   }
 
   next();
