@@ -1,15 +1,12 @@
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
-import { config } from 'dotenv';
 import chalk from 'chalk';
+import { config } from './config/env';
 import { initializeDatabase } from './database/connection';
 import { loadCommands } from './handlers/commandHandler';
 import { loadEvents } from './handlers/eventHandler';
 import { initializeI18n } from './i18n';
 import { logger } from './utils/logger';
 import type { Command } from './types/command';
-
-// Load environment variables
-config();
 
 // Extend the Discord.js Client
 declare module 'discord.js' {
@@ -82,7 +79,7 @@ class PegasusBot extends Client {
 
       // Login to Discord
       logger.info(chalk.blue('Logging in to Discord...'));
-      await this.login(process.env.DISCORD_TOKEN);
+      await this.login(config.DISCORD_TOKEN);
     } catch (error) {
       logger.error(chalk.red('Failed to start bot:'), error);
       process.exit(1);

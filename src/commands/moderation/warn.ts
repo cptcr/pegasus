@@ -13,39 +13,46 @@ import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { warningService } from '../../services/warningService';
 import { warningRepository } from '../../repositories/warningRepository';
+import { createLocalizationMap, commandDescriptions, subcommandDescriptions, optionDescriptions } from '../../utils/localization';
 
 export const data = new SlashCommandBuilder()
   .setName('warn')
-  .setDescription(t('commands.warn.description'))
+  .setDescription('Manage user warnings')
+  .setDescriptionLocalizations(createLocalizationMap(commandDescriptions.warn))
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addSubcommand(subcommand =>
     subcommand
       .setName('create')
-      .setDescription(t('commands.warn.subcommands.create.description'))
+      .setDescription('Issue a warning to a user')
+      .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.create))
       .addUserOption(option =>
         option
           .setName('user')
-          .setDescription(t('commands.warn.subcommands.create.options.user'))
+          .setDescription('The user to warn')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.user))
           .setRequired(true)
       )
       .addStringOption(option =>
         option
           .setName('title')
-          .setDescription(t('commands.warn.subcommands.create.options.title'))
+          .setDescription('Title of the warning')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.title))
           .setRequired(true)
           .setMaxLength(255)
       )
       .addStringOption(option =>
         option
           .setName('description')
-          .setDescription(t('commands.warn.subcommands.create.options.description'))
+          .setDescription('Description of the warning')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.description))
           .setRequired(false)
           .setMaxLength(1000)
       )
       .addIntegerOption(option =>
         option
           .setName('level')
-          .setDescription(t('commands.warn.subcommands.create.options.level'))
+          .setDescription('Warning level (1-10)')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.level))
           .setRequired(false)
           .setMinValue(1)
           .setMaxValue(10)
@@ -53,40 +60,47 @@ export const data = new SlashCommandBuilder()
       .addAttachmentOption(option =>
         option
           .setName('proof')
-          .setDescription(t('commands.warn.subcommands.create.options.proof'))
+          .setDescription('Proof attachment')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.proof))
           .setRequired(false)
       )
   )
   .addSubcommand(subcommand =>
     subcommand
       .setName('edit')
-      .setDescription(t('commands.warn.subcommands.edit.description'))
+      .setDescription('Edit an existing warning')
+      .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.edit))
       .addStringOption(option =>
         option
           .setName('warnid')
-          .setDescription(t('commands.warn.subcommands.edit.options.warnid'))
+          .setDescription('The warning ID to edit')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.warnid))
           .setRequired(true)
       )
   )
   .addSubcommand(subcommand =>
     subcommand
       .setName('lookup')
-      .setDescription(t('commands.warn.subcommands.lookup.description'))
+      .setDescription('Look up a specific warning')
+      .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.lookup))
       .addStringOption(option =>
         option
           .setName('warnid')
-          .setDescription(t('commands.warn.subcommands.lookup.options.warnid'))
+          .setDescription('The warning ID to look up')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.warnid))
           .setRequired(true)
       )
   )
   .addSubcommand(subcommand =>
     subcommand
       .setName('view')
-      .setDescription(t('commands.warn.subcommands.view.description'))
+      .setDescription('View all warnings for a user')
+      .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.view))
       .addUserOption(option =>
         option
           .setName('user')
-          .setDescription(t('commands.warn.subcommands.view.options.user'))
+          .setDescription('The user to view warnings for')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.user))
           .setRequired(true)
       )
   )
@@ -94,24 +108,37 @@ export const data = new SlashCommandBuilder()
     group
       .setName('automation')
       .setDescription('Manage warning automations')
+      .setDescriptionLocalizations({
+        de: 'Warnungsautomatisierungen verwalten',
+        'es-ES': 'Gestionar automatizaciones de advertencia',
+        fr: 'Gérer les automatisations d\'avertissement'
+      })
       .addSubcommand(subcommand =>
         subcommand
           .setName('create')
-          .setDescription(t('commands.warn.subcommands.automation.create.description'))
+          .setDescription('Create a warning automation')
+          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.create))
       )
       .addSubcommand(subcommand =>
         subcommand
           .setName('view')
-          .setDescription(t('commands.warn.subcommands.automation.view.description'))
+          .setDescription('View all warning automations')
+          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.view))
       )
       .addSubcommand(subcommand =>
         subcommand
           .setName('delete')
-          .setDescription(t('commands.warn.subcommands.automation.delete.description'))
+          .setDescription('Delete a warning automation')
+          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.delete))
           .addStringOption(option =>
             option
               .setName('automationid')
-              .setDescription(t('commands.warn.subcommands.automation.delete.options.automationid'))
+              .setDescription('The automation ID to delete')
+              .setDescriptionLocalizations({
+                de: 'Die zu löschende Automatisierungs-ID',
+                'es-ES': 'El ID de automatización a eliminar',
+                fr: 'L\'ID d\'automatisation à supprimer'
+              })
               .setRequired(true)
           )
       )

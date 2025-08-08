@@ -12,6 +12,8 @@ import { t, getGuildLocale } from '../../i18n';
 import { SteamService } from '../../services/steamServiceMock';
 import { HelpService } from '../../services/helpService';
 import { logger } from '../../utils/logger';
+import * as os from 'os';
+import { version as djsVersion } from 'discord.js';
 
 // const steamService = new SteamService();
 const helpService = new HelpService();
@@ -191,6 +193,16 @@ export const data = new SlashCommandBuilder()
         'fr': 'Obtenir le lien du serveur de support',
         'de': 'Support-Server-Link erhalten',
       })
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('stats')
+      .setDescription('View bot statistics and system information')
+      .setDescriptionLocalizations({
+        'es-ES': 'Ver estadísticas del bot e información del sistema',
+        'fr': 'Voir les statistiques du bot et les informations système',
+        'de': 'Bot-Statistiken und Systeminformationen anzeigen',
+      })
   );
 
 export const category = CommandCategory.Utility;
@@ -228,6 +240,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         break;
       case 'support':
         await handleSupport(interaction, locale);
+        break;
+      case 'stats':
+        await handleStats(interaction, locale);
         break;
     }
   } catch (error) {
@@ -695,6 +710,162 @@ export async function autocomplete(interaction: any): Promise<void> {
     await interaction.respond(
       filtered.map(cmd => ({ name: cmd, value: cmd }))
     );
+  }
+}
+
+async function handleStats(interaction: ChatInputCommandInteraction, _locale: string): Promise<void> {
+  await interaction.deferReply();
+
+  try {
+    const client = interaction.client;
+    
+    // Calculate bot statistics
+    const guildCount = client.guilds.cache.size;
+    const userCount = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+    const channelCount = client.channels.cache.size;
+    const commandCount = client.application?.commands.cache.size || 0;
+    
+    // System information
+    const platform = os.platform();
+    const arch = os.arch();
+    const nodeVersion = process.version;
+    const uptime = process.uptime();
+    const memUsage = process.memoryUsage();
+    
+    // OS information
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const cpuCores = os.cpus().length;
+    const cpuModel = os.cpus()[0]?.model || 'Unknown';
+    const osType = os.type();
+    const osRelease = os.release();
+    const hostname = os.hostname();
+    
+    // Calculate CPU usage (approximation)
+    const cpus = os.cpus();
+    let totalIdle = 0;
+    let totalTick = 0;
+    
+    cpus.forEach(cpu => {
+      for (const type in cpu.times) {
+        totalTick += cpu.times[type as keyof typeof cpu.times];
+      }
+      totalIdle += cpu.times.idle;
+    });
+    
+    const cpuUsage = 100 - ~~(100 * totalIdle / totalTick);
+    
+    // Format uptime
+    const formatUptime = (seconds: number): string => {
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      
+      const parts = [];
+      if (days > 0) parts.push(`${days}d`);
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0) parts.push(`${minutes}m`);
+      if (secs > 0) parts.push(`${secs}s`);
+      
+      return parts.join(' ') || '0s';
+    };
+    
+    // Format bytes
+    const formatBytes = (bytes: number): string => {
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      if (bytes === 0) return '0 B';
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    };
+    
+    // Create embed
+    const embed = new EmbedBuilder()
+      .setColor(0x0099FF)
+      .setTitle('📊 Bot Statistics & System Information')
+      .setThumbnail(client.user?.displayAvatarURL() || '')
+      .addFields(
+        {
+          name: '🤖 Bot Statistics',
+          value: [
+            `**Guilds:** ${guildCount.toLocaleString()}`,
+            `**Users:** ${userCount.toLocaleString()}`,
+            `**Channels:** ${channelCount.toLocaleString()}`,
+            `**Commands:** ${commandCount}`,
+            `**Uptime:** ${formatUptime(uptime)}`,
+            `**Ping:** ${client.ws.ping}ms`,
+          ].join('\n'),
+          inline: true,
+        },
+        {
+          name: '💻 System Information',
+          value: [
+            `**OS:** ${osType} ${osRelease}`,
+            `**Platform:** ${platform} (${arch})`,
+            `**Hostname:** ${hostname}`,
+            `**CPU:** ${cpuModel}`,
+            `**CPU Cores:** ${cpuCores}`,
+            `**CPU Usage:** ~${cpuUsage}%`,
+          ].join('\n'),
+          inline: true,
+        },
+        {
+          name: '💾 Memory Usage',
+          value: [
+            `**Total RAM:** ${formatBytes(totalMem)}`,
+            `**Used RAM:** ${formatBytes(usedMem)} (${Math.round((usedMem / totalMem) * 100)}%)`,
+            `**Free RAM:** ${formatBytes(freeMem)}`,
+            `**Bot RSS:** ${formatBytes(memUsage.rss)}`,
+            `**Bot Heap:** ${formatBytes(memUsage.heapUsed)} / ${formatBytes(memUsage.heapTotal)}`,
+            `**Bot External:** ${formatBytes(memUsage.external)}`,
+          ].join('\n'),
+          inline: false,
+        },
+        {
+          name: '📦 Versions',
+          value: [
+            `**Node.js:** ${nodeVersion}`,
+            `**Discord.js:** v${djsVersion}`,
+            `**TypeScript:** v${require('typescript/package.json').version}`,
+          ].join('\n'),
+          inline: true,
+        },
+        {
+          name: '⚙️ Process Information',
+          value: [
+            `**PID:** ${process.pid}`,
+            `**Platform:** ${process.platform}`,
+            `**Architecture:** ${process.arch}`,
+            `**Memory Limit:** ${formatBytes(memUsage.rss)}`,
+          ].join('\n'),
+          inline: true,
+        }
+      )
+      .setFooter({ 
+        text: `Requested by ${interaction.user.tag}`,
+        iconURL: interaction.user.displayAvatarURL()
+      })
+      .setTimestamp();
+    
+    // Add GPU information if available (usually not accessible in Node.js)
+    try {
+      // This is a placeholder - GPU info typically requires additional libraries
+      // or system calls that aren't standard in Node.js
+      if (process.platform === 'linux') {
+        // Could potentially use exec to run nvidia-smi or similar
+        // but keeping it simple for now
+      }
+    } catch (error) {
+      // GPU info not available
+    }
+    
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    logger.error('Error in stats command:', error);
+    await interaction.editReply({
+      content: 'An error occurred while fetching statistics.',
+    });
   }
 }
 

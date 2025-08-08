@@ -9,10 +9,13 @@ import { t } from '../../i18n';
 import { getDatabase } from '../../database/connection';
 import { blacklist } from '../../database/schema/security';
 import { eq, and, desc } from 'drizzle-orm';
+import { isDeveloper } from '../../config/env';
+import { createLocalizationMap, commandDescriptions } from '../../utils/localization';
 
 export const data = new SlashCommandBuilder()
   .setName('blacklist')
-  .setDescription(t('commands.blacklist.description'))
+  .setDescription('Manage bot blacklist')
+  .setDescriptionLocalizations(createLocalizationMap(commandDescriptions.blacklist))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand(subcommand =>
     subcommand
@@ -61,6 +64,14 @@ export const cooldown = 5;
 export const permissions = [PermissionFlagsBits.Administrator];
 
 export async function execute(interaction: ChatInputCommandInteraction) {
+  // Check if user is a developer
+  if (!isDeveloper(interaction.user.id)) {
+    return interaction.reply({
+      content: 'This command is restricted to bot developers only.',
+      ephemeral: true,
+    });
+  }
+
   if (!interaction.guild) {
     return interaction.reply({
       content: t('common.guildOnly'),

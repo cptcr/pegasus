@@ -15,6 +15,16 @@ import { eq, and } from 'drizzle-orm';
 export const data = new SlashCommandBuilder()
   .setName('moderation')
   .setDescription(t('commands.moderation.description'))
+  .setNameLocalizations({
+    'es-ES': 'moderacion',
+    'fr': 'modération',
+    'de': 'moderation',
+  })
+  .setDescriptionLocalizations({
+    'es-ES': 'Comandos de moderación',
+    'fr': 'Commandes de modération',
+    'de': 'Moderations-Befehle',
+  })
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addSubcommand(subcommand =>
     subcommand

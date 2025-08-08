@@ -3,10 +3,16 @@ import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
 import { createErrorEmbed } from '../../handlers/embedBuilder';
+import { t } from '../../i18n';
 
 export const data = new SlashCommandBuilder()
   .setName('balance')
-  .setDescription('Check your or another user\'s balance')
+  .setDescription(t('commands.economy.balance.description'))
+  .setNameLocalizations({
+    'es-ES': 'saldo',
+    'fr': 'solde',
+    'de': 'guthaben',
+  })
   .setDescriptionLocalizations({
     'es-ES': 'Consulta tu saldo o el de otro usuario',
     'fr': 'Vérifiez votre solde ou celui d\'un autre utilisateur',

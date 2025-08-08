@@ -5,11 +5,15 @@ import { t } from '../../i18n';
 export const data = new SlashCommandBuilder()
   .setName('ping')
   .setDescription(t('commands.ping.description'))
+  .setNameLocalizations({
+    'es-ES': 'ping',
+    'fr': 'ping',
+    'de': 'ping',
+  })
   .setDescriptionLocalizations({
     'es-ES': 'Comprueba la latencia del bot',
     'fr': 'Vérifier la latence du bot',
     'de': 'Überprüfe die Latenz des Bots',
-    'nl': 'Controleer de latentie van de bot',
   });
 
 export const category = CommandCategory.Utility;
