@@ -6,6 +6,7 @@ import { embedBuilder } from '../../handlers/embedBuilder';
 import { Validator, CommandSchemas } from '../../security/validator';
 import { RateLimitError } from '../../security/errors';
 import { auditLogger } from '../../security/audit';
+import { logger } from '../../utils/logger';
 import type {
   DiceResult,
   CoinflipResult,

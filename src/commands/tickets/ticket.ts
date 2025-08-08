@@ -9,7 +9,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-  MessageFlags,
 } from 'discord.js';
 import { Command } from '../../types/command';
 import { TicketService } from '../../services/ticketService';

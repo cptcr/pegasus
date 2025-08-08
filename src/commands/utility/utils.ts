@@ -1,11 +1,11 @@
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
   EmbedBuilder,
   User,
   Role,
   ChannelType,
-  MessageFlags,
 } from 'discord.js';
 import { Command, CommandCategory } from '../../types/command';
 import { t, getGuildLocale } from '../../i18n';
@@ -724,7 +724,7 @@ function getUserBadges(user: User): string[] {
   return badges;
 }
 
-export async function autocomplete(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const focused = interaction.options.getFocused();
   const subcommand = interaction.options.getSubcommand();
 

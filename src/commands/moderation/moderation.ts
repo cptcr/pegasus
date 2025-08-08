@@ -4,7 +4,6 @@ import {
   PermissionFlagsBits,
   EmbedBuilder,
   GuildMember,
-  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';

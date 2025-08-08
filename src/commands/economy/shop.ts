@@ -7,7 +7,6 @@ import {
   ButtonStyle,
   ComponentType,
   ButtonInteraction,
-  MessageFlags,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
