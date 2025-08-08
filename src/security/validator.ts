@@ -84,7 +84,7 @@ export const CommandSchemas = {
 
     gamble: z.object({
       amount: ValidationSchemas.amount.min(1),
-      game: z.enum(['dice', 'slots', 'blackjack', 'roulette']),
+      game: z.enum(['dice', 'coinflip', 'slots', 'blackjack', 'roulette']),
     }),
 
     shop: z.object({
