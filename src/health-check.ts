@@ -38,7 +38,10 @@ async function performHealthCheck(): Promise<HealthStatus> {
 
   // Check database connectivity
   try {
-    await db.select({ count: sql<number>`count(*)` }).from(guilds).limit(1);
+    await db
+      .select({ count: sql<number>`count(*)` })
+      .from(guilds)
+      .limit(1);
     checks.database = true;
   } catch (error) {
     errors.push(`Database check failed: ${error}`);
@@ -49,7 +52,7 @@ async function performHealthCheck(): Promise<HealthStatus> {
     const client = new Client({
       intents: [GatewayIntentBits.Guilds],
     });
-    
+
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         client.destroy();
@@ -62,7 +65,7 @@ async function performHealthCheck(): Promise<HealthStatus> {
         resolve(true);
       });
 
-      client.once('error', (error) => {
+      client.once('error', error => {
         clearTimeout(timeout);
         client.destroy();
         reject(error);
@@ -70,7 +73,7 @@ async function performHealthCheck(): Promise<HealthStatus> {
 
       client.login(config.DISCORD_TOKEN).catch(reject);
     });
-    
+
     checks.discord = true;
   } catch (error) {
     errors.push(`Discord check failed: ${error}`);
@@ -94,20 +97,20 @@ async function performHealthCheck(): Promise<HealthStatus> {
   const cpus = os.cpus();
   let totalIdle = 0;
   let totalTick = 0;
-  
+
   cpus.forEach(cpu => {
     for (const type in cpu.times) {
       totalTick += cpu.times[type as keyof typeof cpu.times];
     }
     totalIdle += cpu.times.idle;
   });
-  
-  const cpuUsage = 100 - ~~(100 * totalIdle / totalTick);
+
+  const cpuUsage = 100 - ~~((100 * totalIdle) / totalTick);
 
   // Determine overall status
   let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
   const failedChecks = Object.values(checks).filter(check => !check).length;
-  
+
   if (failedChecks === 0) {
     status = 'healthy';
   } else if (failedChecks <= 1) {
@@ -138,18 +141,20 @@ const server = http.createServer(async (req, res) => {
   if (req.url === '/health' && req.method === 'GET') {
     try {
       const health = await performHealthCheck();
-      const statusCode = health.status === 'healthy' ? 200 : 
-                        health.status === 'degraded' ? 200 : 503;
-      
+      const statusCode =
+        health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+
       res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(health, null, 2));
     } catch (error) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'unhealthy',
-        error: String(error),
-        timestamp: new Date(),
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'unhealthy',
+          error: String(error),
+          timestamp: new Date(),
+        })
+      );
     }
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain' });

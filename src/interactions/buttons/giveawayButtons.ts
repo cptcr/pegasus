@@ -1,9 +1,4 @@
-import { 
-  ButtonInteraction, 
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder
-} from 'discord.js';
+import { ButtonInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder } from 'discord.js';
 import { giveawayService } from '../../services/giveawayService';
 import { giveawayRepository } from '../../repositories/giveawayRepository';
 import { t } from '../../i18n';
@@ -24,11 +19,11 @@ async function handleGiveawayEnter(interaction: ButtonInteraction, giveawayId: s
 
   // Check if user is already entered
   const existingEntry = await giveawayRepository.getUserEntry(giveawayId, interaction.user.id);
-  
+
   if (existingEntry) {
     // User wants to leave
     const result = await giveawayService.removeEntry(giveawayId, interaction.user.id);
-    
+
     if (result.success) {
       await interaction.editReply({
         content: t('commands.giveaway.interactions.left'),
@@ -41,7 +36,7 @@ async function handleGiveawayEnter(interaction: ButtonInteraction, giveawayId: s
   } else {
     // User wants to enter
     const result = await giveawayService.enterGiveaway(
-      giveawayId, 
+      giveawayId,
       interaction.user.id,
       interaction.guild!
     );
@@ -76,15 +71,16 @@ async function handleGiveawayInfo(interaction: ButtonInteraction, giveawayId: st
   const stats = await giveawayRepository.getUserGiveawayStats(interaction.user.id);
 
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0x0099ff)
     .setTitle(t('commands.giveaway.info.title'))
     .setDescription(t('commands.giveaway.info.description', { prize: giveaway.prize }))
     .addFields(
       {
         name: t('commands.giveaway.info.status'),
-        value: giveaway.status === 'active' 
-          ? t('commands.giveaway.info.statusActive')
-          : t('commands.giveaway.info.statusEnded'),
+        value:
+          giveaway.status === 'active'
+            ? t('commands.giveaway.info.statusActive')
+            : t('commands.giveaway.info.statusEnded'),
         inline: true,
       },
       {
@@ -104,9 +100,9 @@ async function handleGiveawayInfo(interaction: ButtonInteraction, giveawayId: st
       },
       {
         name: t('commands.giveaway.info.yourStats'),
-        value: t('commands.giveaway.info.statsValue', { 
-          entries: stats.totalEntries, 
-          wins: stats.totalWins 
+        value: t('commands.giveaway.info.statsValue', {
+          entries: stats.totalEntries,
+          wins: stats.totalWins,
         }),
         inline: true,
       }
@@ -179,10 +175,13 @@ async function updateButtonCount(interaction: ButtonInteraction, giveawayId: str
       const actionRow = message.components[0];
       if ('components' in actionRow) {
         const components = actionRow.components;
-        const enterButtonIndex = components.findIndex(c => 
-          'custom_id' in c && typeof c.custom_id === 'string' && c.custom_id.startsWith('gw_enter:')
+        const enterButtonIndex = components.findIndex(
+          c =>
+            'custom_id' in c &&
+            typeof c.custom_id === 'string' &&
+            c.custom_id.startsWith('gw_enter:')
         );
-        
+
         if (enterButtonIndex !== -1) {
           const enterButton = components[enterButtonIndex];
           if ('custom_id' in enterButton && 'style' in enterButton) {
@@ -190,7 +189,7 @@ async function updateButtonCount(interaction: ButtonInteraction, giveawayId: str
               .setCustomId(enterButton.custom_id as string)
               .setLabel(`${t('commands.giveaway.buttons.enter')} (${giveaway.entries})`)
               .setStyle(enterButton.style || 1);
-          
+
             const row = new ActionRowBuilder<ButtonBuilder>();
             components.forEach((c, i) => {
               if (i === enterButtonIndex) {

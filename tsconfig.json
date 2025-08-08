@@ -40,8 +40,8 @@
       "@i18n/*": ["src/i18n/*"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"],
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "removeComments": true,
     "allowJs": false,
     "incremental": true

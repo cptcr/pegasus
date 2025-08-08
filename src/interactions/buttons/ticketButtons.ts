@@ -1,9 +1,4 @@
-import { 
-  ButtonInteraction, 
-  TextChannel,
-  PermissionFlagsBits,
-  EmbedBuilder
-} from 'discord.js';
+import { ButtonInteraction, TextChannel, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
 import { GuildService } from '../../services/guildService';
@@ -63,7 +58,10 @@ async function handleTicketCreate(
   }
 
   // Check user's open tickets
-  const openTickets = await ticketRepository.getUserOpenTicketsByPanel(interaction.user.id, panel.id);
+  const openTickets = await ticketRepository.getUserOpenTicketsByPanel(
+    interaction.user.id,
+    panel.id
+  );
   if (openTickets.length >= panel.maxTicketsPerUser) {
     await interaction.reply({
       content: t('tickets.maxTicketsReached', { max: panel.maxTicketsPerUser }),
@@ -96,8 +94,9 @@ async function handleTicketClose(
 
   // Check permissions
   const member = interaction.member as any;
-  const hasPermission = member.permissions.has(PermissionFlagsBits.ManageChannels) || 
-                        ticket.userId === interaction.user.id;
+  const hasPermission =
+    member.permissions.has(PermissionFlagsBits.ManageChannels) ||
+    ticket.userId === interaction.user.id;
 
   if (!hasPermission) {
     await interaction.editReply({
@@ -108,7 +107,7 @@ async function handleTicketClose(
 
   try {
     await ticketService.closeTicket(ticketId, member, undefined, locale);
-    
+
     await interaction.editReply({
       content: t('tickets.closing'),
     });
@@ -167,11 +166,11 @@ async function handleTicketLock(
 
   try {
     await ticketService.lockTicket(ticketId, member, interaction.guild!, locale);
-    
+
     const embed = new EmbedBuilder()
       .setTitle(t('tickets.ticketLocked'))
       .setDescription(t('tickets.ticketLockedDesc'))
-      .setColor(0xFFA500)
+      .setColor(0xffa500)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -214,11 +213,11 @@ async function handleTicketFreeze(
 
   try {
     await ticketService.freezeTicket(ticketId, member, interaction.guild!, locale);
-    
+
     const embed = new EmbedBuilder()
       .setTitle(t('tickets.ticketFrozen'))
       .setDescription(t('tickets.ticketFrozenDesc'))
-      .setColor(0x00BFFF)
+      .setColor(0x00bfff)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -249,9 +248,9 @@ async function handleTicketClaim(
   // Check if user has support role
   const member = interaction.member as any;
   const panel = ticket.panelId ? await ticketRepository.getPanelById(ticket.panelId) : null;
-  
+
   if (panel && panel.supportRoles) {
-    const hasSupportRole = (panel.supportRoles as string[]).some(roleId => 
+    const hasSupportRole = (panel.supportRoles as string[]).some(roleId =>
       member.roles.cache.has(roleId)
     );
 
@@ -265,11 +264,11 @@ async function handleTicketClaim(
 
   try {
     await ticketService.claimTicket(ticketId, member, locale);
-    
+
     const embed = new EmbedBuilder()
       .setTitle(t('tickets.ticketClaimed'))
       .setDescription(t('tickets.claimedBy', { user: member.user.tag }))
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });

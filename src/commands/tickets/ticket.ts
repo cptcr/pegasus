@@ -1,6 +1,6 @@
-import { 
-  SlashCommandBuilder, 
-  ChatInputCommandInteraction, 
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
   PermissionFlagsBits,
   EmbedBuilder,
   ChannelType,
@@ -8,7 +8,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
+  ComponentType,
 } from 'discord.js';
 import { Command } from '../../types/command';
 import { TicketService } from '../../services/ticketService';
@@ -66,7 +66,7 @@ export const ticket: Command = {
                   { name: 'Primary (Blue)', value: ButtonStyle.Primary },
                   { name: 'Secondary (Gray)', value: ButtonStyle.Secondary },
                   { name: 'Success (Green)', value: ButtonStyle.Success },
-                  { name: 'Danger (Red)', value: ButtonStyle.Danger },
+                  { name: 'Danger (Red)', value: ButtonStyle.Danger }
                 )
             )
             .addChannelOption(option =>
@@ -76,9 +76,7 @@ export const ticket: Command = {
                 .addChannelTypes(ChannelType.GuildCategory)
             )
             .addRoleOption(option =>
-              option
-                .setName('support_role')
-                .setDescription('Support role that can see tickets')
+              option.setName('support_role').setDescription('Support role that can see tickets')
             )
             .addIntegerOption(option =>
               option
@@ -99,10 +97,7 @@ export const ticket: Command = {
             .setName('load')
             .setDescription('Load and send a ticket panel')
             .addStringOption(option =>
-              option
-                .setName('panel_id')
-                .setDescription('ID of the panel to load')
-                .setRequired(true)
+              option.setName('panel_id').setDescription('ID of the panel to load').setRequired(true)
             )
             .addChannelOption(option =>
               option
@@ -124,26 +119,19 @@ export const ticket: Command = {
             )
         )
         .addSubcommand(subcommand =>
-          subcommand
-            .setName('list')
-            .setDescription('List all ticket panels in this server')
+          subcommand.setName('list').setDescription('List all ticket panels in this server')
         )
         .addSubcommand(subcommand =>
           subcommand
             .setName('edit')
             .setDescription('Edit an existing ticket panel')
             .addStringOption(option =>
-              option
-                .setName('panel_id')
-                .setDescription('ID of the panel to edit')
-                .setRequired(true)
+              option.setName('panel_id').setDescription('ID of the panel to edit').setRequired(true)
             )
         )
     )
     .addSubcommand(subcommand =>
-      subcommand
-        .setName('claim')
-        .setDescription('Claim a ticket (for support staff)')
+      subcommand.setName('claim').setDescription('Claim a ticket (for support staff)')
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -157,9 +145,7 @@ export const ticket: Command = {
         )
     )
     .addSubcommand(subcommand =>
-      subcommand
-        .setName('stats')
-        .setDescription('View ticket statistics for this server')
+      subcommand.setName('stats').setDescription('View ticket statistics for this server')
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
@@ -230,33 +216,33 @@ async function handlePanelCreate(
 
   // Collect additional options through components
   const embed = new EmbedBuilder()
-    .setTitle(t( 'tickets.panelCreation'))
-    .setDescription(t( 'tickets.configuringPanel', { id: panelId }))
+    .setTitle(t('tickets.panelCreation'))
+    .setDescription(t('tickets.configuringPanel', { id: panelId }))
     .addFields([
-      { name: t( 'tickets.title'), value: title, inline: true },
-      { name: t( 'tickets.buttonLabel'), value: buttonLabel, inline: true },
-      { name: t( 'tickets.maxTicketsPerUser'), value: maxTickets.toString(), inline: true },
+      { name: t('tickets.title'), value: title, inline: true },
+      { name: t('tickets.buttonLabel'), value: buttonLabel, inline: true },
+      { name: t('tickets.maxTicketsPerUser'), value: maxTickets.toString(), inline: true },
     ])
-    .setColor(0x00FF00);
+    .setColor(0x00ff00);
 
   const additionalRolesButton = new ButtonBuilder()
     .setCustomId('panel_add_roles')
-    .setLabel(t( 'tickets.addMoreRoles'))
+    .setLabel(t('tickets.addMoreRoles'))
     .setStyle(ButtonStyle.Secondary);
 
   const setImageButton = new ButtonBuilder()
     .setCustomId('panel_set_image')
-    .setLabel(t( 'tickets.setImage'))
+    .setLabel(t('tickets.setImage'))
     .setStyle(ButtonStyle.Secondary);
 
   const setFooterButton = new ButtonBuilder()
     .setCustomId('panel_set_footer')
-    .setLabel(t( 'tickets.setFooter'))
+    .setLabel(t('tickets.setFooter'))
     .setStyle(ButtonStyle.Secondary);
 
   const confirmButton = new ButtonBuilder()
     .setCustomId('panel_confirm')
-    .setLabel(t( 'tickets.confirmCreate'))
+    .setLabel(t('tickets.confirmCreate'))
     .setStyle(ButtonStyle.Success);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -290,10 +276,10 @@ async function handlePanelCreate(
     time: 300000, // 5 minutes
   });
 
-  collector.on('collect', async (buttonInteraction) => {
+  collector.on('collect', async buttonInteraction => {
     if (buttonInteraction.user.id !== interaction.user.id) {
       await buttonInteraction.reply({
-        content: t( 'common.notYourButton'),
+        content: t('common.notYourButton'),
         ephemeral: true,
       });
       return;
@@ -304,17 +290,17 @@ async function handlePanelCreate(
         try {
           await ticketService.createPanel(interaction.guild!, {
             ...panelData,
-            guildId: interaction.guildId!
+            guildId: interaction.guildId!,
           });
-          
+
           const successEmbed = new EmbedBuilder()
             .setTitle(t('tickets.panelCreated'))
             .setDescription(t('tickets.panelCreatedDesc', { id: panelId }))
-            .setColor(0x00FF00)
+            .setColor(0x00ff00)
             .addFields([
-              { 
-                name: t('tickets.nextStep'), 
-                value: t('tickets.useLoadCommand', { id: panelId }) 
+              {
+                name: t('tickets.nextStep'),
+                value: t('tickets.useLoadCommand', { id: panelId }),
               },
             ]);
 
@@ -334,7 +320,7 @@ async function handlePanelCreate(
       // TODO: Implement additional configuration buttons
       default:
         await buttonInteraction.reply({
-          content: t( 'common.featureNotImplemented'),
+          content: t('common.featureNotImplemented'),
           ephemeral: true,
         });
     }
@@ -361,16 +347,16 @@ async function handlePanelLoad(
 
   try {
     await ticketService.loadPanel(interaction.guild!, panelId, channel, locale);
-    
+
     await interaction.editReply({
-      content: t( 'tickets.panelLoaded', { 
-        id: panelId, 
-        channel: channel.toString() 
+      content: t('tickets.panelLoaded', {
+        id: panelId,
+        channel: channel.toString(),
       }),
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: t( 'common.error', { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -386,13 +372,13 @@ async function handlePanelDelete(
 
   try {
     await ticketService.deletePanel(interaction.guild!, panelId);
-    
+
     await interaction.editReply({
-      content: t( 'tickets.panelDeleted', { id: panelId }),
+      content: t('tickets.panelDeleted', { id: panelId }),
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: t( 'common.error', { error: error.message }),
+      content: t('common.error', { error: error.message }),
     });
   }
 }
@@ -408,21 +394,24 @@ async function handlePanelList(
 
   if (panels.length === 0) {
     await interaction.editReply({
-      content: t( 'tickets.noPanels'),
+      content: t('tickets.noPanels'),
     });
     return;
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(t( 'tickets.panelList'))
-    .setColor(0x5865F2)
+    .setTitle(t('tickets.panelList'))
+    .setColor(0x5865f2)
     .setDescription(
-      panels.map(panel => 
-        `**${panel.panelId}**\n` +
-        `${t( 'tickets.title')}: ${panel.title}\n` +
-        `${t( 'tickets.status')}: ${panel.isActive ? '✅' : '❌'}\n` +
-        `${t( 'tickets.created')}: <t:${Math.floor(panel.createdAt.getTime() / 1000)}:R>`
-      ).join('\n\n')
+      panels
+        .map(
+          panel =>
+            `**${panel.panelId}**\n` +
+            `${t('tickets.title')}: ${panel.title}\n` +
+            `${t('tickets.status')}: ${panel.isActive ? '✅' : '❌'}\n` +
+            `${t('tickets.created')}: <t:${Math.floor(panel.createdAt.getTime() / 1000)}:R>`
+        )
+        .join('\n\n')
     );
 
   await interaction.editReply({ embeds: [embed] });
@@ -436,10 +425,10 @@ async function handlePanelEdit(
   await interaction.deferReply({ ephemeral: true });
 
   // const panelId = interaction.options.getString('panel_id', true);
-  
+
   // TODO: Implement panel editing with select menus and modals
   await interaction.editReply({
-    content: t( 'common.featureNotImplemented'),
+    content: t('common.featureNotImplemented'),
   });
 }
 
@@ -453,7 +442,7 @@ async function handleClaim(
   const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
   if (!ticket) {
     await interaction.reply({
-      content: t( 'tickets.notInTicket'),
+      content: t('tickets.notInTicket'),
       ephemeral: true,
     });
     return;
@@ -461,13 +450,13 @@ async function handleClaim(
 
   try {
     await ticketService.claimTicket(ticket.id, interaction.member as any, locale);
-    
+
     await interaction.reply({
-      content: t( 'tickets.claimSuccess'),
+      content: t('tickets.claimSuccess'),
     });
   } catch (error: any) {
     await interaction.reply({
-      content: t( 'common.error', { error: error.message }),
+      content: t('common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -483,7 +472,7 @@ async function handleClose(
   const ticket = await ticketRepository.getTicketByChannel(interaction.channelId);
   if (!ticket) {
     await interaction.reply({
-      content: t( 'tickets.notInTicket'),
+      content: t('tickets.notInTicket'),
       ephemeral: true,
     });
     return;
@@ -493,14 +482,14 @@ async function handleClose(
 
   try {
     await ticketService.closeTicket(
-      ticket.id, 
-      interaction.member as any, 
+      ticket.id,
+      interaction.member as any,
       reason || undefined,
       locale
     );
 
     await interaction.reply({
-      content: t( 'tickets.closing'),
+      content: t('tickets.closing'),
     });
 
     // Delete channel after 5 seconds
@@ -513,7 +502,7 @@ async function handleClose(
     }, 5000);
   } catch (error: any) {
     await interaction.reply({
-      content: t( 'common.error', { error: error.message }),
+      content: t('common.error', { error: error.message }),
       ephemeral: true,
     });
   }
@@ -529,38 +518,38 @@ async function handleStats(
   const stats = await ticketRepository.getTicketStats(interaction.guildId!);
 
   const embed = new EmbedBuilder()
-    .setTitle(t( 'tickets.statistics'))
-    .setColor(0x5865F2)
+    .setTitle(t('tickets.statistics'))
+    .setColor(0x5865f2)
     .addFields([
-      { 
-        name: t( 'tickets.totalTickets'), 
-        value: stats.total.toString(), 
-        inline: true 
+      {
+        name: t('tickets.totalTickets'),
+        value: stats.total.toString(),
+        inline: true,
       },
-      { 
-        name: t( 'tickets.openTickets'), 
-        value: stats.open.toString(), 
-        inline: true 
+      {
+        name: t('tickets.openTickets'),
+        value: stats.open.toString(),
+        inline: true,
       },
-      { 
-        name: t( 'tickets.claimedTickets'), 
-        value: stats.claimed.toString(), 
-        inline: true 
+      {
+        name: t('tickets.claimedTickets'),
+        value: stats.claimed.toString(),
+        inline: true,
       },
-      { 
-        name: t( 'tickets.closedTickets'), 
-        value: stats.closed.toString(), 
-        inline: true 
+      {
+        name: t('tickets.closedTickets'),
+        value: stats.closed.toString(),
+        inline: true,
       },
-      { 
-        name: t( 'tickets.lockedTickets'), 
-        value: stats.locked.toString(), 
-        inline: true 
+      {
+        name: t('tickets.lockedTickets'),
+        value: stats.locked.toString(),
+        inline: true,
       },
-      { 
-        name: t( 'tickets.frozenTickets'), 
-        value: stats.frozen.toString(), 
-        inline: true 
+      {
+        name: t('tickets.frozenTickets'),
+        value: stats.frozen.toString(),
+        inline: true,
       },
     ])
     .setTimestamp();

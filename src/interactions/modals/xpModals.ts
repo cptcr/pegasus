@@ -1,6 +1,6 @@
 import { ModalSubmitInteraction, EmbedBuilder } from 'discord.js';
 import { xpService, type RankCardCustomization } from '../../services/xpService';
-import { rankCardService } from '../../services/rankCardService';
+import { RankCardService as rankCardService } from '../../services/rankCardServiceMock';
 import { logger } from '../../utils/logger';
 import { getTranslation } from '../../i18n';
 
@@ -21,13 +21,13 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     // Validate hex colors
     const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
     const colors = { backgroundColor, progressBarColor, textColor, accentColor };
-    
+
     for (const [name, value] of Object.entries(colors)) {
       if (!hexColorRegex.test(value)) {
         const embed = new EmbedBuilder()
-          .setColor(0xFF0000)
+          .setColor(0xff0000)
           .setDescription(`Invalid color format for ${name}: ${value}`);
-        
+
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -44,22 +44,20 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     const success = await xpService.saveRankCardCustomization(interaction.user.id, customization);
 
     if (!success) {
-      const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
-        .setDescription(locale.common.error);
-      
+      const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
 
     // Generate preview
     const rankData = await xpService.getUserRank(interaction.user.id, interaction.guildId!);
-    
+
     if (!rankData) {
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setDescription('Settings saved successfully!');
-      
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
@@ -68,19 +66,27 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     rankData.avatarUrl = interaction.user.displayAvatarURL({ extension: 'png', size: 256 });
 
     // Generate rank card with new customization
-    const rankCard = await rankCardService.generateRankCard(rankData, customization);
+    const rankCard = await rankCardService.generateRankCard(
+      interaction.user,
+      rankData.rank,
+      rankData.level,
+      rankData.currentLevelXp,
+      rankData.requiredXp || rankData.nextLevelXp,
+      rankData.totalXp || rankData.xp,
+      customization
+    );
 
     if (!rankCard) {
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setDescription('Settings saved successfully!');
-      
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('Card Customization Saved')
       .setDescription('Your rank card has been customized successfully!')
       .addFields(
@@ -109,11 +115,9 @@ export async function handleXPModals(interaction: ModalSubmitInteraction): Promi
     await interaction.editReply({ embeds: [embed], files: [rankCard] });
   } catch (error) {
     logger.error('Failed to handle XP card customization modal:', error);
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setDescription(locale.common.error);
-    
+
+    const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
     if (interaction.deferred) {
       await interaction.editReply({ embeds: [embed] });
     } else {

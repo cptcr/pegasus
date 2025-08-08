@@ -53,10 +53,10 @@ export class SecurityManager {
   private config: SecurityConfig;
   private violations: Map<string, ViolationRecord> = new Map();
   private alertWebhook?: WebhookClient;
-  
+
   private constructor(config: Partial<SecurityConfig> = {}) {
     this.config = { ...defaultConfig, ...config };
-    
+
     if (this.config.alertWebhookUrl) {
       try {
         this.alertWebhook = new WebhookClient({ url: this.config.alertWebhookUrl });
@@ -64,18 +64,18 @@ export class SecurityManager {
         logger.error('Failed to initialize security webhook:', error);
       }
     }
-    
+
     // Clean up old violations periodically
     setInterval(() => this.cleanupViolations(), 60000);
   }
-  
+
   static getInstance(config?: Partial<SecurityConfig>): SecurityManager {
     if (!SecurityManager.instance) {
       SecurityManager.instance = new SecurityManager(config);
     }
     return SecurityManager.instance;
   }
-  
+
   /**
    * Main security check for commands
    */
@@ -85,14 +85,14 @@ export class SecurityManager {
   ): Promise<SecurityCheckResult> {
     const userId = interaction.user.id;
     const guildId = interaction.guildId!;
-    
+
     // Check if user is immune
     if (this.config.immuneUsers.includes(userId)) {
       return { allowed: true, checks: {} };
     }
-    
+
     const checks: SecurityChecks = {};
-    
+
     // 1. Rate Limiting
     if (this.config.enableRateLimiting) {
       const rateLimitResult = await this.checkRateLimit(
@@ -102,7 +102,7 @@ export class SecurityManager {
         command.category
       );
       checks.rateLimit = rateLimitResult;
-      
+
       if (!rateLimitResult.passed) {
         await this.recordViolation(userId, 'rate_limit', interaction);
         return {
@@ -112,12 +112,12 @@ export class SecurityManager {
         };
       }
     }
-    
+
     // 2. Permission Checks
     if (this.config.enablePermissionChecks && command.permissions) {
       const permissionResult = await this.checkPermissions(interaction, command.permissions);
       checks.permissions = permissionResult;
-      
+
       if (!permissionResult.passed) {
         await this.recordViolation(userId, 'permission', interaction);
         return {
@@ -127,12 +127,12 @@ export class SecurityManager {
         };
       }
     }
-    
+
     // 3. Input Validation
     if (this.config.enableInputValidation) {
       const validationResult = await this.validateInput(interaction);
       checks.validation = validationResult;
-      
+
       if (!validationResult.passed) {
         await this.recordViolation(userId, 'validation', interaction);
         return {
@@ -142,7 +142,7 @@ export class SecurityManager {
         };
       }
     }
-    
+
     // 4. Check for security violations
     const violationCheck = await this.checkViolations(userId);
     if (violationCheck.banned) {
@@ -152,15 +152,17 @@ export class SecurityManager {
         checks,
       };
     }
-    
+
     // Log successful security check
     if (this.config.enableAuditLogging) {
-      logger.debug(`Security check passed for ${interaction.user.tag} executing ${command.data.name}`);
+      logger.debug(
+        `Security check passed for ${interaction.user.tag} executing ${command.data.name}`
+      );
     }
-    
+
     return { allowed: true, checks };
   }
-  
+
   /**
    * Validate message content
    */
@@ -168,9 +170,9 @@ export class SecurityManager {
     if (message.author.bot) {
       return { allowed: true };
     }
-    
+
     const content = message.content;
-    
+
     // Check for mass mentions
     const mentionCheck = EnhancedSanitizer.hasMassMentions(content);
     if (mentionCheck.detected) {
@@ -192,7 +194,7 @@ export class SecurityManager {
         shouldTimeout: mentionCheck.counts.total > 20,
       };
     }
-    
+
     // Check for spam
     const spamCheck = EnhancedSanitizer.isSpam(content);
     if (spamCheck.isSpam) {
@@ -204,7 +206,7 @@ export class SecurityManager {
         shouldTimeout: spamCheck.score >= 4,
       };
     }
-    
+
     // Check for sensitive data
     if (content.match(/[\w-]{24}\.[\w-]{6}\.[\w-]{27,}/)) {
       await this.sendSecurityAlert(
@@ -223,10 +225,10 @@ export class SecurityManager {
         shouldDelete: true,
       };
     }
-    
+
     return { allowed: true };
   }
-  
+
   /**
    * Check rate limits
    */
@@ -242,14 +244,14 @@ export class SecurityManager {
       commandName,
       this.getRateLimitConfig(category)
     );
-    
+
     return {
       passed: result.allowed,
       reason: result.allowed ? undefined : `Rate limit exceeded at ${result.level} level`,
       retryAfter: result.result.msBeforeNext,
     };
   }
-  
+
   /**
    * Check permissions
    */
@@ -258,7 +260,7 @@ export class SecurityManager {
     requirements: any
   ): Promise<SecurityCheckDetail> {
     const result = await PermissionChecker.check(interaction, requirements);
-    
+
     return {
       passed: result.allowed,
       reason: result.reason,
@@ -268,7 +270,7 @@ export class SecurityManager {
       },
     };
   }
-  
+
   /**
    * Validate command input
    */
@@ -277,11 +279,12 @@ export class SecurityManager {
   ): Promise<SecurityCheckDetail> {
     const commandName = interaction.commandName;
     const subcommand = interaction.options.getSubcommand(false);
-    
+
     // Extract options
     const options: Record<string, any> = {};
     interaction.options.data.forEach(opt => {
-      if (opt.type === 1) { // Subcommand
+      if (opt.type === 1) {
+        // Subcommand
         opt.options?.forEach(subOpt => {
           // Sanitize string inputs
           if (typeof subOpt.value === 'string') {
@@ -299,17 +302,17 @@ export class SecurityManager {
         }
       }
     });
-    
+
     // Validate against schema
     const validation = SchemaValidator.validateCommand(commandName, subcommand, options);
-    
+
     if (!validation.success) {
       return {
         passed: false,
         reason: validation.error,
       };
     }
-    
+
     // Additional security checks
     for (const [key, value] of Object.entries(options)) {
       if (typeof value === 'string') {
@@ -320,7 +323,7 @@ export class SecurityManager {
             reason: 'Potential injection attempt detected',
           };
         }
-        
+
         // Check for excessive length
         if (value.length > 4000) {
           return {
@@ -330,10 +333,10 @@ export class SecurityManager {
         }
       }
     }
-    
+
     return { passed: true };
   }
-  
+
   /**
    * Record security violation
    */
@@ -343,7 +346,7 @@ export class SecurityManager {
     context: ChatInputCommandInteraction | Message
   ): Promise<void> {
     let record = this.violations.get(userId);
-    
+
     if (!record) {
       record = {
         userId,
@@ -354,19 +357,20 @@ export class SecurityManager {
       };
       this.violations.set(userId, record);
     }
-    
+
     record.violations.push({
       type,
       timestamp: Date.now(),
-      guildId: 'guildId' in context ? (context as any).guildId : ((context as any).guild?.id || undefined),
+      guildId:
+        'guildId' in context ? (context as any).guildId : (context as any).guild?.id || undefined,
     });
     record.totalCount++;
-    
+
     // Check if should ban
     if (record.totalCount >= this.config.maxViolationsBeforeBan) {
       record.banned = true;
       record.bannedUntil = Date.now() + 3600000; // 1 hour ban
-      
+
       await this.sendSecurityAlert(
         'User Auto-Banned',
         `User reached violation threshold`,
@@ -378,33 +382,33 @@ export class SecurityManager {
         }
       );
     }
-    
+
     // Log violation
     logger.warn(`Security violation recorded for ${userId}: ${type}`);
   }
-  
+
   /**
    * Check user violations
    */
   private async checkViolations(userId: string): Promise<{ banned: boolean; count: number }> {
     const record = this.violations.get(userId);
-    
+
     if (!record) {
       return { banned: false, count: 0 };
     }
-    
+
     // Check if ban expired
     if (record.banned && record.bannedUntil && Date.now() > record.bannedUntil) {
       record.banned = false;
       record.bannedUntil = null;
     }
-    
+
     return {
       banned: record.banned,
       count: record.totalCount,
     };
   }
-  
+
   /**
    * Send security alert
    */
@@ -417,14 +421,14 @@ export class SecurityManager {
     if (!this.config.enableSecurityAlerts) {
       return;
     }
-    
+
     const colors = {
       low: Colors.Blue,
       medium: Colors.Yellow,
       high: Colors.Orange,
       critical: Colors.Red,
     };
-    
+
     const embed = new EmbedBuilder()
       .setTitle(`Security Alert: ${title}`)
       .setDescription(description)
@@ -435,7 +439,7 @@ export class SecurityManager {
         inline: true,
       })
       .setTimestamp();
-    
+
     if (data) {
       embed.addFields({
         name: 'Details',
@@ -443,10 +447,10 @@ export class SecurityManager {
         inline: false,
       });
     }
-    
+
     // Log locally
     logger.warn(`SECURITY ALERT [${severity.toUpperCase()}]: ${title} - ${description}`);
-    
+
     // Send to webhook if configured
     if (this.alertWebhook) {
       try {
@@ -459,7 +463,7 @@ export class SecurityManager {
       }
     }
   }
-  
+
   /**
    * Get rate limit config for category
    */
@@ -475,34 +479,32 @@ export class SecurityManager {
         return RateLimitPresets.general;
     }
   }
-  
+
   /**
    * Clean up old violations
    */
   private cleanupViolations(): void {
     const now = Date.now();
     const decayTime = this.config.violationDecayTime;
-    
+
     for (const [userId, record] of this.violations.entries()) {
       // Remove old violations
-      record.violations = record.violations.filter(
-        v => now - v.timestamp < decayTime
-      );
-      
+      record.violations = record.violations.filter(v => now - v.timestamp < decayTime);
+
       // Remove record if no recent violations
       if (record.violations.length === 0 && !record.banned) {
         this.violations.delete(userId);
       }
     }
   }
-  
+
   /**
    * Get security status for user
    */
   async getUserSecurityStatus(userId: string): Promise<UserSecurityStatus> {
     const violations = this.violations.get(userId);
     const rateLimitStatus = await rateLimiterInstance.getInstance().getStatus(`user:${userId}`);
-    
+
     return {
       userId,
       violations: violations?.totalCount || 0,
@@ -513,26 +515,26 @@ export class SecurityManager {
       trustScore: this.calculateTrustScore(userId),
     };
   }
-  
+
   /**
    * Calculate user trust score
    */
   private calculateTrustScore(userId: string): number {
     const violations = this.violations.get(userId);
-    
+
     if (!violations) {
       return 1.0; // Maximum trust
     }
-    
+
     // Decrease trust based on violations
     const violationPenalty = Math.min(violations.totalCount * 0.1, 0.9);
-    
+
     // Recent violations have more impact
     const recentViolations = violations.violations.filter(
       v => Date.now() - v.timestamp < 86400000 // 24 hours
     ).length;
     const recentPenalty = recentViolations * 0.15;
-    
+
     return Math.max(0, 1 - violationPenalty - recentPenalty);
   }
 }
@@ -582,7 +584,7 @@ export interface Violation {
   guildId?: string;
 }
 
-export type ViolationType = 
+export type ViolationType =
   | 'rate_limit'
   | 'permission'
   | 'validation'
@@ -619,9 +621,7 @@ export async function applySecurityMiddleware(
 /**
  * Apply security checks to a message
  */
-export async function applyMessageSecurity(
-  message: Message
-): Promise<MessageSecurityResult> {
+export async function applyMessageSecurity(message: Message): Promise<MessageSecurityResult> {
   const security = SecurityManager.getInstance();
   return security.validateMessage(message);
 }
@@ -637,11 +637,11 @@ export * from './rateLimiter';
 export * from './sanitizer';
 export * from './permissions';
 export * from './middleware';
-export { 
+export {
   SecurityError,
   RateLimitError,
   BlacklistError,
   SuspiciousActivityError,
-  ValidationError as SecurityValidationError 
+  ValidationError as SecurityValidationError,
 } from './errors';
 export * from './crypto';

@@ -7,11 +7,11 @@ export class GuildService {
   async ensureGuild(guild: Guild): Promise<GuildModel> {
     try {
       let guildData = await guildRepository.findById(guild.id);
-      
+
       if (!guildData) {
         logger.info(`Creating database entry for guild ${guild.name} (${guild.id})`);
         guildData = await guildRepository.create(guild.id);
-        
+
         // Initialize default settings
         await guildRepository.updateSettings(guild.id, {
           welcomeEnabled: false,
@@ -21,7 +21,7 @@ export class GuildService {
           xpRate: 1,
         });
       }
-      
+
       return guildData;
     } catch (error) {
       logger.error(`Failed to ensure guild ${guild.id}:`, error);
@@ -32,7 +32,7 @@ export class GuildService {
   async getGuildSettings(guildId: string): Promise<GuildSettings> {
     try {
       let settings = await guildRepository.getSettings(guildId);
-      
+
       if (!settings) {
         // Create default settings if they don't exist
         settings = await guildRepository.updateSettings(guildId, {
@@ -43,7 +43,7 @@ export class GuildService {
           xpRate: 1,
         });
       }
-      
+
       return settings;
     } catch (error) {
       logger.error(`Failed to get guild settings for ${guildId}:`, error);

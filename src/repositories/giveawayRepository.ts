@@ -23,19 +23,23 @@ export class GiveawayRepository {
   }
 
   async createGiveaway(data: CreateGiveawayData) {
-    const [giveaway] = await this.db.insert(giveaways).values({
-      ...data,
-      requirements: JSON.stringify(data.requirements),
-      bonusEntries: JSON.stringify(data.bonusEntries),
-      status: 'active',
-      entries: 0,
-    }).returning();
+    const [giveaway] = await this.db
+      .insert(giveaways)
+      .values({
+        ...data,
+        requirements: JSON.stringify(data.requirements),
+        bonusEntries: JSON.stringify(data.bonusEntries),
+        status: 'active',
+        entries: 0,
+      })
+      .returning();
 
     return giveaway;
   }
 
   async getGiveaway(giveawayId: string) {
-    const [giveaway] = await this.db.select()
+    const [giveaway] = await this.db
+      .select()
       .from(giveaways)
       .where(eq(giveaways.giveawayId, giveawayId))
       .limit(1);
@@ -44,7 +48,8 @@ export class GiveawayRepository {
   }
 
   async updateGiveaway(giveawayId: string, updates: Partial<typeof giveaways.$inferInsert>) {
-    const [updated] = await this.db.update(giveaways)
+    const [updated] = await this.db
+      .update(giveaways)
       .set({
         ...updates,
         updatedAt: new Date(),
@@ -57,29 +62,21 @@ export class GiveawayRepository {
 
   async addEntry(giveawayId: string, userId: string, entryCount: number) {
     // Check if user already has an entry
-    const [existing] = await this.db.select()
+    const [existing] = await this.db
+      .select()
       .from(giveawayEntries)
-      .where(
-        and(
-          eq(giveawayEntries.giveawayId, giveawayId),
-          eq(giveawayEntries.userId, userId)
-        )
-      )
+      .where(and(eq(giveawayEntries.giveawayId, giveawayId), eq(giveawayEntries.userId, userId)))
       .limit(1);
 
     if (existing) {
       // Update existing entry
-      await this.db.update(giveawayEntries)
+      await this.db
+        .update(giveawayEntries)
         .set({
           entries: entryCount,
           updatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(giveawayEntries.giveawayId, giveawayId),
-            eq(giveawayEntries.userId, userId)
-          )
-        );
+        .where(and(eq(giveawayEntries.giveawayId, giveawayId), eq(giveawayEntries.userId, userId)));
     } else {
       // Create new entry
       await this.db.insert(giveawayEntries).values({
@@ -89,7 +86,8 @@ export class GiveawayRepository {
       });
 
       // Increment entry count on giveaway
-      await this.db.update(giveaways)
+      await this.db
+        .update(giveaways)
         .set({
           entries: sql`${giveaways.entries} + 1`,
         })
@@ -98,18 +96,15 @@ export class GiveawayRepository {
   }
 
   async removeEntry(giveawayId: string, userId: string) {
-    const deleted = await this.db.delete(giveawayEntries)
-      .where(
-        and(
-          eq(giveawayEntries.giveawayId, giveawayId),
-          eq(giveawayEntries.userId, userId)
-        )
-      )
+    const deleted = await this.db
+      .delete(giveawayEntries)
+      .where(and(eq(giveawayEntries.giveawayId, giveawayId), eq(giveawayEntries.userId, userId)))
       .returning();
 
     if (deleted.length > 0) {
       // Decrement entry count on giveaway
-      await this.db.update(giveaways)
+      await this.db
+        .update(giveaways)
         .set({
           entries: sql`GREATEST(${giveaways.entries} - 1, 0)`,
         })
@@ -118,20 +113,14 @@ export class GiveawayRepository {
   }
 
   async getEntries(giveawayId: string) {
-    return this.db.select()
-      .from(giveawayEntries)
-      .where(eq(giveawayEntries.giveawayId, giveawayId));
+    return this.db.select().from(giveawayEntries).where(eq(giveawayEntries.giveawayId, giveawayId));
   }
 
   async getUserEntry(giveawayId: string, userId: string) {
-    const [entry] = await this.db.select()
+    const [entry] = await this.db
+      .select()
       .from(giveawayEntries)
-      .where(
-        and(
-          eq(giveawayEntries.giveawayId, giveawayId),
-          eq(giveawayEntries.userId, userId)
-        )
-      )
+      .where(and(eq(giveawayEntries.giveawayId, giveawayId), eq(giveawayEntries.userId, userId)))
       .limit(1);
 
     return entry;
@@ -139,20 +128,19 @@ export class GiveawayRepository {
 
   async getActiveGiveaways() {
     const db = getDatabase();
-    return db.select()
-      .from(giveaways)
-      .where(eq(giveaways.status, 'active'));
+    return db.select().from(giveaways).where(eq(giveaways.status, 'active'));
   }
 
   async getGuildGiveaways(guildId: string, status?: 'active' | 'ended' | 'cancelled') {
     const conditions = [eq(giveaways.guildId, guildId)];
-    
+
     if (status) {
       conditions.push(eq(giveaways.status, status));
     }
 
     const db = getDatabase();
-    return db.select()
+    return db
+      .select()
       .from(giveaways)
       .where(and(...conditions))
       .orderBy(giveaways.createdAt);
@@ -160,24 +148,21 @@ export class GiveawayRepository {
 
   async getExpiredGiveaways() {
     const db = getDatabase();
-    return db.select()
+    return db
+      .select()
       .from(giveaways)
-      .where(
-        and(
-          eq(giveaways.status, 'active'),
-          lt(giveaways.endTime, new Date())
-        )
-      );
+      .where(and(eq(giveaways.status, 'active'), lt(giveaways.endTime, new Date())));
   }
 
   async getUserGiveawayStats(userId: string) {
-    const entries = await this.db.select({
-      totalEntries: sql<number>`count(*)::int`,
-      totalWins: sql<number>`count(case when ${giveaways.winners}::jsonb ? ${userId} then 1 end)::int`,
-    })
-    .from(giveawayEntries)
-    .leftJoin(giveaways, eq(giveawayEntries.giveawayId, giveaways.giveawayId))
-    .where(eq(giveawayEntries.userId, userId));
+    const entries = await this.db
+      .select({
+        totalEntries: sql<number>`count(*)::int`,
+        totalWins: sql<number>`count(case when ${giveaways.winners}::jsonb ? ${userId} then 1 end)::int`,
+      })
+      .from(giveawayEntries)
+      .leftJoin(giveaways, eq(giveawayEntries.giveawayId, giveaways.giveawayId))
+      .where(eq(giveawayEntries.userId, userId));
 
     return {
       totalEntries: entries[0]?.totalEntries || 0,

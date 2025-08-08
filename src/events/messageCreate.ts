@@ -11,7 +11,7 @@ export const once = false;
 export async function execute(message: Message) {
   // Ignore bot messages
   if (message.author.bot) return;
-  
+
   // Ignore DMs
   if (!message.guild || !message.member) return;
 
@@ -28,10 +28,10 @@ export async function execute(message: Message) {
 
 async function processXPGain(message: Message) {
   if (!message.guild || !message.member) return;
-  
+
   try {
     const config = await configurationService.getXPConfig(message.guild.id);
-    
+
     // Check if XP is enabled
     if (!config.enabled) return;
 
@@ -49,11 +49,15 @@ async function processXPGain(message: Message) {
     // Handle level up
     if (config.announceLevelUp) {
       const locale = await getTranslation(message.guild.id, message.author.id);
-      
+
       // Prepare level up message
-      const xpLocale = locale.commands?.xp as { levelUp: { defaultMessage: string; title: string; rolesEarned: string } } | undefined;
-      const defaultMessage = xpLocale?.levelUp?.defaultMessage || 'Congratulations {{user}}! You reached level {{level}}!';
-      
+      const xpLocale = locale.commands?.xp as
+        | { levelUp: { defaultMessage: string; title: string; rolesEarned: string } }
+        | undefined;
+      const defaultMessage =
+        xpLocale?.levelUp?.defaultMessage ||
+        'Congratulations {{user}}! You reached level {{level}}!';
+
       let levelUpMessage = config.levelUpMessage || defaultMessage;
       levelUpMessage = levelUpMessage
         .replace('{{user}}', message.author.toString())
@@ -61,13 +65,13 @@ async function processXPGain(message: Message) {
         .replace('{{username}}', message.author.username);
 
       // Determine where to send the message
-      const targetChannel = config.levelUpChannel 
-        ? message.guild.channels.cache.get(config.levelUpChannel) as TextChannel
-        : message.channel as TextChannel;
+      const targetChannel = config.levelUpChannel
+        ? (message.guild.channels.cache.get(config.levelUpChannel) as TextChannel)
+        : (message.channel as TextChannel);
 
       if (targetChannel && targetChannel.isTextBased()) {
         const embed = new EmbedBuilder()
-          .setColor(0x00FF00)
+          .setColor(0x00ff00)
           .setTitle(xpLocale?.levelUp?.title || 'Level Up!')
           .setDescription(levelUpMessage)
           .setThumbnail(message.author.displayAvatarURL())
@@ -75,10 +79,8 @@ async function processXPGain(message: Message) {
 
         // Add role rewards info if any
         if (result.rewardRoles && result.rewardRoles.length > 0) {
-          const roleRewards = result.rewardRoles
-            .map(roleId => `<@&${roleId}>`)
-            .join(', ');
-          
+          const roleRewards = result.rewardRoles.map(roleId => `<@&${roleId}>`).join(', ');
+
           embed.addFields({
             name: xpLocale?.levelUp?.rolesEarned || 'Roles Earned',
             value: roleRewards,

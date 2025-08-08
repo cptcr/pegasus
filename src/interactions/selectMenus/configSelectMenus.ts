@@ -13,9 +13,14 @@ import { configurationService } from '../../services/configurationService';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
 
-export async function handleConfigSelectMenu(interaction: StringSelectMenuInteraction | ChannelSelectMenuInteraction | RoleSelectMenuInteraction) {
+export async function handleConfigSelectMenu(
+  interaction:
+    | StringSelectMenuInteraction
+    | ChannelSelectMenuInteraction
+    | RoleSelectMenuInteraction
+) {
   const [prefix, ...parts] = interaction.customId.split('_');
-  
+
   if (prefix !== 'config') return;
 
   const menuType = parts.join('_');
@@ -46,7 +51,7 @@ export async function handleConfigSelectMenu(interaction: StringSelectMenuIntera
     }
   } catch (error) {
     logger.error(`Error handling config select menu ${interaction.customId}:`, error);
-    
+
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: t('common.error'),
@@ -58,14 +63,14 @@ export async function handleConfigSelectMenu(interaction: StringSelectMenuIntera
 
 async function handleXPChannelType(interaction: StringSelectMenuInteraction) {
   const type = interaction.values[0];
-  
+
   const modal = new ModalBuilder()
     .setCustomId(`config_xp_channels_${type}_modal`)
     .setTitle(t(`config.xp.channels.types.${type === 'no_xp' ? 'noXp' : type}`));
 
   const config = await configurationService.getXPConfig(interaction.guildId!);
   let currentChannels: string[] = [];
-  
+
   switch (type) {
     case 'ignored':
       currentChannels = config.ignoredChannels;
@@ -95,7 +100,7 @@ async function handleXPChannelType(interaction: StringSelectMenuInteraction) {
 
 async function handleXPRewardAction(interaction: StringSelectMenuInteraction): Promise<void> {
   const action = interaction.values[0];
-  
+
   switch (action) {
     case 'add': {
       const modal = new ModalBuilder()
@@ -124,10 +129,10 @@ async function handleXPRewardAction(interaction: StringSelectMenuInteraction): P
       await interaction.showModal(modal);
       break;
     }
-    
+
     case 'remove': {
       const rewards = await configurationService.getXPRoleRewards(interaction.guildId!);
-      
+
       if (rewards.length === 0) {
         await interaction.reply({
           content: 'No rewards to remove',
@@ -154,21 +159,21 @@ async function handleXPRewardAction(interaction: StringSelectMenuInteraction): P
       await interaction.showModal(modal);
       break;
     }
-    
+
     case 'clear': {
       await interaction.deferUpdate();
-      
+
       const rewards = await configurationService.getXPRoleRewards(interaction.guildId!);
       for (const reward of rewards) {
         await configurationService.removeXPRoleReward(interaction.guildId!, reward.level);
       }
-      
+
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setTitle('XP Rewards Cleared')
         .setDescription('All XP role rewards have been removed')
         .setTimestamp();
-        
+
       await interaction.editReply({
         embeds: [embed],
         components: [],
@@ -180,7 +185,7 @@ async function handleXPRewardAction(interaction: StringSelectMenuInteraction): P
 
 async function handleEcoShopAction(interaction: StringSelectMenuInteraction): Promise<void> {
   const action = interaction.values[0];
-  
+
   switch (action) {
     case 'add': {
       const modal = new ModalBuilder()
@@ -231,11 +236,11 @@ async function handleEcoShopAction(interaction: StringSelectMenuInteraction): Pr
       await interaction.showModal(modal);
       break;
     }
-    
+
     case 'edit':
     case 'remove': {
       await interaction.deferUpdate();
-      
+
       const items = await configurationService.getShopItems(interaction.guildId!);
       if (items.length === 0) {
         await interaction.editReply({
@@ -244,7 +249,7 @@ async function handleEcoShopAction(interaction: StringSelectMenuInteraction): Pr
         });
         return;
       }
-      
+
       // Show item selection menu
       // This would require another select menu with item options
       // For now, we'll use a modal with item ID
@@ -269,9 +274,11 @@ async function handleEcoShopAction(interaction: StringSelectMenuInteraction): Pr
   }
 }
 
-async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteraction): Promise<void> {
+async function handleWelcomeChannelSelect(
+  interaction: ChannelSelectMenuInteraction
+): Promise<void> {
   const channel = interaction.channels.first();
-  
+
   if (!channel || !('isTextBased' in channel && channel.isTextBased())) {
     await interaction.reply({
       content: 'Please select a valid text channel',
@@ -281,13 +288,13 @@ async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteract
   }
 
   await interaction.deferUpdate();
-  
+
   await configurationService.updateWelcomeConfig(interaction.guildId!, {
     channel: channel.id,
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(0x00ff00)
     .setTitle('Welcome Channel Updated')
     .setDescription(`Welcome messages will now be sent to ${channel}`)
     .setTimestamp();
@@ -298,9 +305,11 @@ async function handleWelcomeChannelSelect(interaction: ChannelSelectMenuInteract
   });
 }
 
-async function handleGoodbyeChannelSelect(interaction: ChannelSelectMenuInteraction): Promise<void> {
+async function handleGoodbyeChannelSelect(
+  interaction: ChannelSelectMenuInteraction
+): Promise<void> {
   const channel = interaction.channels.first();
-  
+
   if (!channel || !('isTextBased' in channel && channel.isTextBased())) {
     await interaction.reply({
       content: 'Please select a valid text channel',
@@ -310,13 +319,13 @@ async function handleGoodbyeChannelSelect(interaction: ChannelSelectMenuInteract
   }
 
   await interaction.deferUpdate();
-  
+
   await configurationService.updateGoodbyeConfig(interaction.guildId!, {
     channel: channel.id,
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(0x00ff00)
     .setTitle('Goodbye Channel Updated')
     .setDescription(`Goodbye messages will now be sent to ${channel}`)
     .setTimestamp();
@@ -329,19 +338,19 @@ async function handleGoodbyeChannelSelect(interaction: ChannelSelectMenuInteract
 
 async function handleAutoroleAddSelect(interaction: RoleSelectMenuInteraction) {
   await interaction.deferUpdate();
-  
+
   const roles = interaction.roles.map(role => role.id);
   const config = await configurationService.getAutoroleConfig(interaction.guildId!);
-  
+
   // Merge with existing roles (up to 10 total)
   const allRoles = [...new Set([...config.roles, ...roles])].slice(0, 10);
-  
+
   await configurationService.updateAutoroleConfig(interaction.guildId!, {
     roles: allRoles,
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(0x00ff00)
     .setTitle('Autorole Updated')
     .setDescription(`Added ${roles.length} role(s) to autorole`)
     .addFields({
@@ -359,25 +368,23 @@ async function handleAutoroleAddSelect(interaction: RoleSelectMenuInteraction) {
 
 async function handleAutoroleRemoveSelect(interaction: StringSelectMenuInteraction) {
   await interaction.deferUpdate();
-  
+
   const roleToRemove = interaction.values[0];
   const config = await configurationService.getAutoroleConfig(interaction.guildId!);
-  
+
   const newRoles = config.roles.filter(id => id !== roleToRemove);
-  
+
   await configurationService.updateAutoroleConfig(interaction.guildId!, {
     roles: newRoles,
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x00FF00)
+    .setColor(0x00ff00)
     .setTitle('Autorole Updated')
     .setDescription('Removed role from autorole')
     .addFields({
       name: 'Remaining Roles',
-      value: newRoles.length > 0
-        ? newRoles.map(id => `<@&${id}>`).join('\n')
-        : t('common.none'),
+      value: newRoles.length > 0 ? newRoles.map(id => `<@&${id}>`).join('\n') : t('common.none'),
       inline: false,
     })
     .setTimestamp();

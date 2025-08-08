@@ -7,11 +7,11 @@ export const name = Events.GuildCreate;
 
 export async function execute(guild: Guild) {
   logger.info(chalk.green(`Joined new guild: ${guild.name} (${guild.id})`));
-  
+
   try {
     // Ensure guild exists in database
     await guildService.ensureGuild(guild);
-    
+
     // Log guild statistics
     logger.info(`Guild members: ${guild.memberCount}`);
     logger.info(`Guild owner: ${guild.ownerId}`);

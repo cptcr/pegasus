@@ -11,7 +11,7 @@ import { getTranslation } from '../../i18n';
 
 export async function handleXPButtons(interaction: ButtonInteraction): Promise<void> {
   const [action, type, ...params] = interaction.customId.split('_');
-  
+
   if (action !== 'xp') return;
 
   const locale = await getTranslation(interaction.guildId!, interaction.user.id);
@@ -31,7 +31,7 @@ async function handleLeaderboardNavigation(
   try {
     const [direction, currentPageStr] = params;
     const currentPage = parseInt(currentPageStr, 10);
-    
+
     if (isNaN(currentPage)) {
       await interaction.reply({
         content: locale.common.error,
@@ -41,7 +41,7 @@ async function handleLeaderboardNavigation(
     }
 
     const newPage = direction === 'prev' ? currentPage - 1 : currentPage + 1;
-    
+
     if (newPage < 1) {
       await interaction.reply({
         content: locale.common.error,
@@ -72,12 +72,19 @@ async function handleLeaderboardNavigation(
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setTitle(locale.commands.xp.leaderboard.title.replace('{{guild}}', interaction.guild!.name))
       .setDescription(
         leaderboardData.entries
-          .map((entry) => {
-            const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `**${entry.rank}.**`;
+          .map(entry => {
+            const medal =
+              entry.rank === 1
+                ? '🥇'
+                : entry.rank === 2
+                  ? '🥈'
+                  : entry.rank === 3
+                    ? '🥉'
+                    : `**${entry.rank}.**`;
             return `${medal} <@${entry.userId}> - ${locale.commands.xp.leaderboard.entry
               .replace('{{level}}', entry.level.toString())
               .replace('{{xp}}', entry.xp.toLocaleString())}`;
@@ -107,7 +114,7 @@ async function handleLeaderboardNavigation(
     await interaction.editReply({ embeds: [embed], components: [row] });
   } catch (error) {
     logger.error('Failed to handle leaderboard navigation:', error);
-    
+
     await interaction.followUp({
       content: locale.common.error,
       ephemeral: true,

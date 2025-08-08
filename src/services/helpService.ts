@@ -20,23 +20,25 @@ export class HelpService {
 
       for (const category of categoryFolders) {
         const categoryPath = join(commandsPath, category);
-        const commandFiles = readdirSync(categoryPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+        const commandFiles = readdirSync(categoryPath).filter(
+          file => file.endsWith('.ts') || file.endsWith('.js')
+        );
 
         for (const file of commandFiles) {
           try {
             const filePath = join(categoryPath, file);
             const command = await import(filePath);
-            
+
             if (command.default && 'data' in command.default && 'execute' in command.default) {
               const cmd = command.default as Command;
               const commandName = cmd.data.name;
-              
+
               this.commands.set(commandName, cmd);
-              
+
               if (!this.commandsByCategory.has(cmd.category)) {
                 this.commandsByCategory.set(cmd.category, []);
               }
-              
+
               this.commandsByCategory.get(cmd.category)!.push(cmd);
             }
           } catch (error) {
@@ -64,27 +66,25 @@ export class HelpService {
       CommandCategory.Giveaways,
       CommandCategory.Tickets,
       CommandCategory.Fun,
-      CommandCategory.Admin
+      CommandCategory.Admin,
     ];
 
     for (const category of categoryOrder) {
       const commands = this.commandsByCategory.get(category);
-      
+
       if (commands && commands.length > 0) {
-        const commandList = commands
-          .map(cmd => `\`/${cmd.data.name}\``)
-          .join(', ');
-        
+        const commandList = commands.map(cmd => `\`/${cmd.data.name}\``).join(', ');
+
         embed.addFields({
           name: t(`commands.help.categories.${category}`, { lng: locale }),
           value: commandList || t('common.none', { lng: locale }),
-          inline: false
+          inline: false,
         });
       }
     }
 
-    embed.setFooter({ 
-      text: t('commands.help.menuFooter', { lng: locale })
+    embed.setFooter({
+      text: t('commands.help.menuFooter', { lng: locale }),
     });
 
     return embed;
@@ -92,7 +92,7 @@ export class HelpService {
 
   async getCommandHelp(commandName: string, locale: string): Promise<EmbedBuilder | null> {
     const command = this.commands.get(commandName);
-    
+
     if (!command) {
       return null;
     }
@@ -104,39 +104,40 @@ export class HelpService {
         {
           name: t('commands.help.commandName', { lng: locale }),
           value: `\`/${command.data.name}\``,
-          inline: true
+          inline: true,
         },
         {
           name: t('commands.help.category', { lng: locale }),
           value: t(`commands.help.categories.${command.category}`, { lng: locale }),
-          inline: true
-        }
+          inline: true,
+        },
       ]);
 
     // Add description
-    const description = command.data.description || t('commands.help.noDescription', { lng: locale });
+    const description =
+      command.data.description || t('commands.help.noDescription', { lng: locale });
     embed.addFields({
       name: t('commands.help.description', { lng: locale }),
       value: description,
-      inline: false
+      inline: false,
     });
 
     // Add usage
     embed.addFields({
       name: t('commands.help.usage', { lng: locale }),
       value: this.generateUsage(command),
-      inline: false
+      inline: false,
     });
 
     // Add cooldown if exists
     if (command.cooldown) {
       embed.addFields({
         name: t('commands.help.cooldown', { lng: locale }),
-        value: t('commands.help.cooldownValue', { 
-          lng: locale, 
-          seconds: command.cooldown 
+        value: t('commands.help.cooldownValue', {
+          lng: locale,
+          seconds: command.cooldown,
         }),
-        inline: true
+        inline: true,
       });
     }
 
@@ -145,7 +146,7 @@ export class HelpService {
       embed.addFields({
         name: t('commands.help.permissions', { lng: locale }),
         value: command.permissions.map(p => `\`${p}\``).join(', '),
-        inline: false
+        inline: false,
       });
     }
 
@@ -156,13 +157,13 @@ export class HelpService {
         embed.addFields({
           name: t('commands.help.subcommands', { lng: locale }),
           value: subcommands.join('\n'),
-          inline: false
+          inline: false,
         });
       }
     }
 
-    embed.setFooter({ 
-      text: t('commands.help.commandFooter', { lng: locale })
+    embed.setFooter({
+      text: t('commands.help.commandFooter', { lng: locale }),
     });
 
     embed.setTimestamp();
@@ -172,43 +173,44 @@ export class HelpService {
 
   private generateUsage(command: Command): string {
     let usage = `\`/${command.data.name}`;
-    
+
     if ('options' in command.data && command.data.options) {
       const options = command.data.options as any[];
-      
+
       for (const option of options) {
-        if (option.type === 1) { // Subcommand
+        if (option.type === 1) {
+          // Subcommand
           usage += ` ${option.name}`;
-          
+
           if (option.options) {
             for (const subOption of option.options) {
-              usage += subOption.required 
-                ? ` <${subOption.name}>` 
-                : ` [${subOption.name}]`;
+              usage += subOption.required ? ` <${subOption.name}>` : ` [${subOption.name}]`;
             }
           }
-          
+
           usage += `\`\n\`/${command.data.name}`;
         }
       }
     }
-    
+
     usage = usage.replace(/\n\`\/[^`]+$/, '');
     usage += '`';
-    
+
     return usage;
   }
 
   private getSubcommands(command: Command): string[] {
     const subcommands: string[] = [];
-    
+
     if ('options' in command.data && command.data.options) {
       const options = command.data.options as any[];
-      
+
       for (const option of options) {
-        if (option.type === 1) { // Subcommand
+        if (option.type === 1) {
+          // Subcommand
           subcommands.push(`• \`${option.name}\` - ${option.description}`);
-        } else if (option.type === 2) { // Subcommand group
+        } else if (option.type === 2) {
+          // Subcommand group
           for (const subOption of option.options || []) {
             if (subOption.type === 1) {
               subcommands.push(`• \`${option.name} ${subOption.name}\` - ${subOption.description}`);
@@ -217,7 +219,7 @@ export class HelpService {
         }
       }
     }
-    
+
     return subcommands;
   }
 

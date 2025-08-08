@@ -1,42 +1,50 @@
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-import { drizzle } from 'drizzle-orm/postgres-js';
+import fs from 'fs';
+import path from 'path';
+import { Client } from 'pg';
+import { config } from '../config/env';
 import { logger } from '../utils/logger';
-import { config } from 'dotenv';
-
-config();
 
 async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL;
-  
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const sql = postgres(connectionString, { max: 1 });
-  const db = drizzle(sql);
-
-  logger.info('Running database migrations...');
+  const client = new Client({
+    connectionString: config.DATABASE_URL,
+  });
 
   try {
-    await migrate(db, { migrationsFolder: './drizzle' });
-    logger.info('Migrations completed successfully');
+    await client.connect();
+    logger.info('Connected to database for migrations');
+
+    const migrationsDir = path.join(__dirname, 'migrations');
+    const migrationFiles = fs
+      .readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort();
+
+    logger.info(`Found ${migrationFiles.length} migration files`);
+
+    for (const file of migrationFiles) {
+      logger.info(`Running migration: ${file}`);
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+
+      try {
+        await client.query(sql);
+        logger.info(`✓ Migration ${file} completed successfully`);
+      } catch (error) {
+        logger.error(`✗ Migration ${file} failed:`, error);
+        throw error;
+      }
+    }
+
+    logger.info('All migrations completed successfully');
   } catch (error) {
     logger.error('Migration failed:', error);
-    throw error;
+    process.exit(1);
   } finally {
-    await sql.end();
+    await client.end();
   }
 }
 
-// Run migrations if this file is executed directly
 if (require.main === module) {
-  runMigrations()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      logger.error('Migration script failed:', error);
-      process.exit(1);
-    });
+  runMigrations();
 }
 
 export { runMigrations };

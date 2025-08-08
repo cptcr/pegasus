@@ -20,7 +20,7 @@ export class RankCardService {
 ✨ XP: ${currentXp}/${requiredXp}
 🎯 Total XP: ${totalXp}
     `.trim();
-    
+
     const buffer = Buffer.from(content, 'utf-8');
     return new AttachmentBuilder(buffer, { name: 'rank.txt' });
   }

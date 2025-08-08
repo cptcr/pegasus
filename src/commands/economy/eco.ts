@@ -14,17 +14,17 @@ export const data = new SlashCommandBuilder()
   .setDescription('Economy system commands')
   .setDescriptionLocalizations({
     'es-ES': 'Comandos del sistema económico',
-    'fr': 'Commandes du système économique',
-    'de': 'Wirtschaftssystem-Befehle',
+    fr: 'Commandes du système économique',
+    de: 'Wirtschaftssystem-Befehle',
   })
   .addSubcommand(subcommand =>
     subcommand
       .setName('balance')
-      .setDescription('Check your or another user\'s balance')
+      .setDescription("Check your or another user's balance")
       .setDescriptionLocalizations({
         'es-ES': 'Consulta tu saldo o el de otro usuario',
-        'fr': 'Vérifiez votre solde ou celui d\'un autre utilisateur',
-        'de': 'Überprüfe dein Guthaben oder das eines anderen Benutzers',
+        fr: "Vérifiez votre solde ou celui d'un autre utilisateur",
+        de: 'Überprüfe dein Guthaben oder das eines anderen Benutzers',
       })
       .addUserOption(option =>
         option
@@ -32,8 +32,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('The user to check balance for')
           .setDescriptionLocalizations({
             'es-ES': 'El usuario para verificar el saldo',
-            'fr': 'L\'utilisateur dont vérifier le solde',
-            'de': 'Der Benutzer, dessen Guthaben überprüft werden soll',
+            fr: "L'utilisateur dont vérifier le solde",
+            de: 'Der Benutzer, dessen Guthaben überprüft werden soll',
           })
           .setRequired(false)
       )
@@ -44,19 +44,16 @@ export const data = new SlashCommandBuilder()
       .setDescription('Claim your daily reward')
       .setDescriptionLocalizations({
         'es-ES': 'Reclama tu recompensa diaria',
-        'fr': 'Réclamez votre récompense quotidienne',
-        'de': 'Fordere deine tägliche Belohnung an',
+        fr: 'Réclamez votre récompense quotidienne',
+        de: 'Fordere deine tägliche Belohnung an',
       })
   )
   .addSubcommand(subcommand =>
-    subcommand
-      .setName('work')
-      .setDescription('Work to earn money')
-      .setDescriptionLocalizations({
-        'es-ES': 'Trabaja para ganar dinero',
-        'fr': 'Travaillez pour gagner de l\'argent',
-        'de': 'Arbeite um Geld zu verdienen',
-      })
+    subcommand.setName('work').setDescription('Work to earn money').setDescriptionLocalizations({
+      'es-ES': 'Trabaja para ganar dinero',
+      fr: "Travaillez pour gagner de l'argent",
+      de: 'Arbeite um Geld zu verdienen',
+    })
   )
   .addSubcommand(subcommand =>
     subcommand
@@ -64,8 +61,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Attempt to rob another user')
       .setDescriptionLocalizations({
         'es-ES': 'Intenta robar a otro usuario',
-        'fr': 'Tentez de voler un autre utilisateur',
-        'de': 'Versuche einen anderen Benutzer auszurauben',
+        fr: 'Tentez de voler un autre utilisateur',
+        de: 'Versuche einen anderen Benutzer auszurauben',
       })
       .addUserOption(option =>
         option
@@ -73,8 +70,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('The user to rob')
           .setDescriptionLocalizations({
             'es-ES': 'El usuario a robar',
-            'fr': 'L\'utilisateur à voler',
-            'de': 'Der Benutzer zum Ausrauben',
+            fr: "L'utilisateur à voler",
+            de: 'Der Benutzer zum Ausrauben',
           })
           .setRequired(true)
       )
@@ -85,8 +82,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Gambling games')
       .setDescriptionLocalizations({
         'es-ES': 'Juegos de azar',
-        'fr': 'Jeux de hasard',
-        'de': 'Glücksspiele',
+        fr: 'Jeux de hasard',
+        de: 'Glücksspiele',
       })
       .addSubcommand(subcommand =>
         subcommand
@@ -94,8 +91,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Roll dice against the dealer')
           .setDescriptionLocalizations({
             'es-ES': 'Tira los dados contra el crupier',
-            'fr': 'Lancez les dés contre le croupier',
-            'de': 'Würfle gegen den Dealer',
+            fr: 'Lancez les dés contre le croupier',
+            de: 'Würfle gegen den Dealer',
           })
           .addIntegerOption(option =>
             option
@@ -103,8 +100,8 @@ export const data = new SlashCommandBuilder()
               .setDescription('Amount to bet')
               .setDescriptionLocalizations({
                 'es-ES': 'Cantidad a apostar',
-                'fr': 'Montant à parier',
-                'de': 'Einsatzbetrag',
+                fr: 'Montant à parier',
+                de: 'Einsatzbetrag',
               })
               .setRequired(true)
               .setMinValue(1)
@@ -116,15 +113,11 @@ export const data = new SlashCommandBuilder()
           .setDescription('Flip a coin')
           .setDescriptionLocalizations({
             'es-ES': 'Lanza una moneda',
-            'fr': 'Lancez une pièce',
-            'de': 'Wirf eine Münze',
+            fr: 'Lancez une pièce',
+            de: 'Wirf eine Münze',
           })
           .addIntegerOption(option =>
-            option
-              .setName('bet')
-              .setDescription('Amount to bet')
-              .setRequired(true)
-              .setMinValue(1)
+            option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
           )
           .addStringOption(option =>
             option
@@ -132,14 +125,11 @@ export const data = new SlashCommandBuilder()
               .setDescription('Heads or tails')
               .setDescriptionLocalizations({
                 'es-ES': 'Cara o cruz',
-                'fr': 'Pile ou face',
-                'de': 'Kopf oder Zahl',
+                fr: 'Pile ou face',
+                de: 'Kopf oder Zahl',
               })
               .setRequired(true)
-              .addChoices(
-                { name: 'Heads', value: 'heads' },
-                { name: 'Tails', value: 'tails' }
-              )
+              .addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })
           )
       )
       .addSubcommand(subcommand =>
@@ -148,15 +138,11 @@ export const data = new SlashCommandBuilder()
           .setDescription('Play the slot machine')
           .setDescriptionLocalizations({
             'es-ES': 'Juega a la máquina tragamonedas',
-            'fr': 'Jouez à la machine à sous',
-            'de': 'Spiele am Spielautomaten',
+            fr: 'Jouez à la machine à sous',
+            de: 'Spiele am Spielautomaten',
           })
           .addIntegerOption(option =>
-            option
-              .setName('bet')
-              .setDescription('Amount to bet')
-              .setRequired(true)
-              .setMinValue(1)
+            option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
           )
       )
       .addSubcommand(subcommand =>
@@ -165,15 +151,11 @@ export const data = new SlashCommandBuilder()
           .setDescription('Play blackjack against the dealer')
           .setDescriptionLocalizations({
             'es-ES': 'Juega al blackjack contra el crupier',
-            'fr': 'Jouez au blackjack contre le croupier',
-            'de': 'Spiele Blackjack gegen den Dealer',
+            fr: 'Jouez au blackjack contre le croupier',
+            de: 'Spiele Blackjack gegen den Dealer',
           })
           .addIntegerOption(option =>
-            option
-              .setName('bet')
-              .setDescription('Amount to bet')
-              .setRequired(true)
-              .setMinValue(1)
+            option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
           )
       )
       .addSubcommand(subcommand =>
@@ -182,15 +164,11 @@ export const data = new SlashCommandBuilder()
           .setDescription('Play roulette')
           .setDescriptionLocalizations({
             'es-ES': 'Juega a la ruleta',
-            'fr': 'Jouez à la roulette',
-            'de': 'Spiele Roulette',
+            fr: 'Jouez à la roulette',
+            de: 'Spiele Roulette',
           })
           .addIntegerOption(option =>
-            option
-              .setName('bet')
-              .setDescription('Amount to bet')
-              .setRequired(true)
-              .setMinValue(1)
+            option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
           )
           .addStringOption(option =>
             option
@@ -198,8 +176,8 @@ export const data = new SlashCommandBuilder()
               .setDescription('Type of bet')
               .setDescriptionLocalizations({
                 'es-ES': 'Tipo de apuesta',
-                'fr': 'Type de pari',
-                'de': 'Art der Wette',
+                fr: 'Type de pari',
+                de: 'Art der Wette',
               })
               .setRequired(true)
               .addChoices(
@@ -221,8 +199,8 @@ export const data = new SlashCommandBuilder()
               .setDescription('Specific number to bet on (0-36)')
               .setDescriptionLocalizations({
                 'es-ES': 'Número específico para apostar (0-36)',
-                'fr': 'Numéro spécifique sur lequel parier (0-36)',
-                'de': 'Spezifische Zahl zum Setzen (0-36)',
+                fr: 'Numéro spécifique sur lequel parier (0-36)',
+                de: 'Spezifische Zahl zum Setzen (0-36)',
               })
               .setMinValue(0)
               .setMaxValue(36)
@@ -235,8 +213,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Shop commands')
       .setDescriptionLocalizations({
         'es-ES': 'Comandos de la tienda',
-        'fr': 'Commandes de la boutique',
-        'de': 'Shop-Befehle',
+        fr: 'Commandes de la boutique',
+        de: 'Shop-Befehle',
       })
       .addSubcommand(subcommand =>
         subcommand
@@ -244,8 +222,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('View available shop items')
           .setDescriptionLocalizations({
             'es-ES': 'Ver artículos disponibles en la tienda',
-            'fr': 'Voir les articles disponibles dans la boutique',
-            'de': 'Verfügbare Shop-Artikel anzeigen',
+            fr: 'Voir les articles disponibles dans la boutique',
+            de: 'Verfügbare Shop-Artikel anzeigen',
           })
       )
       .addSubcommand(subcommand =>
@@ -254,8 +232,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Purchase an item from the shop')
           .setDescriptionLocalizations({
             'es-ES': 'Comprar un artículo de la tienda',
-            'fr': 'Acheter un article dans la boutique',
-            'de': 'Einen Artikel aus dem Shop kaufen',
+            fr: 'Acheter un article dans la boutique',
+            de: 'Einen Artikel aus dem Shop kaufen',
           })
           .addStringOption(option =>
             option
@@ -263,8 +241,8 @@ export const data = new SlashCommandBuilder()
               .setDescription('The item to purchase')
               .setDescriptionLocalizations({
                 'es-ES': 'El artículo a comprar',
-                'fr': 'L\'article à acheter',
-                'de': 'Der zu kaufende Artikel',
+                fr: "L'article à acheter",
+                de: 'Der zu kaufende Artikel',
               })
               .setRequired(true)
               .setAutocomplete(true)
@@ -275,8 +253,8 @@ export const data = new SlashCommandBuilder()
               .setDescription('Quantity to purchase')
               .setDescriptionLocalizations({
                 'es-ES': 'Cantidad a comprar',
-                'fr': 'Quantité à acheter',
-                'de': 'Zu kaufende Menge',
+                fr: 'Quantité à acheter',
+                de: 'Zu kaufende Menge',
               })
               .setMinValue(1)
               .setMaxValue(99)
@@ -288,8 +266,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('View your purchased items')
           .setDescriptionLocalizations({
             'es-ES': 'Ver tus artículos comprados',
-            'fr': 'Voir vos articles achetés',
-            'de': 'Ihre gekauften Artikel anzeigen',
+            fr: 'Voir vos articles achetés',
+            de: 'Ihre gekauften Artikel anzeigen',
           })
       )
   );
@@ -328,7 +306,7 @@ export async function execute(interaction: any) {
 
 export async function autocomplete(interaction: any) {
   const group = interaction.options.getSubcommandGroup();
-  
+
   if (group === 'shop') {
     await shopAutocomplete(interaction);
   }

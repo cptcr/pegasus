@@ -1,11 +1,11 @@
-import { 
-  ActionRowBuilder, 
-  ButtonBuilder, 
-  ButtonStyle, 
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   EmbedBuilder,
   Guild,
   TextChannel,
-  User
+  User,
 } from 'discord.js';
 import { warningRepository } from '../repositories/warningRepository';
 import { auditLogger } from '../security/audit';
@@ -58,12 +58,7 @@ export class WarningService {
     return warning;
   }
 
-  async editWarning(
-    warnId: string,
-    title: string,
-    description: string | null,
-    editedBy: User
-  ) {
+  async editWarning(warnId: string, title: string, description: string | null, editedBy: User) {
     const warning = await warningRepository.getWarningById(warnId);
     if (!warning) {
       throw new Error('Warning not found');
@@ -99,7 +94,10 @@ export class WarningService {
 
       if (automation.triggerType === 'warn_count' && stats.count >= automation.triggerValue) {
         shouldTrigger = true;
-      } else if (automation.triggerType === 'warn_level' && stats.totalLevel >= automation.triggerValue) {
+      } else if (
+        automation.triggerType === 'warn_level' &&
+        stats.totalLevel >= automation.triggerValue
+      ) {
         shouldTrigger = true;
       }
 
@@ -125,15 +123,18 @@ export class WarningService {
     stats: { count: number; totalLevel: number }
   ) {
     const actions = automation.actions as WarningAction[];
-    
+
     // Send notification with action buttons if configured
-    const notificationChannel = guild.systemChannel || guild.channels.cache.find(
-      (ch): ch is TextChannel => ch.type === 0 && ch.permissionsFor(guild.members.me!)?.has('SendMessages') || false
-    );
+    const notificationChannel =
+      guild.systemChannel ||
+      guild.channels.cache.find(
+        (ch): ch is TextChannel =>
+          (ch.type === 0 && ch.permissionsFor(guild.members.me!)?.has('SendMessages')) || false
+      );
 
     if (notificationChannel) {
       const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle(t('warnings.automation.triggered'))
         .setDescription(
           t('warnings.automation.description', {
@@ -207,23 +208,26 @@ export class WarningService {
     }
   }
 
-  async getWarningEmbed(warning: {
-    warnId: string;
-    userId: string;
-    moderatorId: string;
-    title: string;
-    description?: string | null;
-    level: number;
-    proof?: string | null;
-    createdAt: Date;
-    editedAt?: Date | null;
-    editedBy?: string | null;
-  }, guild: Guild): Promise<EmbedBuilder> {
+  async getWarningEmbed(
+    warning: {
+      warnId: string;
+      userId: string;
+      moderatorId: string;
+      title: string;
+      description?: string | null;
+      level: number;
+      proof?: string | null;
+      createdAt: Date;
+      editedAt?: Date | null;
+      editedBy?: string | null;
+    },
+    guild: Guild
+  ): Promise<EmbedBuilder> {
     const user = await guild.client.users.fetch(warning.userId).catch(() => null);
     const moderator = await guild.client.users.fetch(warning.moderatorId).catch(() => null);
 
     const embed = new EmbedBuilder()
-      .setColor(0xFFA500)
+      .setColor(0xffa500)
       .setTitle(t('warnings.embed.title', { warnId: warning.warnId }))
       .addFields(
         {
@@ -310,7 +314,7 @@ export class WarningService {
 
   async deleteAutomation(automationId: string, deletedBy: User) {
     const automation = await warningRepository.deleteAutomation(automationId);
-    
+
     if (automation) {
       await auditLogger.logAction({
         action: 'WARN_AUTOMATION_DELETE',

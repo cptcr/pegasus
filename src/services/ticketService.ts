@@ -1,8 +1,8 @@
-import { 
-  TextChannel, 
-  Guild, 
-  PermissionFlagsBits, 
-  ChannelType, 
+import {
+  TextChannel,
+  Guild,
+  PermissionFlagsBits,
+  ChannelType,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -13,7 +13,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  ModalSubmitInteraction
+  ModalSubmitInteraction,
 } from 'discord.js';
 import { TicketRepository, TicketPanelData } from '../repositories/ticketRepository';
 import { t } from '../i18n';
@@ -53,7 +53,7 @@ export class TicketService {
     const embed = new EmbedBuilder()
       .setTitle(panel.title)
       .setDescription(panel.description)
-      .setColor(0x5865F2);
+      .setColor(0x5865f2);
 
     if (panel.imageUrl) {
       embed.setImage(panel.imageUrl);
@@ -92,7 +92,7 @@ export class TicketService {
     // Delete panel message if exists
     if (panel.messageId && panel.channelId) {
       try {
-        const channel = await guild.channels.fetch(panel.channelId) as TextChannel;
+        const channel = (await guild.channels.fetch(panel.channelId)) as TextChannel;
         const message = await channel.messages.fetch(panel.messageId);
         await message.delete();
       } catch (error) {
@@ -122,7 +122,7 @@ export class TicketService {
     let category: CategoryChannel | null = null;
     if (panel.categoryId) {
       try {
-        category = await guild.channels.fetch(panel.categoryId) as CategoryChannel;
+        category = (await guild.channels.fetch(panel.categoryId)) as CategoryChannel;
       } catch (error) {
         // Category might have been deleted
       }
@@ -192,7 +192,7 @@ export class TicketService {
           inline: false,
         },
       ])
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTimestamp();
 
     // Create control buttons
@@ -221,7 +221,7 @@ export class TicketService {
         .setCustomId(`ticket_claim:${ticket.id}`)
         .setLabel(t('tickets.claim'))
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('🙋'),
+        .setEmoji('🙋')
     );
 
     // Send ticket panel and ping support roles
@@ -236,7 +236,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticket.id,
       member.id,
-      t('tickets.ticketCreatedLog', { user: member.user.tag, reason }),
+      t('tickets.ticketCreatedLog', { user: member.user.tag, reason })
     );
 
     return { ticket, channel: ticketChannel };
@@ -257,7 +257,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       claimedBy.id,
-      t('tickets.claimedBy', { user: claimedBy.user.tag }),
+      t('tickets.claimedBy', { user: claimedBy.user.tag })
     );
 
     return ticket;
@@ -285,10 +285,10 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       closedBy.id,
-      t('tickets.closedBy', { 
-        user: closedBy.user.tag, 
-        reason: reason || 'No reason provided' 
-      }),
+      t('tickets.closedBy', {
+        user: closedBy.user.tag,
+        reason: reason || 'No reason provided',
+      })
     );
 
     return { ticket, transcript };
@@ -305,7 +305,7 @@ export class TicketService {
     }
 
     // Update permissions
-    const channel = await guild.channels.fetch(ticket.channelId) as TextChannel;
+    const channel = (await guild.channels.fetch(ticket.channelId)) as TextChannel;
     await channel.permissionOverwrites.edit(ticket.userId, {
       SendMessages: false,
     });
@@ -314,7 +314,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       lockedBy.id,
-      t('tickets.lockedBy', { user: lockedBy.user.tag }),
+      t('tickets.lockedBy', { user: lockedBy.user.tag })
     );
 
     return ticket;
@@ -331,11 +331,11 @@ export class TicketService {
     }
 
     // Update permissions - freeze prevents everyone except admins from sending
-    const channel = await guild.channels.fetch(ticket.channelId) as TextChannel;
-    
+    const channel = (await guild.channels.fetch(ticket.channelId)) as TextChannel;
+
     // Get panel to access support roles
     const panel = ticket.panelId ? await this.ticketRepository.getPanelById(ticket.panelId) : null;
-    
+
     // Deny send messages for user
     await channel.permissionOverwrites.edit(ticket.userId, {
       SendMessages: false,
@@ -354,7 +354,7 @@ export class TicketService {
     await this.ticketRepository.addTicketMessage(
       ticketId,
       frozenBy.id,
-      t('tickets.frozenBy', { user: frozenBy.user.tag }),
+      t('tickets.frozenBy', { user: frozenBy.user.tag })
     );
 
     return ticket;
@@ -368,7 +368,7 @@ export class TicketService {
     transcript += `User: ${ticket.userId}\n`;
     transcript += `Reason: ${ticket.reason || 'No reason provided'}\n\n`;
     transcript += `Messages:\n`;
-    transcript += `${'='.repeat(50)  }\n\n`;
+    transcript += `${'='.repeat(50)}\n\n`;
 
     for (const msg of messages) {
       transcript += `[${msg.createdAt}] ${msg.userId}: ${msg.content}\n`;

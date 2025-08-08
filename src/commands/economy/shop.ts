@@ -1,12 +1,12 @@
-import { 
-  SlashCommandBuilder, 
-  ChatInputCommandInteraction, 
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-  ButtonInteraction
+  ButtonInteraction,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyService } from '../../services/economyService';
@@ -18,8 +18,8 @@ export const data = new SlashCommandBuilder()
   .setDescription('View and purchase items from the shop')
   .setDescriptionLocalizations({
     'es-ES': 'Ver y comprar artículos de la tienda',
-    'fr': 'Voir et acheter des articles dans la boutique',
-    'de': 'Artikel im Shop anzeigen und kaufen',
+    fr: 'Voir et acheter des articles dans la boutique',
+    de: 'Artikel im Shop anzeigen und kaufen',
   })
   .addSubcommand(subcommand =>
     subcommand
@@ -27,8 +27,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('View available shop items')
       .setDescriptionLocalizations({
         'es-ES': 'Ver artículos disponibles en la tienda',
-        'fr': 'Voir les articles disponibles dans la boutique',
-        'de': 'Verfügbare Shop-Artikel anzeigen',
+        fr: 'Voir les articles disponibles dans la boutique',
+        de: 'Verfügbare Shop-Artikel anzeigen',
       })
   )
   .addSubcommand(subcommand =>
@@ -37,8 +37,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Purchase an item from the shop')
       .setDescriptionLocalizations({
         'es-ES': 'Comprar un artículo de la tienda',
-        'fr': 'Acheter un article dans la boutique',
-        'de': 'Einen Artikel aus dem Shop kaufen',
+        fr: 'Acheter un article dans la boutique',
+        de: 'Einen Artikel aus dem Shop kaufen',
       })
       .addStringOption(option =>
         option
@@ -46,8 +46,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('The item to purchase')
           .setDescriptionLocalizations({
             'es-ES': 'El artículo a comprar',
-            'fr': 'L\'article à acheter',
-            'de': 'Der zu kaufende Artikel',
+            fr: "L'article à acheter",
+            de: 'Der zu kaufende Artikel',
           })
           .setRequired(true)
           .setAutocomplete(true)
@@ -58,8 +58,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Quantity to purchase')
           .setDescriptionLocalizations({
             'es-ES': 'Cantidad a comprar',
-            'fr': 'Quantité à acheter',
-            'de': 'Zu kaufende Menge',
+            fr: 'Quantité à acheter',
+            de: 'Zu kaufende Menge',
           })
           .setMinValue(1)
           .setMaxValue(99)
@@ -71,8 +71,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('View your purchased items')
       .setDescriptionLocalizations({
         'es-ES': 'Ver tus artículos comprados',
-        'fr': 'Voir vos articles achetés',
-        'de': 'Ihre gekauften Artikel anzeigen',
+        fr: 'Voir vos articles achetés',
+        de: 'Ihre gekauften Artikel anzeigen',
       })
   );
 
@@ -97,7 +97,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 async function handleViewShop(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
-  
+
   const guildId = interaction.guildId!;
   const userId = interaction.user.id;
 
@@ -110,14 +110,18 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
       // Create default shop items if none exist
       await createDefaultShopItems(guildId);
       const newItems = await economyRepository.getShopItems(guildId, true);
-      
+
       if (newItems.length === 0) {
         await interaction.editReply({
-          embeds: [embedBuilder.createErrorEmbed('The shop is currently empty. Please contact an administrator.')]
+          embeds: [
+            embedBuilder.createErrorEmbed(
+              'The shop is currently empty. Please contact an administrator.'
+            ),
+          ],
         });
         return;
       }
-      
+
       items.push(...newItems);
     }
 
@@ -131,7 +135,9 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
 
       const embed = new EmbedBuilder()
         .setTitle(`${settings.currencySymbol} Shop`)
-        .setDescription(`Your balance: ${settings.currencySymbol}${balance.balance.toLocaleString()}`)
+        .setDescription(
+          `Your balance: ${settings.currencySymbol}${balance.balance.toLocaleString()}`
+        )
         .setColor(0x3498db)
         .setFooter({ text: `Page ${page + 1}/${totalPages} • Use /shop buy <item> to purchase` })
         .setTimestamp();
@@ -139,13 +145,16 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
       pageItems.forEach((item, index) => {
         const stockText = item.stock === -1 ? 'Unlimited' : `${item.stock} left`;
         const affordableEmoji = balance.balance >= item.price ? '✅' : '❌';
-        
+
         embed.addFields({
           name: `${affordableEmoji} ${start + index + 1}. ${item.name}`,
-          value: `${item.description}\n` +
-                 `**Price:** ${settings.currencySymbol}${item.price.toLocaleString()} | **Stock:** ${stockText}` +
-                 (item.effectType ? `\n**Effect:** ${formatEffect(item.effectType, item.effectValue)}` : ''),
-          inline: false
+          value:
+            `${item.description}\n` +
+            `**Price:** ${settings.currencySymbol}${item.price.toLocaleString()} | **Stock:** ${stockText}` +
+            (item.effectType
+              ? `\n**Effect:** ${formatEffect(item.effectType, item.effectValue)}`
+              : ''),
+          inline: false,
         });
       });
 
@@ -153,44 +162,43 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
     };
 
     const createButtons = (page: number) => {
-      return new ActionRowBuilder<ButtonBuilder>()
-        .addComponents(
-          new ButtonBuilder()
-            .setCustomId('shop_first')
-            .setLabel('⏮️')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(page === 0),
-          new ButtonBuilder()
-            .setCustomId('shop_prev')
-            .setLabel('◀️')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(page === 0),
-          new ButtonBuilder()
-            .setCustomId('shop_refresh')
-            .setLabel('🔄')
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId('shop_next')
-            .setLabel('▶️')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(page === totalPages - 1),
-          new ButtonBuilder()
-            .setCustomId('shop_last')
-            .setLabel('⏭️')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(page === totalPages - 1)
-        );
+      return new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('shop_first')
+          .setLabel('⏮️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page === 0),
+        new ButtonBuilder()
+          .setCustomId('shop_prev')
+          .setLabel('◀️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page === 0),
+        new ButtonBuilder()
+          .setCustomId('shop_refresh')
+          .setLabel('🔄')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('shop_next')
+          .setLabel('▶️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page === totalPages - 1),
+        new ButtonBuilder()
+          .setCustomId('shop_last')
+          .setLabel('⏭️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(page === totalPages - 1)
+      );
     };
 
     const message = await interaction.editReply({
       embeds: [createShopEmbed(currentPage)],
-      components: totalPages > 1 ? [createButtons(currentPage)] : []
+      components: totalPages > 1 ? [createButtons(currentPage)] : [],
     });
 
     if (totalPages > 1) {
       const collector = message.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 300000 // 5 minutes
+        time: 300000, // 5 minutes
       });
 
       collector.on('collect', async (i: ButtonInteraction) => {
@@ -221,7 +229,7 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
 
         await i.update({
           embeds: [createShopEmbed(currentPage)],
-          components: [createButtons(currentPage)]
+          components: [createButtons(currentPage)],
         });
       });
 
@@ -232,14 +240,14 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error viewing shop:', error);
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed('Failed to load shop. Please try again later.')]
+      embeds: [embedBuilder.createErrorEmbed('Failed to load shop. Please try again later.')],
     });
   }
 }
 
 async function handleBuyItem(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
-  
+
   const itemName = interaction.options.getString('item', true);
   const quantity = interaction.options.getInteger('quantity') || 1;
   const userId = interaction.user.id;
@@ -251,7 +259,7 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
 
     if (!item) {
       await interaction.editReply({
-        embeds: [embedBuilder.createErrorEmbed('Item not found in the shop!')]
+        embeds: [embedBuilder.createErrorEmbed('Item not found in the shop!')],
       });
       return;
     }
@@ -261,7 +269,7 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
 
     if (!result.success) {
       await interaction.editReply({
-        embeds: [embedBuilder.createErrorEmbed(result.error!)]
+        embeds: [embedBuilder.createErrorEmbed(result.error!)],
       });
       return;
     }
@@ -272,15 +280,15 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
       .setColor(0x2ecc71)
       .setThumbnail(interaction.user.displayAvatarURL())
       .addFields(
-        { 
-          name: 'Total Cost', 
-          value: `${settings.currencySymbol}${(item.price * quantity).toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'Total Cost',
+          value: `${settings.currencySymbol}${(item.price * quantity).toLocaleString()}`,
+          inline: true,
         },
-        { 
-          name: 'New Balance', 
-          value: `${settings.currencySymbol}${result.balance!.balance.toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'New Balance',
+          value: `${settings.currencySymbol}${result.balance!.balance.toLocaleString()}`,
+          inline: true,
         }
       )
       .setTimestamp();
@@ -289,7 +297,7 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
       embed.addFields({
         name: 'Effect',
         value: formatEffect(item.effectType, item.effectValue),
-        inline: false
+        inline: false,
       });
     }
 
@@ -297,14 +305,14 @@ async function handleBuyItem(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error buying item:', error);
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed('Failed to purchase item. Please try again later.')]
+      embeds: [embedBuilder.createErrorEmbed('Failed to purchase item. Please try again later.')],
     });
   }
 }
 
 async function handleViewInventory(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
-  
+
   const userId = interaction.user.id;
   const guildId = interaction.guildId!;
 
@@ -313,7 +321,11 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
 
     if (userItems.length === 0) {
       await interaction.editReply({
-        embeds: [embedBuilder.createInfoEmbed('Your inventory is empty! Visit the shop to purchase items.')]
+        embeds: [
+          embedBuilder.createInfoEmbed(
+            'Your inventory is empty! Visit the shop to purchase items.'
+          ),
+        ],
       });
       return;
     }
@@ -326,15 +338,19 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
       .setTimestamp();
 
     userItems.forEach(userItem => {
-      const expiryText = userItem.expiresAt ? 
-        `\nExpires: <t:${Math.floor(userItem.expiresAt.getTime() / 1000)}:R>` : '';
-      
+      const expiryText = userItem.expiresAt
+        ? `\nExpires: <t:${Math.floor(userItem.expiresAt.getTime() / 1000)}:R>`
+        : '';
+
       embed.addFields({
         name: `${userItem.item.name} (x${userItem.quantity})`,
-        value: `${userItem.item.description}` +
-               (userItem.item.effectType ? `\n**Effect:** ${formatEffect(userItem.item.effectType, userItem.item.effectValue)}` : '') +
-               expiryText,
-        inline: false
+        value:
+          `${userItem.item.description}` +
+          (userItem.item.effectType
+            ? `\n**Effect:** ${formatEffect(userItem.item.effectType, userItem.item.effectValue)}`
+            : '') +
+          expiryText,
+        inline: false,
       });
     });
 
@@ -342,7 +358,7 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error viewing inventory:', error);
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed('Failed to load inventory. Please try again later.')]
+      embeds: [embedBuilder.createErrorEmbed('Failed to load inventory. Please try again later.')],
     });
   }
 }
@@ -360,7 +376,7 @@ export async function autocomplete(interaction: any) {
     await interaction.respond(
       filtered.map(item => ({
         name: item.name,
-        value: item.name
+        value: item.name,
       }))
     );
   } catch (error) {
@@ -436,7 +452,7 @@ async function createDefaultShopItems(guildId: string) {
       effectType: 'bank_access',
       effectValue: { uses: 1 },
       stock: -1,
-    }
+    },
   ];
 
   for (const item of defaultItems) {

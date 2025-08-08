@@ -7,13 +7,13 @@ export const data = new SlashCommandBuilder()
   .setDescription(t('commands.ping.description'))
   .setNameLocalizations({
     'es-ES': 'ping',
-    'fr': 'ping',
-    'de': 'ping',
+    fr: 'ping',
+    de: 'ping',
   })
   .setDescriptionLocalizations({
     'es-ES': 'Comprueba la latencia del bot',
-    'fr': 'Vérifier la latence du bot',
-    'de': 'Überprüfe die Latenz des Bots',
+    fr: 'Vérifier la latence du bot',
+    de: 'Überprüfe die Latenz des Bots',
   });
 
 export const category = CommandCategory.Utility;
@@ -24,7 +24,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const latency = sent.createdTimestamp - interaction.createdTimestamp;
   const apiLatency = Math.round(interaction.client.ws.ping);
 
-  await interaction.editReply(
-    t('commands.ping.response', { latency, apiLatency })
-  );
+  await interaction.editReply(t('commands.ping.response', { latency, apiLatency }));
 }

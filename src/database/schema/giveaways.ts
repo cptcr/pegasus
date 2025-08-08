@@ -4,10 +4,14 @@ import { users } from './users';
 
 export const giveaways = pgTable('giveaways', {
   giveawayId: varchar('giveaway_id', { length: 20 }).primaryKey(),
-  guildId: varchar('guild_id', { length: 20 }).references(() => guilds.id, { onDelete: 'cascade' }).notNull(),
+  guildId: varchar('guild_id', { length: 20 })
+    .references(() => guilds.id, { onDelete: 'cascade' })
+    .notNull(),
   channelId: varchar('channel_id', { length: 20 }).notNull(),
   messageId: varchar('message_id', { length: 20 }),
-  hostedBy: varchar('hosted_by', { length: 20 }).references(() => users.id, { onDelete: 'set null' }).notNull(),
+  hostedBy: varchar('hosted_by', { length: 20 })
+    .references(() => users.id, { onDelete: 'set null' })
+    .notNull(),
   prize: text('prize').notNull(),
   description: text('description'),
   winnerCount: integer('winner_count').default(1).notNull(),
@@ -16,19 +20,27 @@ export const giveaways = pgTable('giveaways', {
   entries: integer('entries').default(0).notNull(),
   requirements: json('requirements').default({}).notNull(),
   bonusEntries: json('bonus_entries').default({}).notNull(),
-  embedColor: integer('embed_color').default(0x0099FF).notNull(),
+  embedColor: integer('embed_color').default(0x0099ff).notNull(),
   winners: json('winners'),
   endedAt: timestamp('ended_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const giveawayEntries = pgTable('giveaway_entries', {
-  giveawayId: varchar('giveaway_id', { length: 20 }).references(() => giveaways.giveawayId, { onDelete: 'cascade' }).notNull(),
-  userId: varchar('user_id', { length: 20 }).references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  entries: integer('entries').default(1).notNull(),
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  pk: primaryKey(table.giveawayId, table.userId),
-}));
+export const giveawayEntries = pgTable(
+  'giveaway_entries',
+  {
+    giveawayId: varchar('giveaway_id', { length: 20 })
+      .references(() => giveaways.giveawayId, { onDelete: 'cascade' })
+      .notNull(),
+    userId: varchar('user_id', { length: 20 })
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    entries: integer('entries').default(1).notNull(),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => ({
+    pk: primaryKey(table.giveawayId, table.userId),
+  })
+);

@@ -33,21 +33,15 @@ export class EconomyRepository {
     const result = await this.db
       .select()
       .from(economyBalances)
-      .where(and(
-        eq(economyBalances.userId, userId),
-        eq(economyBalances.guildId, guildId)
-      ))
+      .where(and(eq(economyBalances.userId, userId), eq(economyBalances.guildId, guildId)))
       .limit(1);
-    
+
     return result[0] || null;
   }
 
   async createBalance(data: NewEconomyBalance): Promise<EconomyBalance> {
-    const [balance] = await this.db
-      .insert(economyBalances)
-      .values(data)
-      .returning();
-    
+    const [balance] = await this.db.insert(economyBalances).values(data).returning();
+
     return balance;
   }
 
@@ -59,29 +53,28 @@ export class EconomyRepository {
     const [updated] = await this.db
       .update(economyBalances)
       .set(updates)
-      .where(and(
-        eq(economyBalances.userId, userId),
-        eq(economyBalances.guildId, guildId)
-      ))
+      .where(and(eq(economyBalances.userId, userId), eq(economyBalances.guildId, guildId)))
       .returning();
-    
+
     return updated || null;
   }
 
-  async addToBalance(userId: string, guildId: string, amount: number): Promise<EconomyBalance | null> {
+  async addToBalance(
+    userId: string,
+    guildId: string,
+    amount: number
+  ): Promise<EconomyBalance | null> {
     const [updated] = await this.db
       .update(economyBalances)
       .set({
         balance: sql`${economyBalances.balance} + ${amount}`,
         totalEarned: amount > 0 ? sql`${economyBalances.totalEarned} + ${amount}` : undefined,
-        totalSpent: amount < 0 ? sql`${economyBalances.totalSpent} + ${Math.abs(amount)}` : undefined,
+        totalSpent:
+          amount < 0 ? sql`${economyBalances.totalSpent} + ${Math.abs(amount)}` : undefined,
       })
-      .where(and(
-        eq(economyBalances.userId, userId),
-        eq(economyBalances.guildId, guildId)
-      ))
+      .where(and(eq(economyBalances.userId, userId), eq(economyBalances.guildId, guildId)))
       .returning();
-    
+
     return updated || null;
   }
 
@@ -96,22 +89,20 @@ export class EconomyRepository {
 
   // Transaction operations
   async createTransaction(data: NewEconomyTransaction): Promise<EconomyTransaction> {
-    const [transaction] = await this.db
-      .insert(economyTransactions)
-      .values(data)
-      .returning();
-    
+    const [transaction] = await this.db.insert(economyTransactions).values(data).returning();
+
     return transaction;
   }
 
-  async getTransactions(userId: string, guildId: string, limit = 10): Promise<EconomyTransaction[]> {
+  async getTransactions(
+    userId: string,
+    guildId: string,
+    limit = 10
+  ): Promise<EconomyTransaction[]> {
     return await this.db
       .select()
       .from(economyTransactions)
-      .where(and(
-        eq(economyTransactions.userId, userId),
-        eq(economyTransactions.guildId, guildId)
-      ))
+      .where(and(eq(economyTransactions.userId, userId), eq(economyTransactions.guildId, guildId)))
       .orderBy(desc(economyTransactions.createdAt))
       .limit(limit);
   }
@@ -121,10 +112,7 @@ export class EconomyRepository {
     return await this.db
       .select()
       .from(economyShopItems)
-      .where(and(
-        eq(economyShopItems.guildId, guildId),
-        eq(economyShopItems.enabled, enabled)
-      ))
+      .where(and(eq(economyShopItems.guildId, guildId), eq(economyShopItems.enabled, enabled)))
       .orderBy(asc(economyShopItems.price));
   }
 
@@ -134,16 +122,13 @@ export class EconomyRepository {
       .from(economyShopItems)
       .where(eq(economyShopItems.id, itemId))
       .limit(1);
-    
+
     return result[0] || null;
   }
 
   async createShopItem(data: NewEconomyShopItem): Promise<EconomyShopItem> {
-    const [item] = await this.db
-      .insert(economyShopItems)
-      .values(data)
-      .returning();
-    
+    const [item] = await this.db.insert(economyShopItems).values(data).returning();
+
     return item;
   }
 
@@ -156,46 +141,55 @@ export class EconomyRepository {
       .set(updates)
       .where(eq(economyShopItems.id, itemId))
       .returning();
-    
+
     return updated || null;
   }
 
   // User items operations
-  async getUserItems(userId: string, guildId: string, active = true): Promise<(EconomyUserItem & { item: EconomyShopItem })[]> {
+  async getUserItems(
+    userId: string,
+    guildId: string,
+    active = true
+  ): Promise<(EconomyUserItem & { item: EconomyShopItem })[]> {
     const results = await this.db
       .select()
       .from(economyUserItems)
       .innerJoin(economyShopItems, eq(economyUserItems.itemId, economyShopItems.id))
-      .where(and(
-        eq(economyUserItems.userId, userId),
-        eq(economyUserItems.guildId, guildId),
-        eq(economyUserItems.active, active)
-      ));
-    
+      .where(
+        and(
+          eq(economyUserItems.userId, userId),
+          eq(economyUserItems.guildId, guildId),
+          eq(economyUserItems.active, active)
+        )
+      );
+
     return results.map(r => ({ ...r.economy_user_items, item: r.economy_shop_items }));
   }
 
-  async getUserItem(userId: string, guildId: string, itemId: string): Promise<EconomyUserItem | null> {
+  async getUserItem(
+    userId: string,
+    guildId: string,
+    itemId: string
+  ): Promise<EconomyUserItem | null> {
     const result = await this.db
       .select()
       .from(economyUserItems)
-      .where(and(
-        eq(economyUserItems.userId, userId),
-        eq(economyUserItems.guildId, guildId),
-        eq(economyUserItems.itemId, itemId),
-        eq(economyUserItems.active, true)
-      ))
+      .where(
+        and(
+          eq(economyUserItems.userId, userId),
+          eq(economyUserItems.guildId, guildId),
+          eq(economyUserItems.itemId, itemId),
+          eq(economyUserItems.active, true)
+        )
+      )
       .limit(1);
-    
+
     return result[0] || null;
   }
 
   async addUserItem(data: NewEconomyUserItem): Promise<EconomyUserItem> {
-    const [item] = await this.db
-      .insert(economyUserItems)
-      .values(data)
-      .returning();
-    
+    const [item] = await this.db.insert(economyUserItems).values(data).returning();
+
     return item;
   }
 
@@ -208,7 +202,7 @@ export class EconomyRepository {
       .set(updates)
       .where(eq(economyUserItems.id, id))
       .returning();
-    
+
     return updated || null;
   }
 
@@ -217,33 +211,38 @@ export class EconomyRepository {
       .select()
       .from(economyUserItems)
       .innerJoin(economyShopItems, eq(economyUserItems.itemId, economyShopItems.id))
-      .where(and(
-        eq(economyUserItems.userId, userId),
-        eq(economyUserItems.guildId, guildId),
-        eq(economyUserItems.active, true),
-        eq(economyShopItems.effectType, 'rob_protection'),
-        or(
-          isNull(economyUserItems.expiresAt),
-          gte(economyUserItems.expiresAt, new Date())
+      .where(
+        and(
+          eq(economyUserItems.userId, userId),
+          eq(economyUserItems.guildId, guildId),
+          eq(economyUserItems.active, true),
+          eq(economyShopItems.effectType, 'rob_protection'),
+          or(isNull(economyUserItems.expiresAt), gte(economyUserItems.expiresAt, new Date()))
         )
-      ))
+      )
       .limit(1);
-    
+
     return result.length > 0;
   }
 
   // Cooldown operations
-  async getCooldown(userId: string, guildId: string, commandType: string): Promise<EconomyCooldown | null> {
+  async getCooldown(
+    userId: string,
+    guildId: string,
+    commandType: string
+  ): Promise<EconomyCooldown | null> {
     const result = await this.db
       .select()
       .from(economyCooldowns)
-      .where(and(
-        eq(economyCooldowns.userId, userId),
-        eq(economyCooldowns.guildId, guildId),
-        eq(economyCooldowns.commandType, commandType)
-      ))
+      .where(
+        and(
+          eq(economyCooldowns.userId, userId),
+          eq(economyCooldowns.guildId, guildId),
+          eq(economyCooldowns.commandType, commandType)
+        )
+      )
       .limit(1);
-    
+
     return result[0] || null;
   }
 
@@ -259,29 +258,35 @@ export class EconomyRepository {
         },
       })
       .returning();
-    
+
     return cooldown;
   }
 
   async isOnCooldown(userId: string, guildId: string, commandType: string): Promise<boolean> {
     const cooldown = await this.getCooldown(userId, guildId, commandType);
     if (!cooldown) return false;
-    
+
     return cooldown.nextAvailable > new Date();
   }
 
   // Gambling statistics operations
-  async getGamblingStats(userId: string, guildId: string, gameType: string): Promise<EconomyGamblingStats | null> {
+  async getGamblingStats(
+    userId: string,
+    guildId: string,
+    gameType: string
+  ): Promise<EconomyGamblingStats | null> {
     const result = await this.db
       .select()
       .from(economyGamblingStats)
-      .where(and(
-        eq(economyGamblingStats.userId, userId),
-        eq(economyGamblingStats.guildId, guildId),
-        eq(economyGamblingStats.gameType, gameType)
-      ))
+      .where(
+        and(
+          eq(economyGamblingStats.userId, userId),
+          eq(economyGamblingStats.guildId, guildId),
+          eq(economyGamblingStats.gameType, gameType)
+        )
+      )
       .limit(1);
-    
+
     return result[0] || null;
   }
 
@@ -294,10 +299,10 @@ export class EconomyRepository {
     payout: number
   ): Promise<EconomyGamblingStats> {
     const existing = await this.getGamblingStats(userId, guildId, gameType);
-    
+
     const netAmount = payout - wagered;
     const isWin = netAmount > 0;
-    
+
     if (existing) {
       const newStreak = won ? existing.currentStreak + 1 : 0;
       const [updated] = await this.db
@@ -308,17 +313,22 @@ export class EconomyRepository {
           totalWagered: existing.totalWagered + wagered,
           totalWon: existing.totalWon + (isWin ? netAmount : 0),
           biggestWin: isWin && netAmount > existing.biggestWin ? netAmount : existing.biggestWin,
-          biggestLoss: !isWin && Math.abs(netAmount) > existing.biggestLoss ? Math.abs(netAmount) : existing.biggestLoss,
+          biggestLoss:
+            !isWin && Math.abs(netAmount) > existing.biggestLoss
+              ? Math.abs(netAmount)
+              : existing.biggestLoss,
           currentStreak: newStreak,
           bestStreak: newStreak > existing.bestStreak ? newStreak : existing.bestStreak,
         })
-        .where(and(
-          eq(economyGamblingStats.userId, userId),
-          eq(economyGamblingStats.guildId, guildId),
-          eq(economyGamblingStats.gameType, gameType)
-        ))
+        .where(
+          and(
+            eq(economyGamblingStats.userId, userId),
+            eq(economyGamblingStats.guildId, guildId),
+            eq(economyGamblingStats.gameType, gameType)
+          )
+        )
         .returning();
-      
+
       return updated;
     } else {
       const [created] = await this.db
@@ -337,7 +347,7 @@ export class EconomyRepository {
           bestStreak: won ? 1 : 0,
         })
         .returning();
-      
+
       return created;
     }
   }
@@ -347,14 +357,16 @@ export class EconomyRepository {
     const result = await this.db
       .select({ count: sql<number>`COUNT(*)` })
       .from(economyTransactions)
-      .where(and(
-        eq(economyTransactions.userId, userId),
-        eq(economyTransactions.guildId, guildId),
-        eq(economyTransactions.type, 'gamble'),
-        gte(economyTransactions.createdAt, since)
-      ))
+      .where(
+        and(
+          eq(economyTransactions.userId, userId),
+          eq(economyTransactions.guildId, guildId),
+          eq(economyTransactions.type, 'gamble'),
+          gte(economyTransactions.createdAt, since)
+        )
+      )
       .limit(1);
-    
+
     return result[0]?.count || 0;
   }
 
@@ -365,16 +377,13 @@ export class EconomyRepository {
       .from(economySettings)
       .where(eq(economySettings.guildId, guildId))
       .limit(1);
-    
+
     return result[0] || null;
   }
 
   async createSettings(data: NewEconomySettings): Promise<EconomySettings> {
-    const [settings] = await this.db
-      .insert(economySettings)
-      .values(data)
-      .returning();
-    
+    const [settings] = await this.db.insert(economySettings).values(data).returning();
+
     return settings;
   }
 
@@ -387,14 +396,14 @@ export class EconomyRepository {
       .set(updates)
       .where(eq(economySettings.guildId, guildId))
       .returning();
-    
+
     return updated || null;
   }
 
   async ensureSettings(guildId: string): Promise<EconomySettings> {
     const existing = await this.getSettings(guildId);
     if (existing) return existing;
-    
+
     return await this.createSettings({ guildId });
   }
 }

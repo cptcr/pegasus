@@ -4,26 +4,30 @@ import { z } from 'zod';
 export const ValidationSchemas = {
   // Discord IDs
   snowflake: z.string().regex(/^\d{17,19}$/, 'Invalid Discord ID'),
-  
+
   // User input strings
-  username: z.string().min(1).max(32).regex(/^[a-zA-Z0-9_]+$/, 'Invalid username format'),
+  username: z
+    .string()
+    .min(1)
+    .max(32)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Invalid username format'),
   title: z.string().min(1).max(255).trim(),
   description: z.string().max(4000).trim().optional(),
   shortText: z.string().max(1000).trim(),
-  
+
   // Numbers
   level: z.number().int().min(1).max(10),
   amount: z.number().int().min(0).max(1000000000), // Max 1 billion
   percentage: z.number().min(0).max(100),
-  
+
   // Time
   duration: z.number().int().min(1).max(31536000), // Max 1 year in seconds
   timestamp: z.date().or(z.number().int().positive()),
-  
+
   // Arrays with limits
   snowflakeArray: z.array(z.string().regex(/^\d{17,19}$/)).max(100),
   stringArray: z.array(z.string().max(255)).max(50),
-  
+
   // File validation
   attachment: z.object({
     url: z.string().url(),
@@ -31,7 +35,7 @@ export const ValidationSchemas = {
     size: z.number().max(8388608), // 8MB max
     contentType: z.string().optional(),
   }),
-  
+
   // Pagination
   page: z.number().int().min(1).max(1000).default(1),
   limit: z.number().int().min(1).max(100).default(10),
@@ -47,48 +51,53 @@ export const CommandSchemas = {
       level: ValidationSchemas.level.default(1),
       proof: ValidationSchemas.attachment.optional(),
     }),
-    
+
     edit: z.object({
       warnId: z.string().uuid(),
       title: ValidationSchemas.title,
       description: ValidationSchemas.description,
     }),
-    
+
     automation: z.object({
       name: ValidationSchemas.title,
       description: ValidationSchemas.description,
       triggerType: z.enum(['warn_count', 'warn_level']),
       triggerValue: z.number().int().min(1).max(100),
-      actions: z.array(z.object({
-        type: z.enum(['ban', 'kick', 'timeout', 'role', 'message']),
-        duration: z.number().optional(),
-        roleId: ValidationSchemas.snowflake.optional(),
-        message: z.string().max(2000).optional(),
-      })).min(1).max(5),
+      actions: z
+        .array(
+          z.object({
+            type: z.enum(['ban', 'kick', 'timeout', 'role', 'message']),
+            duration: z.number().optional(),
+            roleId: ValidationSchemas.snowflake.optional(),
+            message: z.string().max(2000).optional(),
+          })
+        )
+        .min(1)
+        .max(5),
     }),
   },
-  
+
   economy: {
     balance: z.object({
       userId: ValidationSchemas.snowflake.optional(),
     }),
-    
+
     gamble: z.object({
       amount: ValidationSchemas.amount.min(1),
       game: z.enum(['dice', 'slots', 'blackjack', 'roulette']),
     }),
-    
+
     shop: z.object({
       action: z.enum(['view', 'buy']),
       itemId: z.string().uuid().optional(),
       quantity: z.number().int().min(1).max(99).default(1),
     }),
-    
+
     rob: z.object({
       userId: ValidationSchemas.snowflake,
     }),
   },
-  
+
   moderation: {
     ban: z.object({
       userId: ValidationSchemas.snowflake,
@@ -96,19 +105,19 @@ export const CommandSchemas = {
       duration: ValidationSchemas.duration.optional(),
       deleteMessages: z.boolean().default(false),
     }),
-    
+
     kick: z.object({
       userId: ValidationSchemas.snowflake,
       reason: ValidationSchemas.description,
     }),
-    
+
     timeout: z.object({
       userId: ValidationSchemas.snowflake,
       duration: ValidationSchemas.duration,
       reason: ValidationSchemas.description,
     }),
   },
-  
+
   giveaway: {
     start: z.object({
       title: ValidationSchemas.title,
@@ -119,23 +128,28 @@ export const CommandSchemas = {
       requiredRoles: ValidationSchemas.snowflakeArray.optional(),
       blacklistedRoles: ValidationSchemas.snowflakeArray.optional(),
       minLevel: z.number().int().min(0).max(100).optional(),
-      bonusEntries: z.array(z.object({
-        roleId: ValidationSchemas.snowflake,
-        entries: z.number().int().min(1).max(10),
-      })).max(10).optional(),
+      bonusEntries: z
+        .array(
+          z.object({
+            roleId: ValidationSchemas.snowflake,
+            entries: z.number().int().min(1).max(10),
+          })
+        )
+        .max(10)
+        .optional(),
     }),
-    
+
     end: z.object({
       giveawayId: z.string().uuid(),
       force: z.boolean().default(false),
     }),
-    
+
     reroll: z.object({
       giveawayId: z.string().uuid(),
       winnerCount: z.number().int().min(1).max(20).optional(),
     }),
   },
-  
+
   ticket: {
     panel: z.object({
       title: ValidationSchemas.title,
@@ -146,18 +160,18 @@ export const CommandSchemas = {
       requireReason: z.boolean().default(true),
       autoClose: z.number().int().min(0).max(604800).optional(), // Max 7 days
     }),
-    
+
     close: z.object({
       reason: ValidationSchemas.description,
       transcript: z.boolean().default(true),
     }),
   },
-  
+
   config: {
     language: z.object({
       language: z.enum(['en', 'de', 'es', 'fr']),
     }),
-    
+
     xp: z.object({
       enabled: z.boolean(),
       messageXp: z.object({
@@ -166,14 +180,24 @@ export const CommandSchemas = {
       }),
       voiceXp: z.number().int().min(0).max(100),
       cooldown: z.number().int().min(0).max(300),
-      multipliers: z.array(z.object({
-        roleId: ValidationSchemas.snowflake,
-        multiplier: z.number().min(0.1).max(10),
-      })).max(10).optional(),
-      rewards: z.array(z.object({
-        level: z.number().int().min(1).max(1000),
-        roleId: ValidationSchemas.snowflake,
-      })).max(50).optional(),
+      multipliers: z
+        .array(
+          z.object({
+            roleId: ValidationSchemas.snowflake,
+            multiplier: z.number().min(0.1).max(10),
+          })
+        )
+        .max(10)
+        .optional(),
+      rewards: z
+        .array(
+          z.object({
+            level: z.number().int().min(1).max(1000),
+            roleId: ValidationSchemas.snowflake,
+          })
+        )
+        .max(50)
+        .optional(),
     }),
   },
 };
@@ -188,10 +212,12 @@ export class Validator {
       return schema.parse(data);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const issues = error.issues.map(issue => {
-          const path = issue.path.join('.');
-          return `${path}: ${issue.message}`;
-        }).join(', ');
+        const issues = error.issues
+          .map(issue => {
+            const path = issue.path.join('.');
+            return `${path}: ${issue.message}`;
+          })
+          .join(', ');
         throw new ValidationError(`Validation failed: ${issues}`);
       }
       throw error;
@@ -221,14 +247,20 @@ export class Validator {
       const parsed = new URL(url);
       const allowedProtocols = ['http:', 'https:'];
       const blockedDomains = [
-        'bit.ly', 'tinyurl.com', 'grabify.link', 'iplogger.org',
-        'blasze.tk', 'curiouscat.club', '2no.co', 'yip.su'
+        'bit.ly',
+        'tinyurl.com',
+        'grabify.link',
+        'iplogger.org',
+        'blasze.tk',
+        'curiouscat.club',
+        '2no.co',
+        'yip.su',
       ];
-      
+
       if (!allowedProtocols.includes(parsed.protocol)) {
         return false;
       }
-      
+
       const domain = parsed.hostname.toLowerCase();
       return !blockedDomains.some(blocked => domain.includes(blocked));
     } catch {
@@ -241,15 +273,26 @@ export class Validator {
    */
   static isFileSafe(filename: string, mimeType?: string): boolean {
     const dangerousExtensions = [
-      '.exe', '.scr', '.vbs', '.js', '.jar', '.bat', '.cmd',
-      '.com', '.pif', '.msi', '.app', '.deb', '.rpm'
+      '.exe',
+      '.scr',
+      '.vbs',
+      '.js',
+      '.jar',
+      '.bat',
+      '.cmd',
+      '.com',
+      '.pif',
+      '.msi',
+      '.app',
+      '.deb',
+      '.rpm',
     ];
-    
+
     const lowerName = filename.toLowerCase();
     if (dangerousExtensions.some(ext => lowerName.endsWith(ext))) {
       return false;
     }
-    
+
     if (mimeType) {
       const dangerousMimes = [
         'application/x-executable',
@@ -258,7 +301,7 @@ export class Validator {
       ];
       return !dangerousMimes.includes(mimeType);
     }
-    
+
     return true;
   }
 
@@ -269,18 +312,16 @@ export class Validator {
     if (pattern.length > maxLength) {
       return false;
     }
-    
+
     // Check for dangerous patterns
     const dangerousPatterns = [
-      /(\w+\+)+/,  // Nested quantifiers
-      /(\S+\*)+/,  // Nested quantifiers
-      /(a+)+b/,    // Catastrophic backtracking
-      /(\d+)+\w/,  // Nested quantifiers with digits
+      /(\w+\+)+/, // Nested quantifiers
+      /(\S+\*)+/, // Nested quantifiers
+      /(a+)+b/, // Catastrophic backtracking
+      /(\d+)+\w/, // Nested quantifiers with digits
     ];
-    
-    return !dangerousPatterns.some(dangerous => 
-      pattern.match(dangerous)
-    );
+
+    return !dangerousPatterns.some(dangerous => pattern.match(dangerous));
   }
 }
 

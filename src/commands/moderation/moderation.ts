@@ -17,13 +17,13 @@ export const data = new SlashCommandBuilder()
   .setDescription(t('commands.moderation.description'))
   .setNameLocalizations({
     'es-ES': 'moderacion',
-    'fr': 'modération',
-    'de': 'moderation',
+    fr: 'modération',
+    de: 'moderation',
   })
   .setDescriptionLocalizations({
     'es-ES': 'Comandos de moderación',
-    'fr': 'Commandes de modération',
-    'de': 'Moderations-Befehle',
+    fr: 'Commandes de modération',
+    de: 'Moderations-Befehle',
   })
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addSubcommand(subcommand =>
@@ -168,7 +168,7 @@ async function handleBan(interaction: ChatInputCommandInteraction): Promise<any>
 
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
-  
+
   if (!member) {
     return interaction.editReply({
       content: t('commands.moderation.subcommands.ban.memberNotFound'),
@@ -215,12 +215,14 @@ async function handleBan(interaction: ChatInputCommandInteraction): Promise<any>
     // Try to DM the user before banning
     try {
       const dmEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle(t('commands.moderation.subcommands.ban.dmTitle'))
-        .setDescription(t('commands.moderation.subcommands.ban.dmDescription', {
-          guild: interaction.guild!.name,
-          reason: reason,
-        }))
+        .setDescription(
+          t('commands.moderation.subcommands.ban.dmDescription', {
+            guild: interaction.guild!.name,
+            reason: reason,
+          })
+        )
         .setTimestamp();
 
       await user.send({ embeds: [dmEmbed] });
@@ -247,19 +249,19 @@ async function handleBan(interaction: ChatInputCommandInteraction): Promise<any>
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle(t('commands.moderation.subcommands.ban.success.title'))
-      .setDescription(t('commands.moderation.subcommands.ban.success.description', {
-        user: user.tag,
-        moderator: interaction.user.tag,
-      }))
-      .addFields(
-        {
-          name: t('commands.moderation.subcommands.ban.success.reason'),
-          value: reason,
-          inline: false,
-        }
+      .setDescription(
+        t('commands.moderation.subcommands.ban.success.description', {
+          user: user.tag,
+          moderator: interaction.user.tag,
+        })
       )
+      .addFields({
+        name: t('commands.moderation.subcommands.ban.success.reason'),
+        value: reason,
+        inline: false,
+      })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -279,7 +281,7 @@ async function handleKick(interaction: ChatInputCommandInteraction): Promise<any
 
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
-  
+
   if (!member) {
     return interaction.editReply({
       content: t('commands.moderation.subcommands.kick.memberNotFound'),
@@ -326,12 +328,14 @@ async function handleKick(interaction: ChatInputCommandInteraction): Promise<any
     // Try to DM the user before kicking
     try {
       const dmEmbed = new EmbedBuilder()
-        .setColor(0xFFA500)
+        .setColor(0xffa500)
         .setTitle(t('commands.moderation.subcommands.kick.dmTitle'))
-        .setDescription(t('commands.moderation.subcommands.kick.dmDescription', {
-          guild: interaction.guild!.name,
-          reason: reason,
-        }))
+        .setDescription(
+          t('commands.moderation.subcommands.kick.dmDescription', {
+            guild: interaction.guild!.name,
+            reason: reason,
+          })
+        )
         .setTimestamp();
 
       await user.send({ embeds: [dmEmbed] });
@@ -354,19 +358,19 @@ async function handleKick(interaction: ChatInputCommandInteraction): Promise<any
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0xFFA500)
+      .setColor(0xffa500)
       .setTitle(t('commands.moderation.subcommands.kick.success.title'))
-      .setDescription(t('commands.moderation.subcommands.kick.success.description', {
-        user: user.tag,
-        moderator: interaction.user.tag,
-      }))
-      .addFields(
-        {
-          name: t('commands.moderation.subcommands.kick.success.reason'),
-          value: reason,
-          inline: false,
-        }
+      .setDescription(
+        t('commands.moderation.subcommands.kick.success.description', {
+          user: user.tag,
+          moderator: interaction.user.tag,
+        })
       )
+      .addFields({
+        name: t('commands.moderation.subcommands.kick.success.reason'),
+        value: reason,
+        inline: false,
+      })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -387,7 +391,7 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
 
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
-  
+
   if (!member) {
     return interaction.editReply({
       content: t('commands.moderation.subcommands.timeout.memberNotFound'),
@@ -433,7 +437,7 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
   try {
     // Calculate timeout duration in milliseconds
     const timeoutDuration = duration * 60 * 1000;
-    
+
     // Timeout the user
     await member.timeout(timeoutDuration, `${reason} | Timed out by ${interaction.user.tag}`);
 
@@ -442,11 +446,13 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
       const dmEmbed = new EmbedBuilder()
         .setColor(0x808080)
         .setTitle(t('commands.moderation.subcommands.timeout.dmTitle'))
-        .setDescription(t('commands.moderation.subcommands.timeout.dmDescription', {
-          guild: interaction.guild!.name,
-          duration: formatDuration(duration),
-          reason: reason,
-        }))
+        .setDescription(
+          t('commands.moderation.subcommands.timeout.dmDescription', {
+            guild: interaction.guild!.name,
+            duration: formatDuration(duration),
+            reason: reason,
+          })
+        )
         .setTimestamp();
 
       await user.send({ embeds: [dmEmbed] });
@@ -469,18 +475,18 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
     const embed = new EmbedBuilder()
       .setColor(0x808080)
       .setTitle(t('commands.moderation.subcommands.timeout.success.title'))
-      .setDescription(t('commands.moderation.subcommands.timeout.success.description', {
-        user: user.tag,
-        duration: formatDuration(duration),
-        moderator: interaction.user.tag,
-      }))
-      .addFields(
-        {
-          name: t('commands.moderation.subcommands.timeout.success.reason'),
-          value: reason,
-          inline: false,
-        }
+      .setDescription(
+        t('commands.moderation.subcommands.timeout.success.description', {
+          user: user.tag,
+          duration: formatDuration(duration),
+          moderator: interaction.user.tag,
+        })
       )
+      .addFields({
+        name: t('commands.moderation.subcommands.timeout.success.reason'),
+        value: reason,
+        inline: false,
+      })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -514,18 +520,14 @@ async function handleResetXP(interaction: ChatInputCommandInteraction): Promise<
 
   try {
     // Reset user's XP
-    await db.update(userXp)
+    await db
+      .update(userXp)
       .set({
         xp: 0,
         level: 0,
         lastXpGain: new Date(),
       })
-      .where(
-        and(
-          eq(userXp.userId, user.id),
-          eq(userXp.guildId, interaction.guild!.id)
-        )
-      );
+      .where(and(eq(userXp.userId, user.id), eq(userXp.guildId, interaction.guild!.id)));
 
     // Log the action
     await auditLogger.logAction({
@@ -537,12 +539,14 @@ async function handleResetXP(interaction: ChatInputCommandInteraction): Promise<
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('commands.moderation.subcommands.resetxp.success.title'))
-      .setDescription(t('commands.moderation.subcommands.resetxp.success.description', {
-        user: user.tag,
-        moderator: interaction.user.tag,
-      }))
+      .setDescription(
+        t('commands.moderation.subcommands.resetxp.success.description', {
+          user: user.tag,
+          moderator: interaction.user.tag,
+        })
+      )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -558,20 +562,20 @@ function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (hours < 24) {
     if (remainingMinutes === 0) {
       return `${hours} hour${hours !== 1 ? 's' : ''}`;
     }
     return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
   }
-  
+
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
-  
+
   if (remainingHours === 0) {
     return `${days} day${days !== 1 ? 's' : ''}`;
   }

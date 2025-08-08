@@ -11,12 +11,18 @@ const EnvSchema = z.object({
   DISCORD_CLIENT_SECRET: z.string().optional(),
 
   // Database Configuration
-  DATABASE_URL: z.string().url('Invalid database URL').startsWith('postgresql://', 'Database URL must be PostgreSQL'),
+  DATABASE_URL: z
+    .string()
+    .url('Invalid database URL')
+    .startsWith('postgresql://', 'Database URL must be PostgreSQL'),
   DB_MAX_CONNECTIONS: z.coerce.number().min(1).max(100).default(20),
-  DB_SSL: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
+  DB_SSL: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('false'),
 
   // Security & Access Control
-  DEVELOPER_IDS: z.string().transform((str) => {
+  DEVELOPER_IDS: z.string().transform(str => {
     try {
       const parsed = JSON.parse(str);
       return z.array(z.string().regex(/^\d{17,19}$/)).parse(parsed);
@@ -45,26 +51,74 @@ const EnvSchema = z.object({
   // Caching & Performance
   REDIS_URL: z.string().url().optional(),
   CACHE_TTL: z.coerce.number().min(60).max(86400).default(3600),
-  ENABLE_QUERY_CACHE: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
+  ENABLE_QUERY_CACHE: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
 
   // Logging & Monitoring
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   LOG_FILE_PATH: z.string().default('./logs'),
-  SENTRY_DSN: z.string().url().optional(),
-  WEBHOOK_ERROR_URL: z.string().url().optional(),
-  WEBHOOK_AUDIT_URL: z.string().url().optional(),
+  SENTRY_DSN: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'your_sentry_dsn_here') return undefined;
+      return val;
+    }),
+  WEBHOOK_ERROR_URL: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'your_webhook_url') return undefined;
+      return val;
+    }),
+  WEBHOOK_AUDIT_URL: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'your_webhook_url') return undefined;
+      return val;
+    }),
 
   // Web Dashboard
-  DASHBOARD_ENABLED: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
+  DASHBOARD_ENABLED: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('false'),
   DASHBOARD_PORT: z.coerce.number().min(1024).max(65535).default(3000),
-  DASHBOARD_SECRET: z.string().min(32).optional(),
-  DASHBOARD_BASE_URL: z.string().url().optional(),
+  DASHBOARD_SECRET: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'your_random_secret_here') return undefined;
+      return val;
+    }),
+  DASHBOARD_BASE_URL: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'https://yourdomain.com') return undefined;
+      return val;
+    }),
 
   // Development Settings
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  DEBUG_MODE: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
-  MOCK_DISCORD_API: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
-  TEST_GUILD_ID: z.string().regex(/^\d{17,19}$/).optional(),
+  DEBUG_MODE: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('false'),
+  MOCK_DISCORD_API: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('false'),
+  TEST_GUILD_ID: z
+    .string()
+    .optional()
+    .transform(val => {
+      if (!val || val === 'your_test_guild_id') return undefined;
+      return val;
+    }),
 
   // Economy System
   ECONOMY_STARTING_BALANCE: z.coerce.number().min(0).max(1000000).default(1000),
@@ -83,17 +137,38 @@ const EnvSchema = z.object({
   // Moderation System
   MAX_WARNINGS_PER_USER: z.coerce.number().min(1).max(100).default(50),
   WARNING_EXPIRY_DAYS: z.coerce.number().min(1).max(365).default(90),
-  AUTO_MOD_ENABLED: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
+  AUTO_MOD_ENABLED: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
   SPAM_THRESHOLD: z.coerce.number().min(2).max(20).default(5),
   SPAM_WINDOW: z.coerce.number().min(1000).max(60000).default(10000),
 
   // Feature Toggles
-  ENABLE_GIVEAWAYS: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
-  ENABLE_TICKETS: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
-  ENABLE_ECONOMY: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
-  ENABLE_XP_SYSTEM: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
-  ENABLE_FUN_COMMANDS: z.enum(['true', 'false']).transform(val => val === 'true').default('true'),
-  ENABLE_MUSIC: z.enum(['true', 'false']).transform(val => val === 'true').default('false'),
+  ENABLE_GIVEAWAYS: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  ENABLE_TICKETS: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  ENABLE_ECONOMY: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  ENABLE_XP_SYSTEM: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  ENABLE_FUN_COMMANDS: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  ENABLE_MUSIC: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('false'),
 });
 
 type EnvConfig = z.infer<typeof EnvSchema>;

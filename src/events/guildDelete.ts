@@ -7,7 +7,7 @@ export const name = Events.GuildDelete;
 
 export async function execute(guild: Guild) {
   logger.info(chalk.red(`Left guild: ${guild.name} (${guild.id})`));
-  
+
   try {
     // Optionally delete guild data
     if (process.env.DELETE_DATA_ON_LEAVE === 'true') {

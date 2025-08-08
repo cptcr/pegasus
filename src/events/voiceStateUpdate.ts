@@ -38,7 +38,7 @@ async function handleVoiceJoin(state: VoiceState) {
     await guildService.ensureGuild(state.guild);
 
     const config = await configurationService.getXPConfig(state.guild.id);
-    
+
     // Check if XP is enabled
     if (!config.enabled) return;
 
@@ -60,16 +60,12 @@ async function handleVoiceLeave(state: VoiceState) {
 
   try {
     // Stop tracking and award XP
-    const result = await xpService.stopVoiceTracking(
-      state.member.id,
-      state.guild.id,
-      state.member
-    );
+    const result = await xpService.stopVoiceTracking(state.member.id, state.guild.id, state.member);
 
     // Handle level up if needed (similar to messageCreate)
     if (result && result.leveledUp) {
       // config is fetched but not used for level up announcements in voice state changes
-      
+
       // Add role rewards
       if (result.rewardRoles && result.rewardRoles.length > 0) {
         for (const roleId of result.rewardRoles) {
@@ -92,7 +88,7 @@ async function handleVoiceLeave(state: VoiceState) {
 // Cleanup function for bot shutdown
 export function cleanup() {
   const voiceStates = xpService.getAllVoiceStates();
-  
+
   // Log any remaining voice states for debugging
   if (voiceStates.size > 0) {
     logger.info(`Cleaning up ${voiceStates.size} voice states on shutdown`);

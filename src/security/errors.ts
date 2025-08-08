@@ -22,7 +22,7 @@ export abstract class SecurityError extends Error {
     this.severity = severity;
     this.timestamp = new Date();
     this.context = context;
-    
+
     // Log security errors
     logger.error(`[${this.severity.toUpperCase()}] ${this.code}: ${message}`, context);
   }
@@ -32,10 +32,10 @@ export abstract class SecurityError extends Error {
    */
   toEmbed(): EmbedBuilder {
     const colors = {
-      low: 0x00FF00,
-      medium: 0xFFFF00,
-      high: 0xFFA500,
-      critical: 0xFF0000,
+      low: 0x00ff00,
+      medium: 0xffff00,
+      high: 0xffa500,
+      critical: 0xff0000,
     };
 
     return new EmbedBuilder()
@@ -104,13 +104,16 @@ export class BlacklistError extends SecurityError {
   public readonly entityType: 'user' | 'guild' | 'role';
   public readonly entityId: string;
 
-  constructor(entityType: 'user' | 'guild' | 'role', entityId: string, context?: Record<string, any>) {
-    super(
-      `${entityType} ${entityId} is blacklisted`,
-      'BLACKLISTED',
-      'high',
-      { ...context, entityType, entityId }
-    );
+  constructor(
+    entityType: 'user' | 'guild' | 'role',
+    entityId: string,
+    context?: Record<string, any>
+  ) {
+    super(`${entityType} ${entityId} is blacklisted`, 'BLACKLISTED', 'high', {
+      ...context,
+      entityType,
+      entityId,
+    });
     this.entityType = entityType;
     this.entityId = entityId;
   }
@@ -144,12 +147,10 @@ export class SQLInjectionError extends SecurityError {
   public readonly query?: string;
 
   constructor(query?: string, context?: Record<string, any>) {
-    super(
-      'SQL injection attempt detected',
-      'SQL_INJECTION_ATTEMPT',
-      'critical',
-      { ...context, query }
-    );
+    super('SQL injection attempt detected', 'SQL_INJECTION_ATTEMPT', 'critical', {
+      ...context,
+      query,
+    });
     this.query = query;
   }
 }
@@ -161,12 +162,7 @@ export class XSSError extends SecurityError {
   public readonly payload?: string;
 
   constructor(payload?: string, context?: Record<string, any>) {
-    super(
-      'XSS attempt detected',
-      'XSS_ATTEMPT',
-      'high',
-      { ...context, payload }
-    );
+    super('XSS attempt detected', 'XSS_ATTEMPT', 'high', { ...context, payload });
     this.payload = payload;
   }
 }
@@ -187,7 +183,7 @@ export class SecurityErrorHandler {
     // Security errors
     if (error instanceof SecurityError) {
       const shouldAlert = error.severity === 'critical' || error.severity === 'high';
-      
+
       return {
         message: this.getSafeErrorMessage(error),
         embed: error.toEmbed(),
@@ -195,7 +191,7 @@ export class SecurityErrorHandler {
         shouldAlert,
       };
     }
-    
+
     // Generic errors - don't expose details
     return {
       message: 'An error occurred while processing your request.',
@@ -211,25 +207,25 @@ export class SecurityErrorHandler {
     switch (error.code) {
       case 'RATE_LIMIT_EXCEEDED':
         return `You're doing that too fast! Please wait ${(error as RateLimitError).retryAfter} seconds.`;
-      
+
       case 'PERMISSION_DENIED':
-        return 'You don\'t have permission to do that.';
-      
+        return "You don't have permission to do that.";
+
       case 'VALIDATION_FAILED':
         return 'Invalid input provided. Please check your input and try again.';
-      
+
       case 'BLACKLISTED':
         return 'Access denied.';
-      
+
       case 'AUTHENTICATION_FAILED':
         return 'Authentication failed. Please try again.';
-      
+
       case 'SUSPICIOUS_ACTIVITY':
       case 'TOKEN_COMPROMISE':
       case 'SQL_INJECTION_ATTEMPT':
       case 'XSS_ATTEMPT':
         return 'Security violation detected. This incident has been logged.';
-      
+
       default:
         return 'An error occurred. Please try again later.';
     }
@@ -240,7 +236,7 @@ export class SecurityErrorHandler {
    */
   static createAlert(error: SecurityError): EmbedBuilder {
     return new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle('🚨 Security Alert')
       .setDescription(`A ${error.severity} severity security event has occurred`)
       .addFields(

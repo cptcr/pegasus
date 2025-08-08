@@ -9,12 +9,8 @@ export class GuildRepository {
   }
 
   async findById(id: string): Promise<Guild | null> {
-    const result = await this.db
-      .select()
-      .from(guilds)
-      .where(eq(guilds.id, id))
-      .limit(1);
-    
+    const result = await this.db.select().from(guilds).where(eq(guilds.id, id)).limit(1);
+
     if (!result[0]) return null;
     return {
       ...result[0],
@@ -24,11 +20,8 @@ export class GuildRepository {
   }
 
   async create(guildId: string): Promise<Guild> {
-    const [guild] = await this.db
-      .insert(guilds)
-      .values({ id: guildId })
-      .returning();
-    
+    const [guild] = await this.db.insert(guilds).values({ id: guildId }).returning();
+
     return {
       ...guild,
       prefix: guild.prefix ?? undefined,
@@ -36,13 +29,16 @@ export class GuildRepository {
     };
   }
 
-  async update(guildId: string, data: Partial<Omit<Guild, 'id' | 'createdAt'>>): Promise<Guild | null> {
+  async update(
+    guildId: string,
+    data: Partial<Omit<Guild, 'id' | 'createdAt'>>
+  ): Promise<Guild | null> {
     const [updated] = await this.db
       .update(guilds)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(guilds.id, guildId))
       .returning();
-    
+
     if (!updated) return null;
     return {
       ...updated,
@@ -52,10 +48,8 @@ export class GuildRepository {
   }
 
   async delete(guildId: string): Promise<boolean> {
-    const result = await this.db
-      .delete(guilds)
-      .where(eq(guilds.id, guildId));
-    
+    const result = await this.db.delete(guilds).where(eq(guilds.id, guildId));
+
     return result.count > 0;
   }
 
@@ -65,9 +59,9 @@ export class GuildRepository {
       .from(guildSettings)
       .where(eq(guildSettings.guildId, guildId))
       .limit(1);
-    
+
     if (!result[0]) return null;
-    
+
     // Map null values to undefined for optional fields
     const settings = result[0];
     return {
@@ -82,7 +76,10 @@ export class GuildRepository {
     } as GuildSettings;
   }
 
-  async updateSettings(guildId: string, settings: Partial<Omit<GuildSettings, 'guildId' | 'createdAt'>>): Promise<GuildSettings> {
+  async updateSettings(
+    guildId: string,
+    settings: Partial<Omit<GuildSettings, 'guildId' | 'createdAt'>>
+  ): Promise<GuildSettings> {
     const [updated] = await this.db
       .insert(guildSettings)
       .values({ guildId, ...settings })
@@ -91,7 +88,7 @@ export class GuildRepository {
         set: { ...settings, updatedAt: new Date() },
       })
       .returning();
-    
+
     // Map null values to undefined for optional fields
     return {
       ...updated,

@@ -45,12 +45,13 @@ export const data = new SlashCommandBuilder()
           .setMinValue(1)
           .setMaxValue(20)
       )
-      .addChannelOption(option =>
-        option
-          .setName('channel')
-          .setDescription(t('commands.giveaway.subcommands.start.options.channel'))
-          .setRequired(false)
-          .addChannelTypes(0) // Text channels only
+      .addChannelOption(
+        option =>
+          option
+            .setName('channel')
+            .setDescription(t('commands.giveaway.subcommands.start.options.channel'))
+            .setRequired(false)
+            .addChannelTypes(0) // Text channels only
       )
   )
   .addSubcommand(subcommand =>
@@ -158,7 +159,9 @@ async function handleStart(interaction: ChatInputCommandInteraction): Promise<an
   const prize = interaction.options.getString('prize', true);
   const duration = interaction.options.getString('duration', true);
   const winners = interaction.options.getInteger('winners') || 1;
-  const channel = (interaction.options.getChannel('channel') as TextChannel) || (interaction.channel as TextChannel);
+  const channel =
+    (interaction.options.getChannel('channel') as TextChannel) ||
+    (interaction.channel as TextChannel);
 
   // Parse duration
   const durationMs = parseDuration(duration);
@@ -252,11 +255,11 @@ async function handleSimple(interaction: ChatInputCommandInteraction): Promise<a
       description: null,
       requirements: {},
       bonusEntries: {},
-      embedColor: 0x0099FF,
+      embedColor: 0x0099ff,
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle(t('commands.giveaway.embed.title'))
       .setDescription(t('commands.giveaway.embed.simpleDescription', { prize }))
       .addFields(
@@ -327,7 +330,7 @@ async function handleEnd(interaction: ChatInputCommandInteraction): Promise<any>
     }
 
     await interaction.editReply({
-      content: t('commands.giveaway.subcommands.end.success', { 
+      content: t('commands.giveaway.subcommands.end.success', {
         count: result.winners?.length || 0,
         id: giveawayId,
       }),
@@ -347,7 +350,11 @@ async function handleReroll(interaction: ChatInputCommandInteraction): Promise<a
   const newWinnerCount = interaction.options.getInteger('winners');
 
   try {
-    const result = await giveawayService.rerollGiveaway(giveawayId, interaction.user, newWinnerCount || undefined);
+    const result = await giveawayService.rerollGiveaway(
+      giveawayId,
+      interaction.user,
+      newWinnerCount || undefined
+    );
 
     if (!result.success) {
       return interaction.editReply({
@@ -356,7 +363,7 @@ async function handleReroll(interaction: ChatInputCommandInteraction): Promise<a
     }
 
     await interaction.editReply({
-      content: t('commands.giveaway.subcommands.reroll.success', { 
+      content: t('commands.giveaway.subcommands.reroll.success', {
         count: result.winners?.length || 0,
         id: giveawayId,
       }),

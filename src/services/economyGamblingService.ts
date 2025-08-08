@@ -54,7 +54,9 @@ interface Card {
 
 export class EconomyGamblingService {
   private readonly slotEmojis = ['🍎', '🍊', '🍇', '🍒', '💎', '7️⃣'];
-  private readonly rouletteRed = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+  private readonly rouletteRed = [
+    1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+  ];
 
   // Dice game - roll against dealer
   async playDice(userId: string, guildId: string, bet: number): Promise<GamblingResult> {
@@ -65,10 +67,10 @@ export class EconomyGamblingService {
 
     const playerRoll = Math.floor(Math.random() * 6) + 1;
     const dealerRoll = Math.floor(Math.random() * 6) + 1;
-    
+
     const tie = playerRoll === dealerRoll;
     const won = playerRoll > dealerRoll;
-    const multiplier = tie ? 1 : (won ? 2 : 0); // Push on tie
+    const multiplier = tie ? 1 : won ? 2 : 0; // Push on tie
 
     const details: DiceResult = {
       playerRoll,
@@ -89,7 +91,12 @@ export class EconomyGamblingService {
   }
 
   // Coinflip game
-  async playCoinflip(userId: string, guildId: string, bet: number, choice: 'heads' | 'tails'): Promise<GamblingResult> {
+  async playCoinflip(
+    userId: string,
+    guildId: string,
+    bet: number,
+    choice: 'heads' | 'tails'
+  ): Promise<GamblingResult> {
     const canAfford = await economyService.canAffordBet(userId, guildId, bet);
     if (!canAfford.canAfford) {
       throw new Error('Insufficient funds or invalid bet amount');
@@ -193,10 +200,13 @@ export class EconomyGamblingService {
     }
 
     // For simplicity, auto-play optimal strategy for player
-    while (this.calculateHandValue(playerHand).value < 17 && !this.calculateHandValue(playerHand).bust) {
+    while (
+      this.calculateHandValue(playerHand).value < 17 &&
+      !this.calculateHandValue(playerHand).bust
+    ) {
       const handValue = this.calculateHandValue(playerHand);
       const dealerUpCard = dealerHand[0].value === 1 ? 11 : dealerHand[0].value;
-      
+
       // Basic strategy
       if (handValue.value < 12) {
         playerHand.push(deck.pop()!);
@@ -266,8 +276,7 @@ export class EconomyGamblingService {
     }
 
     const number = Math.floor(Math.random() * 37); // 0-36
-    const color = number === 0 ? 'green' : 
-                  this.rouletteRed.includes(number) ? 'red' : 'black';
+    const color = number === 0 ? 'green' : this.rouletteRed.includes(number) ? 'red' : 'black';
 
     let won = false;
     let multiplier = 0;

@@ -1,5 +1,12 @@
 import { getDatabase } from '../database/connection';
-import { guilds, guildSettings, xpSettings, xpRewards, economySettings, economyShopItems } from '../database/schema';
+import {
+  guilds,
+  guildSettings,
+  xpSettings,
+  xpRewards,
+  economySettings,
+  economyShopItems,
+} from '../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 
@@ -111,17 +118,19 @@ export class ConfigurationService {
   async updateXPConfig(guildId: string, config: Partial<XPConfig>): Promise<void> {
     try {
       const updateData: any = {};
-      
+
       // Update guild settings fields
       if (config.enabled !== undefined) updateData.xpEnabled = config.enabled;
       if (config.perMessage !== undefined) updateData.xpPerMessage = config.perMessage;
       if (config.perVoiceMinute !== undefined) updateData.xpPerVoiceMinute = config.perVoiceMinute;
       if (config.cooldown !== undefined) updateData.xpCooldown = config.cooldown;
-      if (config.announceLevelUp !== undefined) updateData.xpAnnounceLevelUp = config.announceLevelUp;
+      if (config.announceLevelUp !== undefined)
+        updateData.xpAnnounceLevelUp = config.announceLevelUp;
       if (config.levelUpChannel !== undefined) updateData.levelUpChannel = config.levelUpChannel;
       if (config.levelUpMessage !== undefined) updateData.levelUpMessage = config.levelUpMessage;
       if (config.boosterRole !== undefined) updateData.xpBoosterRole = config.boosterRole;
-      if (config.boosterMultiplier !== undefined) updateData.xpBoosterMultiplier = config.boosterMultiplier;
+      if (config.boosterMultiplier !== undefined)
+        updateData.xpBoosterMultiplier = config.boosterMultiplier;
 
       if (Object.keys(updateData).length > 0) {
         await getDatabase()
@@ -132,13 +141,20 @@ export class ConfigurationService {
 
       // Update xp settings fields
       const xpUpdateData: any = {};
-      if (config.ignoredChannels !== undefined) xpUpdateData.ignoredChannels = JSON.stringify(config.ignoredChannels);
-      if (config.ignoredRoles !== undefined) xpUpdateData.ignoredRoles = JSON.stringify(config.ignoredRoles);
-      if (config.noXpChannels !== undefined) xpUpdateData.noXpChannels = JSON.stringify(config.noXpChannels);
-      if (config.doubleXpChannels !== undefined) xpUpdateData.doubleXpChannels = JSON.stringify(config.doubleXpChannels);
-      if (config.roleMultipliers !== undefined) xpUpdateData.roleMultipliers = JSON.stringify(config.roleMultipliers);
-      if (config.levelUpRewardsEnabled !== undefined) xpUpdateData.levelUpRewardsEnabled = config.levelUpRewardsEnabled;
-      if (config.stackRoleRewards !== undefined) xpUpdateData.stackRoleRewards = config.stackRoleRewards;
+      if (config.ignoredChannels !== undefined)
+        xpUpdateData.ignoredChannels = JSON.stringify(config.ignoredChannels);
+      if (config.ignoredRoles !== undefined)
+        xpUpdateData.ignoredRoles = JSON.stringify(config.ignoredRoles);
+      if (config.noXpChannels !== undefined)
+        xpUpdateData.noXpChannels = JSON.stringify(config.noXpChannels);
+      if (config.doubleXpChannels !== undefined)
+        xpUpdateData.doubleXpChannels = JSON.stringify(config.doubleXpChannels);
+      if (config.roleMultipliers !== undefined)
+        xpUpdateData.roleMultipliers = JSON.stringify(config.roleMultipliers);
+      if (config.levelUpRewardsEnabled !== undefined)
+        xpUpdateData.levelUpRewardsEnabled = config.levelUpRewardsEnabled;
+      if (config.stackRoleRewards !== undefined)
+        xpUpdateData.stackRoleRewards = config.stackRoleRewards;
 
       if (Object.keys(xpUpdateData).length > 0) {
         await getDatabase()
@@ -218,7 +234,10 @@ export class ConfigurationService {
     }
   }
 
-  async updateEconomyConfig(guildId: string, config: Partial<typeof economySettings.$inferInsert>): Promise<void> {
+  async updateEconomyConfig(
+    guildId: string,
+    config: Partial<typeof economySettings.$inferInsert>
+  ): Promise<void> {
     try {
       await getDatabase()
         .insert(economySettings)
@@ -298,9 +317,7 @@ export class ConfigurationService {
 
   async deleteShopItem(itemId: string): Promise<void> {
     try {
-      await getDatabase()
-        .delete(economyShopItems)
-        .where(eq(economyShopItems.id, itemId));
+      await getDatabase().delete(economyShopItems).where(eq(economyShopItems.id, itemId));
     } catch (error) {
       logger.error(`Failed to delete shop item ${itemId}:`, error);
       throw error;
@@ -341,7 +358,7 @@ export class ConfigurationService {
   async updateWelcomeConfig(guildId: string, config: Partial<WelcomeConfig>): Promise<void> {
     try {
       const updateData: any = {};
-      
+
       if (config.enabled !== undefined) updateData.welcomeEnabled = config.enabled;
       if (config.channel !== undefined) updateData.welcomeChannel = config.channel;
       if (config.message !== undefined) updateData.welcomeMessage = config.message;
@@ -349,7 +366,8 @@ export class ConfigurationService {
       if (config.embedColor !== undefined) updateData.welcomeEmbedColor = config.embedColor;
       if (config.embedTitle !== undefined) updateData.welcomeEmbedTitle = config.embedTitle;
       if (config.embedImage !== undefined) updateData.welcomeEmbedImage = config.embedImage;
-      if (config.embedThumbnail !== undefined) updateData.welcomeEmbedThumbnail = config.embedThumbnail;
+      if (config.embedThumbnail !== undefined)
+        updateData.welcomeEmbedThumbnail = config.embedThumbnail;
       if (config.dmEnabled !== undefined) updateData.welcomeDmEnabled = config.dmEnabled;
       if (config.dmMessage !== undefined) updateData.welcomeDmMessage = config.dmMessage;
 
@@ -395,7 +413,7 @@ export class ConfigurationService {
   async updateGoodbyeConfig(guildId: string, config: Partial<GoodbyeConfig>): Promise<void> {
     try {
       const updateData: any = {};
-      
+
       if (config.enabled !== undefined) updateData.goodbyeEnabled = config.enabled;
       if (config.channel !== undefined) updateData.goodbyeChannel = config.channel;
       if (config.message !== undefined) updateData.goodbyeMessage = config.message;
@@ -403,7 +421,8 @@ export class ConfigurationService {
       if (config.embedColor !== undefined) updateData.goodbyeEmbedColor = config.embedColor;
       if (config.embedTitle !== undefined) updateData.goodbyeEmbedTitle = config.embedTitle;
       if (config.embedImage !== undefined) updateData.goodbyeEmbedImage = config.embedImage;
-      if (config.embedThumbnail !== undefined) updateData.goodbyeEmbedThumbnail = config.embedThumbnail;
+      if (config.embedThumbnail !== undefined)
+        updateData.goodbyeEmbedThumbnail = config.embedThumbnail;
 
       await getDatabase()
         .update(guildSettings)
@@ -441,7 +460,7 @@ export class ConfigurationService {
   async updateAutoroleConfig(guildId: string, config: Partial<AutoroleConfig>): Promise<void> {
     try {
       const updateData: any = {};
-      
+
       if (config.enabled !== undefined) updateData.autoroleEnabled = config.enabled;
       if (config.roles !== undefined) updateData.autoroleRoles = JSON.stringify(config.roles);
 

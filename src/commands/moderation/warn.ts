@@ -13,7 +13,12 @@ import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { warningService } from '../../services/warningService';
 import { warningRepository } from '../../repositories/warningRepository';
-import { createLocalizationMap, commandDescriptions, subcommandDescriptions, optionDescriptions } from '../../utils/localization';
+import {
+  createLocalizationMap,
+  commandDescriptions,
+  subcommandDescriptions,
+  optionDescriptions,
+} from '../../utils/localization';
 
 export const data = new SlashCommandBuilder()
   .setName('warn')
@@ -111,25 +116,31 @@ export const data = new SlashCommandBuilder()
       .setDescriptionLocalizations({
         de: 'Warnungsautomatisierungen verwalten',
         'es-ES': 'Gestionar automatizaciones de advertencia',
-        fr: 'Gérer les automatisations d\'avertissement'
+        fr: "Gérer les automatisations d'avertissement",
       })
       .addSubcommand(subcommand =>
         subcommand
           .setName('create')
           .setDescription('Create a warning automation')
-          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.create))
+          .setDescriptionLocalizations(
+            createLocalizationMap(subcommandDescriptions.warn.automation.create)
+          )
       )
       .addSubcommand(subcommand =>
         subcommand
           .setName('view')
           .setDescription('View all warning automations')
-          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.view))
+          .setDescriptionLocalizations(
+            createLocalizationMap(subcommandDescriptions.warn.automation.view)
+          )
       )
       .addSubcommand(subcommand =>
         subcommand
           .setName('delete')
           .setDescription('Delete a warning automation')
-          .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.automation.delete))
+          .setDescriptionLocalizations(
+            createLocalizationMap(subcommandDescriptions.warn.automation.delete)
+          )
           .addStringOption(option =>
             option
               .setName('automationid')
@@ -137,7 +148,7 @@ export const data = new SlashCommandBuilder()
               .setDescriptionLocalizations({
                 de: 'Die zu löschende Automatisierungs-ID',
                 'es-ES': 'El ID de automatización a eliminar',
-                fr: 'L\'ID d\'automatisation à supprimer'
+                fr: "L'ID d'automatisation à supprimer",
               })
               .setRequired(true)
           )
@@ -190,7 +201,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 async function handleWarnHelp(interaction: ChatInputCommandInteraction) {
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0x0099ff)
     .setTitle('Warning System Commands')
     .setDescription('Available warning commands:')
     .addFields(
@@ -270,7 +281,7 @@ async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promi
     );
 
     const embed = new EmbedBuilder()
-      .setColor(0xFFA500)
+      .setColor(0xffa500)
       .setTitle(t('commands.warn.subcommands.create.embed.title'))
       .setDescription(t('commands.warn.subcommands.create.success', { user: user.tag }))
       .addFields(
@@ -292,7 +303,7 @@ async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promi
     // Try to DM the user
     try {
       const dmEmbed = new EmbedBuilder()
-        .setColor(0xFFA500)
+        .setColor(0xffa500)
         .setTitle('You have been warned')
         .setDescription(`You have been warned in **${interaction.guild!.name}**`)
         .addFields(
@@ -360,7 +371,9 @@ async function handleWarnEdit(interaction: ChatInputCommandInteraction): Promise
     .setMaxLength(1000);
 
   const titleRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(titleInput);
-  const descriptionRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput);
+  const descriptionRow = new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+    descriptionInput
+  );
 
   modal.addComponents(titleRow, descriptionRow);
 
@@ -397,12 +410,14 @@ async function handleWarnView(interaction: ChatInputCommandInteraction): Promise
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFA500)
+    .setColor(0xffa500)
     .setTitle(t('commands.warn.subcommands.view.title', { user: user.tag }))
-    .setDescription(t('commands.warn.subcommands.view.stats', { 
-      count: stats.count, 
-      level: stats.totalLevel 
-    }))
+    .setDescription(
+      t('commands.warn.subcommands.view.stats', {
+        count: stats.count,
+        level: stats.totalLevel,
+      })
+    )
     .setTimestamp();
 
   // Add warning fields (max 10)
@@ -488,7 +503,7 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0x0099ff)
     .setTitle(t('commands.warn.subcommands.automation.view.title'))
     .setTimestamp();
 
@@ -496,7 +511,7 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
     const triggerText = `${automation.triggerType === 'warn_count' ? 'Count' : 'Level'} >= ${automation.triggerValue}`;
     const actionsText = (automation.actions as any[]).map(a => a.type).join(', ');
     const statusText = automation.enabled ? t('common.enabled') : t('common.disabled');
-    const lastTriggered = automation.lastTriggeredAt 
+    const lastTriggered = automation.lastTriggeredAt
       ? `<t:${Math.floor(automation.lastTriggeredAt.getTime() / 1000)}:R>`
       : t('common.none');
 
@@ -508,7 +523,9 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
         `**${t('commands.warn.subcommands.automation.view.fields.status')}:** ${statusText}`,
         `**${t('commands.warn.subcommands.automation.view.fields.lastTriggered')}:** ${lastTriggered}`,
         automation.description ? `\n${automation.description}` : '',
-      ].filter(Boolean).join('\n'),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       inline: false,
     });
   }

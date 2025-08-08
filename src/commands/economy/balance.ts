@@ -10,13 +10,13 @@ export const data = new SlashCommandBuilder()
   .setDescription(t('commands.economy.balance.description'))
   .setNameLocalizations({
     'es-ES': 'saldo',
-    'fr': 'solde',
-    'de': 'guthaben',
+    fr: 'solde',
+    de: 'guthaben',
   })
   .setDescriptionLocalizations({
     'es-ES': 'Consulta tu saldo o el de otro usuario',
-    'fr': 'Vérifiez votre solde ou celui d\'un autre utilisateur',
-    'de': 'Überprüfe dein Guthaben oder das eines anderen Benutzers',
+    fr: "Vérifiez votre solde ou celui d'un autre utilisateur",
+    de: 'Überprüfe dein Guthaben oder das eines anderen Benutzers',
   })
   .addUserOption(option =>
     option
@@ -24,8 +24,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('The user to check balance for')
       .setDescriptionLocalizations({
         'es-ES': 'El usuario para verificar el saldo',
-        'fr': 'L\'utilisateur dont vérifier le solde',
-        'de': 'Der Benutzer, dessen Guthaben überprüft werden soll',
+        fr: "L'utilisateur dont vérifier le solde",
+        de: 'Der Benutzer, dessen Guthaben überprüft werden soll',
       })
       .setRequired(false)
   );
@@ -42,37 +42,38 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const balance = await economyService.getOrCreateBalance(targetUser.id, guildId);
     const settings = await economyRepository.ensureSettings(guildId);
-    
+
     // Get recent transactions
     const transactions = await economyRepository.getTransactions(targetUser.id, guildId, 5);
-    
+
     const embed = new EmbedBuilder()
       .setTitle(`${settings.currencySymbol} Balance`)
       .setDescription(`**${targetUser.username}'s Balance**`)
       .setColor(0x2ecc71)
       .setThumbnail(targetUser.displayAvatarURL())
       .addFields(
-        { 
-          name: 'Wallet', 
-          value: `${settings.currencySymbol} ${balance.balance.toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'Wallet',
+          value: `${settings.currencySymbol} ${balance.balance.toLocaleString()}`,
+          inline: true,
         },
-        { 
-          name: 'Bank', 
-          value: `${settings.currencySymbol} ${balance.bankBalance.toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'Bank',
+          value: `${settings.currencySymbol} ${balance.bankBalance.toLocaleString()}`,
+          inline: true,
         },
-        { 
-          name: 'Net Worth', 
-          value: `${settings.currencySymbol} ${(balance.balance + balance.bankBalance).toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'Net Worth',
+          value: `${settings.currencySymbol} ${(balance.balance + balance.bankBalance).toLocaleString()}`,
+          inline: true,
         },
-        { 
-          name: 'Statistics', 
-          value: `Total Earned: ${settings.currencySymbol} ${balance.totalEarned.toLocaleString()}\n` +
-                 `Total Spent: ${settings.currencySymbol} ${balance.totalSpent.toLocaleString()}\n` +
-                 `Total Gambled: ${settings.currencySymbol} ${balance.totalGambled.toLocaleString()}`,
-          inline: false 
+        {
+          name: 'Statistics',
+          value:
+            `Total Earned: ${settings.currencySymbol} ${balance.totalEarned.toLocaleString()}\n` +
+            `Total Spent: ${settings.currencySymbol} ${balance.totalSpent.toLocaleString()}\n` +
+            `Total Gambled: ${settings.currencySymbol} ${balance.totalGambled.toLocaleString()}`,
+          inline: false,
         }
       )
       .setFooter({ text: `Currency: ${settings.currencyName}` })
@@ -87,11 +88,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return `${emoji} ${prefix}${settings.currencySymbol}${Math.abs(t.amount)} - ${t.description || t.type}`;
         })
         .join('\n');
-      
+
       embed.addFields({
         name: 'Recent Transactions',
         value: transactionList,
-        inline: false
+        inline: false,
       });
     }
 
@@ -99,7 +100,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error in balance command:', error);
     await interaction.editReply({
-      embeds: [createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.')]
+      embeds: [createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.')],
     });
   }
 }

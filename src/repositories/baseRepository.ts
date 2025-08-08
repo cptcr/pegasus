@@ -8,10 +8,7 @@ export abstract class BaseRepository {
   /**
    * Execute a query with performance monitoring
    */
-  protected async executeQuery<T>(
-    queryName: string,
-    queryFn: () => Promise<T>
-  ): Promise<T> {
+  protected async executeQuery<T>(queryName: string, queryFn: () => Promise<T>): Promise<T> {
     const timer = createQueryTimer(queryName);
     try {
       const result = await queryFn();

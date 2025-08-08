@@ -1,8 +1,4 @@
-import {
-  SlashCommandBuilder,
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-} from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t, setUserLocale, getUserLocale, availableLocales } from '../../i18n';
 import { getDatabase } from '../../database/connection';
@@ -58,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 async function handleAvailable(interaction: ChatInputCommandInteraction) {
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0x0099ff)
     .setTitle(t('commands.language.subcommands.available.title'))
     .setDescription(t('commands.language.subcommands.available.description'))
     .addFields(
@@ -101,7 +97,7 @@ async function handleCurrent(interaction: ChatInputCommandInteraction) {
   };
 
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
+    .setColor(0x0099ff)
     .setTitle(t('commands.language.subcommands.current.title'))
     .setDescription(
       t('commands.language.subcommands.current.description', {
@@ -148,7 +144,7 @@ async function handleSet(interaction: ChatInputCommandInteraction) {
 
     // Reply in the new language
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('commands.language.subcommands.set.success.title', {}))
       .setDescription(
         t('commands.language.subcommands.set.success.description', {

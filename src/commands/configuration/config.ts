@@ -17,14 +17,10 @@ export const data = new SlashCommandBuilder()
   .setDescription(t('commands.config.description'))
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
   .addSubcommand(subcommand =>
-    subcommand
-      .setName('xp')
-      .setDescription(t('commands.config.subcommands.xp.description'))
+    subcommand.setName('xp').setDescription(t('commands.config.subcommands.xp.description'))
   )
   .addSubcommand(subcommand =>
-    subcommand
-      .setName('eco')
-      .setDescription(t('commands.config.subcommands.eco.description'))
+    subcommand.setName('eco').setDescription(t('commands.config.subcommands.eco.description'))
   )
   .addSubcommand(subcommand =>
     subcommand
@@ -97,7 +93,7 @@ async function handleXPConfig(interaction: ChatInputCommandInteraction) {
     const roleRewards = await configurationService.getXPRoleRewards(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle(t('commands.config.subcommands.xp.embed.title'))
       .setDescription(t('commands.config.subcommands.xp.embed.description'))
       .addFields(
@@ -138,37 +134,37 @@ async function handleXPConfig(interaction: ChatInputCommandInteraction) {
         },
         {
           name: t('commands.config.subcommands.xp.embed.fields.roleRewards'),
-          value: roleRewards.length > 0
-            ? roleRewards.map(r => `Level ${r.level}: <@&${r.roleId}>`).join('\n')
-            : t('common.none'),
+          value:
+            roleRewards.length > 0
+              ? roleRewards.map(r => `Level ${r.level}: <@&${r.roleId}>`).join('\n')
+              : t('common.none'),
           inline: false,
         }
       )
       .setTimestamp();
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_xp_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_xp_rates')
-          .setLabel(t('commands.config.subcommands.xp.buttons.rates'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_channels')
-          .setLabel(t('commands.config.subcommands.xp.buttons.channels'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_roles')
-          .setLabel(t('commands.config.subcommands.xp.buttons.roles'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_rewards')
-          .setLabel(t('commands.config.subcommands.xp.buttons.rewards'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_xp_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_xp_rates')
+        .setLabel(t('commands.config.subcommands.xp.buttons.rates'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_channels')
+        .setLabel(t('commands.config.subcommands.xp.buttons.channels'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_roles')
+        .setLabel(t('commands.config.subcommands.xp.buttons.roles'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_rewards')
+        .setLabel(t('commands.config.subcommands.xp.buttons.rewards'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -190,7 +186,7 @@ async function handleEcoConfig(interaction: ChatInputCommandInteraction) {
     const shopItems = await configurationService.getShopItems(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('commands.config.subcommands.eco.embed.title'))
       .setDescription(t('commands.config.subcommands.eco.embed.description'))
       .addFields(
@@ -221,33 +217,33 @@ async function handleEcoConfig(interaction: ChatInputCommandInteraction) {
         },
         {
           name: t('commands.config.subcommands.eco.embed.fields.shopItems'),
-          value: shopItems.length > 0
-            ? `${shopItems.length} ${t('commands.config.subcommands.eco.embed.fields.itemsConfigured')}`
-            : t('common.none'),
+          value:
+            shopItems.length > 0
+              ? `${shopItems.length} ${t('commands.config.subcommands.eco.embed.fields.itemsConfigured')}`
+              : t('common.none'),
           inline: true,
         }
       )
       .setTimestamp();
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_eco_currency')
-          .setLabel(t('commands.config.subcommands.eco.buttons.currency'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_eco_rewards')
-          .setLabel(t('commands.config.subcommands.eco.buttons.rewards'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_eco_rob')
-          .setLabel(t('commands.config.subcommands.eco.buttons.rob'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_eco_shop')
-          .setLabel(t('commands.config.subcommands.eco.buttons.shop'))
-          .setStyle(ButtonStyle.Success)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_eco_currency')
+        .setLabel(t('commands.config.subcommands.eco.buttons.currency'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_eco_rewards')
+        .setLabel(t('commands.config.subcommands.eco.buttons.rewards'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_eco_rob')
+        .setLabel(t('commands.config.subcommands.eco.buttons.rob'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_eco_shop')
+        .setLabel(t('commands.config.subcommands.eco.buttons.shop'))
+        .setStyle(ButtonStyle.Success)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -263,12 +259,12 @@ async function handleEcoConfig(interaction: ChatInputCommandInteraction) {
 
 async function handleLangConfig(interaction: ChatInputCommandInteraction) {
   const language = interaction.options.getString('language', true);
-  
+
   await interaction.deferReply();
 
   try {
     await configurationService.setGuildLanguage(interaction.guild!.id, language);
-    
+
     // Update the guild's language in the i18n system
     const { setGuildLocale } = await import('../../i18n');
     setGuildLocale(interaction.guild!.id, language);
@@ -281,9 +277,13 @@ async function handleLangConfig(interaction: ChatInputCommandInteraction) {
     };
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('commands.config.subcommands.lang.success.title'))
-      .setDescription(t('commands.config.subcommands.lang.success.description', { language: languageNames[language] }))
+      .setDescription(
+        t('commands.config.subcommands.lang.success.description', {
+          language: languageNames[language],
+        })
+      )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -302,7 +302,7 @@ async function handleWelcomeConfig(interaction: ChatInputCommandInteraction) {
     const config = await configurationService.getWelcomeConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle(t('commands.config.subcommands.welcome.embed.title'))
       .setDescription(t('commands.config.subcommands.welcome.embed.description'))
       .addFields(
@@ -336,29 +336,28 @@ async function handleWelcomeConfig(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_welcome_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_channel')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.channel'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_message')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.message'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_embed')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.embed'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_dm')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.dm'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_welcome_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_channel')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.channel'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_message')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.message'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_embed')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.embed'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_dm')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.dm'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -379,7 +378,7 @@ async function handleAutoroleConfig(interaction: ChatInputCommandInteraction) {
     const config = await configurationService.getAutoroleConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x9B59B6)
+      .setColor(0x9b59b6)
       .setTitle(t('commands.config.subcommands.autorole.embed.title'))
       .setDescription(t('commands.config.subcommands.autorole.embed.description'))
       .addFields(
@@ -390,36 +389,36 @@ async function handleAutoroleConfig(interaction: ChatInputCommandInteraction) {
         },
         {
           name: t('commands.config.subcommands.autorole.embed.fields.roles'),
-          value: config.roles.length > 0
-            ? config.roles.map(r => `<@&${r}>`).join('\n')
-            : t('common.none'),
+          value:
+            config.roles.length > 0
+              ? config.roles.map(r => `<@&${r}>`).join('\n')
+              : t('common.none'),
           inline: false,
         }
       )
       .setTimestamp();
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_autorole_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_add')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.add'))
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(config.roles.length >= 10),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_remove')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.remove'))
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(config.roles.length === 0),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_clear')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.clear'))
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(config.roles.length === 0)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_autorole_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_add')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.add'))
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(config.roles.length >= 10),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_remove')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.remove'))
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(config.roles.length === 0),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_clear')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.clear'))
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(config.roles.length === 0)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -440,7 +439,7 @@ async function handleGoodbyeConfig(interaction: ChatInputCommandInteraction) {
     const config = await configurationService.getGoodbyeConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle(t('commands.config.subcommands.goodbye.embed.title'))
       .setDescription(t('commands.config.subcommands.goodbye.embed.description'))
       .addFields(
@@ -469,25 +468,24 @@ async function handleGoodbyeConfig(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_channel')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.channel'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_message')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.message'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_embed')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.embed'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_channel')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.channel'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_message')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.message'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_embed')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.embed'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],

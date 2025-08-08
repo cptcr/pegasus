@@ -1,8 +1,4 @@
-import { 
-  ModalSubmitInteraction,
-  TextChannel,
-  EmbedBuilder
-} from 'discord.js';
+import { ModalSubmitInteraction, TextChannel, EmbedBuilder } from 'discord.js';
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
 import { GuildService } from '../../services/guildService';
@@ -58,7 +54,7 @@ async function handleTicketCreation(
     const embed = new EmbedBuilder()
       .setTitle(t('tickets.ticketCreated', { number: ticket.ticketNumber }))
       .setDescription(t('tickets.ticketCreatedDesc', { channel: channel.toString() }))
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTimestamp();
 
     await interaction.editReply({
@@ -91,8 +87,13 @@ async function handleTicketCloseReason(
   }
 
   try {
-    await ticketService.closeTicket(ticketId, interaction.member as any, closeReason || undefined, locale);
-    
+    await ticketService.closeTicket(
+      ticketId,
+      interaction.member as any,
+      closeReason || undefined,
+      locale
+    );
+
     await interaction.editReply({
       content: t('tickets.closingWithReason', { reason: closeReason || 'No reason provided' }),
     });

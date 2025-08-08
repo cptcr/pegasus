@@ -1,9 +1,9 @@
-import { 
+import {
   ChatInputCommandInteraction,
   Message,
   GuildMember,
   PermissionFlagsBits,
-  EmbedBuilder
+  EmbedBuilder,
 } from 'discord.js';
 import { checkCommandRateLimit, RateLimitResult } from './rateLimiter';
 import { PermissionManager, PermissionCheck } from './permissions';
@@ -47,7 +47,7 @@ export async function securityMiddleware(
     isOwner: PermissionManager.isBotOwner(interaction.user.id),
     permissions: (interaction.member as GuildMember)?.permissions.bitfield || 0n,
   };
-  
+
   try {
     // 1. Check maintenance mode
     if (process.env.MAINTENANCE_MODE === 'true' && !context.isOwner) {
@@ -57,20 +57,20 @@ export async function securityMiddleware(
         code: 'MAINTENANCE',
       };
     }
-    
+
     // 2. Check blacklist
     const blacklistCheck = await checkBlacklist(context);
     if (!blacklistCheck.passed) {
       return blacklistCheck;
     }
-    
+
     // 3. Check rate limits
     const rateLimitCheck = await checkRateLimit(context);
     if (!rateLimitCheck.passed) {
       await handleRateLimit(interaction, rateLimitCheck.details as RateLimitResult);
       return rateLimitCheck;
     }
-    
+
     // 4. Check permissions
     if (command.permissions && command.permissions.length > 0) {
       // Convert PermissionResolvable[] to bigint[]
@@ -94,7 +94,7 @@ export async function securityMiddleware(
         interaction,
         permissionBits
       );
-      
+
       if (!permissionCheck.allowed) {
         await handlePermissionDenied(interaction, permissionCheck);
         return {
@@ -105,14 +105,14 @@ export async function securityMiddleware(
         };
       }
     }
-    
+
     // 5. Validate input
     const validationCheck = await validateCommandInput(interaction, command);
     if (!validationCheck.passed) {
       await handleValidationError(interaction, validationCheck.error!);
       return validationCheck;
     }
-    
+
     // 6. Log command execution
     await auditLogger.logAction({
       action: 'COMMAND_EXECUTE',
@@ -124,7 +124,7 @@ export async function securityMiddleware(
         options: sanitizeOptions([...interaction.options.data]),
       },
     });
-    
+
     return { passed: true };
   } catch (error) {
     logger.error('Security middleware error:', error);
@@ -149,7 +149,7 @@ async function checkBlacklist(context: SecurityContext): Promise<SecurityCheckRe
       code: 'BLACKLIST',
     };
   }
-  
+
   // Check guild blacklist
   const guildBlacklisted = await isBlacklisted('guild', context.guildId);
   if (guildBlacklisted) {
@@ -159,7 +159,7 @@ async function checkBlacklist(context: SecurityContext): Promise<SecurityCheckRe
       code: 'BLACKLIST',
     };
   }
-  
+
   return { passed: true };
 }
 
@@ -171,29 +171,28 @@ async function checkRateLimit(context: SecurityContext): Promise<SecurityCheckRe
   if (context.isOwner) {
     return { passed: true };
   }
-  
+
   // Check if user has rate limit bypass permission
-  if ((context.permissions & PermissionFlagsBits.Administrator) === PermissionFlagsBits.Administrator) {
+  if (
+    (context.permissions & PermissionFlagsBits.Administrator) ===
+    PermissionFlagsBits.Administrator
+  ) {
     return { passed: true };
   }
-  
-  const result = await checkCommandRateLimit(
-    context.userId,
-    context.guildId,
-    context.commandName
-  );
-  
+
+  const result = await checkCommandRateLimit(context.userId, context.guildId, context.commandName);
+
   if (!result.allowed) {
     return {
       passed: false,
-      error: t('security.rateLimit', { 
-        seconds: Math.ceil(result.msBeforeNext / 1000) 
+      error: t('security.rateLimit', {
+        seconds: Math.ceil(result.msBeforeNext / 1000),
       }),
       code: 'RATE_LIMIT',
       details: result,
     };
   }
-  
+
   return { passed: true };
 }
 
@@ -206,18 +205,19 @@ async function validateCommandInput(
 ): Promise<SecurityCheckResult> {
   const commandName = command.data.name;
   const subcommand = interaction.options.getSubcommand(false);
-  
+
   // Get validation schema
   const schema = (CommandSchemas as any)[commandName]?.[subcommand || 'default'];
   if (!schema) {
     return { passed: true }; // No schema defined, skip validation
   }
-  
+
   try {
     // Extract options
     const options: Record<string, any> = {};
     interaction.options.data.forEach(opt => {
-      if (opt.type === 1) { // Subcommand
+      if (opt.type === 1) {
+        // Subcommand
         opt.options?.forEach(subOpt => {
           options[subOpt.name] = subOpt.value;
         });
@@ -225,13 +225,13 @@ async function validateCommandInput(
         options[opt.name] = opt.value;
       }
     });
-    
+
     // Validate
     Validator.validate(schema, options);
-    
+
     // Additional security checks
     await performSecurityChecks(options);
-    
+
     return { passed: true };
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -255,12 +255,12 @@ async function performSecurityChecks(options: Record<string, any>): Promise<void
       if (Sanitizer.hasMassMentions(value)) {
         throw new ValidationError('Mass mentions are not allowed');
       }
-      
+
       // Check for spam patterns
       if (value.length > 100 && Sanitizer.isSpam(value)) {
         throw new ValidationError('Message appears to be spam');
       }
-      
+
       // Check URLs if present
       const urlMatch = value.match(/https?:\/\/[^\s]+/gi);
       if (urlMatch) {
@@ -282,7 +282,7 @@ async function handleRateLimit(
   result: RateLimitResult
 ): Promise<void> {
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(0xff0000)
     .setTitle('Rate Limit')
     .setDescription(t('security.rateLimit.description'))
     .addFields(
@@ -299,7 +299,7 @@ async function handleRateLimit(
     )
     .setFooter({ text: 'Please slow down and try again later' })
     .setTimestamp();
-  
+
   await interaction.reply({
     embeds: [embed],
     ephemeral: true,
@@ -314,11 +314,11 @@ async function handlePermissionDenied(
   check: PermissionCheck
 ): Promise<void> {
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(0xff0000)
     .setTitle('Permission Denied')
     .setDescription(check.reason || t('security.permission.denied'))
     .setTimestamp();
-  
+
   if (check.missingPermissions && check.missingPermissions.length > 0) {
     embed.addFields({
       name: 'Missing Permissions',
@@ -326,7 +326,7 @@ async function handlePermissionDenied(
       inline: false,
     });
   }
-  
+
   await interaction.reply({
     embeds: [embed],
     ephemeral: true,
@@ -341,12 +341,12 @@ async function handleValidationError(
   error: string
 ): Promise<void> {
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(0xff0000)
     .setTitle('Invalid Input')
     .setDescription(error)
     .setFooter({ text: 'Please check your input and try again' })
     .setTimestamp();
-  
+
   await interaction.reply({
     embeds: [embed],
     ephemeral: true,
@@ -360,9 +360,7 @@ function sanitizeOptions(options: any[]): any[] {
   return options.map(opt => ({
     name: opt.name,
     type: opt.type,
-    value: typeof opt.value === 'string' 
-      ? Sanitizer.removeSensitive(opt.value)
-      : opt.value,
+    value: typeof opt.value === 'string' ? Sanitizer.removeSensitive(opt.value) : opt.value,
     options: opt.options ? sanitizeOptions(opt.options) : undefined,
   }));
 }
@@ -379,21 +377,19 @@ async function isBlacklisted(_type: 'user' | 'guild', _id: string): Promise<bool
 /**
  * Message security middleware
  */
-export async function messageSecurityMiddleware(
-  message: Message
-): Promise<SecurityCheckResult> {
+export async function messageSecurityMiddleware(message: Message): Promise<SecurityCheckResult> {
   // Skip bot messages
   if (message.author.bot) {
     return { passed: true };
   }
-  
+
   // Skip DMs for now
   if (!message.guild) {
     return { passed: true };
   }
-  
+
   const content = message.content;
-  
+
   // Check for spam
   if (Sanitizer.isSpam(content)) {
     await message.delete().catch(() => {});
@@ -403,7 +399,7 @@ export async function messageSecurityMiddleware(
       code: 'VALIDATION',
     };
   }
-  
+
   // Check for mass mentions
   if (Sanitizer.hasMassMentions(content)) {
     await message.delete().catch(() => {});
@@ -414,7 +410,7 @@ export async function messageSecurityMiddleware(
       code: 'VALIDATION',
     };
   }
-  
+
   return { passed: true };
 }
 
@@ -428,12 +424,12 @@ export function createSecurityReport(
   actions?: string[]
 ): EmbedBuilder {
   const colors = {
-    low: 0x00FF00,
-    medium: 0xFFFF00,
-    high: 0xFFA500,
-    critical: 0xFF0000,
+    low: 0x00ff00,
+    medium: 0xffff00,
+    high: 0xffa500,
+    critical: 0xff0000,
   };
-  
+
   const embed = new EmbedBuilder()
     .setColor(colors[severity])
     .setTitle(`Security Alert: ${title}`)
@@ -444,7 +440,7 @@ export function createSecurityReport(
       inline: true,
     })
     .setTimestamp();
-  
+
   if (actions && actions.length > 0) {
     embed.addFields({
       name: 'Recommended Actions',
@@ -452,6 +448,6 @@ export function createSecurityReport(
       inline: false,
     });
   }
-  
+
   return embed;
 }

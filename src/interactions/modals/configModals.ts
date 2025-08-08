@@ -6,7 +6,7 @@ import { logger } from '../../utils/logger';
 export async function handleConfigModal(interaction: ModalSubmitInteraction) {
   const parts = interaction.customId.split('_');
   const prefix = parts[0];
-  
+
   if (prefix !== 'config') return;
 
   // Remove prefix to get the actual modal type
@@ -14,7 +14,10 @@ export async function handleConfigModal(interaction: ModalSubmitInteraction) {
 
   // Handle XP channel modals
   if (modalType.startsWith('xp_channels_')) {
-    return handleXPChannelsModal(interaction, modalType.replace('xp_channels_', '').replace('_modal', ''));
+    return handleXPChannelsModal(
+      interaction,
+      modalType.replace('xp_channels_', '').replace('_modal', '')
+    );
   }
 
   // Handle XP reward modals
@@ -110,7 +113,7 @@ async function handleXPRatesModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.xp.success.rates.title'))
       .setDescription(t('config.xp.success.rates.description'))
       .addFields(
@@ -179,7 +182,7 @@ async function handleXPRolesModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.xp.success.roles.title'))
       .setDescription(t('config.xp.success.roles.description'))
       .addFields(
@@ -190,9 +193,10 @@ async function handleXPRolesModal(interaction: ModalSubmitInteraction) {
         },
         {
           name: t('config.xp.fields.ignoredRoles'),
-          value: ignoredRoles.length > 0
-            ? ignoredRoles.map(id => `<@&${id}>`).join(', ')
-            : t('common.none'),
+          value:
+            ignoredRoles.length > 0
+              ? ignoredRoles.map(id => `<@&${id}>`).join(', ')
+              : t('common.none'),
           inline: false,
         }
       )
@@ -229,7 +233,7 @@ async function handleEcoCurrencyModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.eco.success.currency.title'))
       .setDescription(t('config.eco.success.currency.description'))
       .addFields(
@@ -312,7 +316,7 @@ async function handleEcoRewardsModal(interaction: ModalSubmitInteraction) {
     const config = await configurationService.getEconomyConfig(interaction.guildId!);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.eco.success.rewards.title'))
       .setDescription(t('config.eco.success.rewards.description'))
       .addFields(
@@ -391,7 +395,7 @@ async function handleEcoRobModal(interaction: ModalSubmitInteraction) {
     const config = await configurationService.getEconomyConfig(interaction.guildId!);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.eco.success.rob.title'))
       .setDescription(t('config.eco.success.rob.description'))
       .addFields(
@@ -438,7 +442,7 @@ async function handleWelcomeMessageModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.welcome.success.message.title'))
       .setDescription(t('config.welcome.success.message.description'))
       .addFields({
@@ -502,7 +506,7 @@ async function handleWelcomeEmbedModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.welcome.success.embed.title'))
       .setDescription(t('config.welcome.success.embed.description'))
       .addFields(
@@ -548,16 +552,14 @@ async function handleWelcomeDMModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.welcome.success.dm.title'))
       .setDescription(t('config.welcome.success.dm.description'))
-      .addFields(
-        {
-          name: t('config.welcome.fields.dmEnabled'),
-          value: enabled ? t('common.yes') : t('common.no'),
-          inline: true,
-        }
-      );
+      .addFields({
+        name: t('config.welcome.fields.dmEnabled'),
+        value: enabled ? t('common.yes') : t('common.no'),
+        inline: true,
+      });
 
     if (message) {
       embed.addFields({
@@ -590,7 +592,7 @@ async function handleGoodbyeMessageModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.goodbye.success.message.title'))
       .setDescription(t('config.goodbye.success.message.description'))
       .addFields({
@@ -654,7 +656,7 @@ async function handleGoodbyeEmbedModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('config.goodbye.success.embed.title'))
       .setDescription(t('config.goodbye.success.embed.description'))
       .addFields(
@@ -730,14 +732,12 @@ async function handleXPChannelsModal(interaction: ModalSubmitInteraction, type: 
     await configurationService.updateXPConfig(interaction.guildId!, updateData);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('XP Channels Updated')
       .setDescription(`${type.replace('_', ' ')} channels have been updated`)
       .addFields({
         name: 'Channels',
-        value: channels.length > 0
-          ? channels.map(id => `<#${id}>`).join('\n')
-          : t('common.none'),
+        value: channels.length > 0 ? channels.map(id => `<#${id}>`).join('\n') : t('common.none'),
         inline: false,
       })
       .setTimestamp();
@@ -776,7 +776,7 @@ async function handleXPRewardAddModal(interaction: ModalSubmitInteraction) {
     await configurationService.setXPRoleReward(interaction.guildId!, level, roleId);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('XP Reward Added')
       .setDescription(`Role reward has been added`)
       .addFields(
@@ -818,7 +818,7 @@ async function handleXPRewardRemoveModal(interaction: ModalSubmitInteraction) {
     await configurationService.removeXPRoleReward(interaction.guildId!, level);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('XP Reward Removed')
       .setDescription(`Role reward for level ${level} has been removed`)
       .setTimestamp();
@@ -892,7 +892,7 @@ async function handleEcoShopAddModal(interaction: ModalSubmitInteraction) {
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('Shop Item Added')
       .setDescription(`Item "${name}" has been added to the shop`)
       .addFields(
@@ -928,12 +928,12 @@ async function handleEcoShopEditModal(interaction: ModalSubmitInteraction) {
 
   try {
     const itemId = interaction.fields.getTextInputValue('itemId').trim();
-    
+
     // For edit modal, we would need additional fields
     // This is a simplified version
     const items = await configurationService.getShopItems(interaction.guildId!);
     const item = items.find(i => i.id === itemId);
-    
+
     if (!item) {
       await interaction.editReply({
         content: 'Item not found',
@@ -943,9 +943,11 @@ async function handleEcoShopEditModal(interaction: ModalSubmitInteraction) {
 
     // In a real implementation, you'd have more fields to edit
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle('Shop Item Edit')
-      .setDescription('To edit items, please use the shop manager to remove and re-add with new settings')
+      .setDescription(
+        'To edit items, please use the shop manager to remove and re-add with new settings'
+      )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -962,10 +964,10 @@ async function handleEcoShopRemoveModal(interaction: ModalSubmitInteraction) {
 
   try {
     const itemId = interaction.fields.getTextInputValue('itemId').trim();
-    
+
     const items = await configurationService.getShopItems(interaction.guildId!);
     const item = items.find(i => i.id === itemId);
-    
+
     if (!item) {
       await interaction.editReply({
         content: 'Item not found',
@@ -976,7 +978,7 @@ async function handleEcoShopRemoveModal(interaction: ModalSubmitInteraction) {
     await configurationService.deleteShopItem(itemId);
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('Shop Item Removed')
       .setDescription(`Item "${item.name}" has been removed from the shop`)
       .setTimestamp();

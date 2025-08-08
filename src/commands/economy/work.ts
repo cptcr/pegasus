@@ -9,8 +9,8 @@ export const data = new SlashCommandBuilder()
   .setDescription('Work to earn money')
   .setDescriptionLocalizations({
     'es-ES': 'Trabaja para ganar dinero',
-    'fr': 'Travaillez pour gagner de l\'argent',
-    'de': 'Arbeite um Geld zu verdienen',
+    fr: "Travaillez pour gagner de l'argent",
+    de: 'Arbeite um Geld zu verdienen',
   });
 
 export const category = CommandCategory.Economy;
@@ -24,31 +24,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const result = await economyService.work(userId, guildId);
-    
+
     if (!result.success) {
       await interaction.editReply({
-        embeds: [embedBuilder.createErrorEmbed(result.error!)]
+        embeds: [embedBuilder.createErrorEmbed(result.error!)],
       });
       return;
     }
 
     const settings = await economyRepository.ensureSettings(guildId);
-    
+
     const embed = new EmbedBuilder()
       .setTitle('Work Complete!')
       .setDescription(result.transaction!.description!)
       .setColor(0x3498db)
       .setThumbnail(interaction.user.displayAvatarURL())
       .addFields(
-        { 
-          name: 'Earned', 
-          value: `${settings.currencySymbol} ${result.transaction!.amount.toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'Earned',
+          value: `${settings.currencySymbol} ${result.transaction!.amount.toLocaleString()}`,
+          inline: true,
         },
-        { 
-          name: 'New Balance', 
-          value: `${settings.currencySymbol} ${result.balance!.balance.toLocaleString()}`, 
-          inline: true 
+        {
+          name: 'New Balance',
+          value: `${settings.currencySymbol} ${result.balance!.balance.toLocaleString()}`,
+          inline: true,
         }
       )
       .setFooter({ text: `You can work again in ${settings.workCooldown / 60} minutes` })
@@ -58,7 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error in work command:', error);
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed('Failed to complete work. Please try again later.')]
+      embeds: [embedBuilder.createErrorEmbed('Failed to complete work. Please try again later.')],
     });
   }
 }

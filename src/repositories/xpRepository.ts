@@ -55,7 +55,9 @@ export class XPRepository {
   }
 
   // Create or update user XP
-  async upsertUserXP(data: Partial<UserXPData> & { userId: string; guildId: string }): Promise<boolean> {
+  async upsertUserXP(
+    data: Partial<UserXPData> & { userId: string; guildId: string }
+  ): Promise<boolean> {
     try {
       await getDatabase()
         .insert(userXp)
@@ -86,7 +88,11 @@ export class XPRepository {
   }
 
   // Get guild leaderboard
-  async getLeaderboard(guildId: string, limit: number, offset: number): Promise<Array<UserXPData & { username?: string; avatarUrl?: string }>> {
+  async getLeaderboard(
+    guildId: string,
+    limit: number,
+    offset: number
+  ): Promise<Array<UserXPData & { username?: string; avatarUrl?: string }>> {
     try {
       const results = await getDatabase()
         .select({
@@ -140,11 +146,13 @@ export class XPRepository {
           rank: sql<number>`COUNT(*) + 1`,
         })
         .from(userXp)
-        .where(and(
-          eq(userXp.guildId, guildId),
-          gte(userXp.xp, userXpAmount),
-          sql`${userXp.userId} != ${userId}`
-        ));
+        .where(
+          and(
+            eq(userXp.guildId, guildId),
+            gte(userXp.xp, userXpAmount),
+            sql`${userXp.userId} != ${userId}`
+          )
+        );
 
       return result?.rank || 1;
     } catch (error) {

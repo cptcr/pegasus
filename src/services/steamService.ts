@@ -44,7 +44,7 @@ export class SteamService {
     try {
       // Extract Steam ID from various formats
       const steamId = await this.resolveSteamId(usernameOrUrl);
-      
+
       if (!steamId) {
         return null;
       }
@@ -53,12 +53,12 @@ export class SteamService {
       const response = await axios.get(`${this.apiUrl}/ISteamUser/GetPlayerSummaries/v2/`, {
         params: {
           key: this.apiKey,
-          steamids: steamId
-        }
+          steamids: steamId,
+        },
       });
 
       const players = response.data.response.players;
-      
+
       if (players.length === 0) {
         return null;
       }
@@ -91,8 +91,8 @@ export class SteamService {
       const response = await axios.get(`${this.apiUrl}/ISteamUser/ResolveVanityURL/v1/`, {
         params: {
           key: this.apiKey,
-          vanityurl: vanityUrlName
-        }
+          vanityurl: vanityUrlName,
+        },
       });
 
       if (response.data.response.success === 1) {
@@ -114,7 +114,7 @@ export class SteamService {
       3: t('commands.utils.steam.statusAway', { lng: locale }),
       4: t('commands.utils.steam.statusSnooze', { lng: locale }),
       5: t('commands.utils.steam.statusLookingToTrade', { lng: locale }),
-      6: t('commands.utils.steam.statusLookingToPlay', { lng: locale })
+      6: t('commands.utils.steam.statusLookingToPlay', { lng: locale }),
     };
 
     return statusMap[status] || t('commands.utils.steam.unknown', { lng: locale });
@@ -124,7 +124,7 @@ export class SteamService {
     const visibilityMap: Record<number, string> = {
       1: t('commands.utils.steam.visibilityPrivate', { lng: locale }),
       2: t('commands.utils.steam.visibilityFriendsOnly', { lng: locale }),
-      3: t('commands.utils.steam.visibilityPublic', { lng: locale })
+      3: t('commands.utils.steam.visibilityPublic', { lng: locale }),
     };
 
     return visibilityMap[visibility] || t('commands.utils.steam.unknown', { lng: locale });
@@ -140,8 +140,8 @@ export class SteamService {
         params: {
           key: this.apiKey,
           steamid: steamId,
-          count
-        }
+          count,
+        },
       });
 
       return response.data.response.games || [];
@@ -162,8 +162,8 @@ export class SteamService {
           key: this.apiKey,
           steamid: steamId,
           include_appinfo: true,
-          include_played_free_games: true
-        }
+          include_played_free_games: true,
+        },
       });
 
       return response.data.response;
@@ -182,8 +182,8 @@ export class SteamService {
       const response = await axios.get(`${this.apiUrl}/IPlayerService/GetSteamLevel/v1/`, {
         params: {
           key: this.apiKey,
-          steamid: steamId
-        }
+          steamid: steamId,
+        },
       });
 
       return response.data.response.player_level || 0;
@@ -202,8 +202,8 @@ export class SteamService {
       const response = await axios.get(`${this.apiUrl}/ISteamUser/GetPlayerBans/v1/`, {
         params: {
           key: this.apiKey,
-          steamids: steamId
-        }
+          steamids: steamId,
+        },
       });
 
       return response.data.players[0] || null;

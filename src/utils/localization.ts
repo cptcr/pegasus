@@ -9,11 +9,11 @@ export interface LocalizedStrings {
 
 export const createLocalizationMap = (strings: LocalizedStrings): LocalizationMap => {
   const map: LocalizationMap = {};
-  
+
   if (strings.de) map.de = strings.de;
   if (strings.es) map['es-ES'] = strings.es;
   if (strings.fr) map.fr = strings.fr;
-  
+
   return map;
 };
 
@@ -189,19 +189,19 @@ export const subcommandDescriptions = {
         en: 'Create a warning automation',
         de: 'Eine Warnungsautomatisierung erstellen',
         es: 'Crear una automatización de advertencia',
-        fr: 'Créer une automatisation d\'avertissement',
+        fr: "Créer une automatisation d'avertissement",
       },
       view: {
         en: 'View all warning automations',
         de: 'Alle Warnungsautomatisierungen anzeigen',
         es: 'Ver todas las automatizaciones de advertencia',
-        fr: 'Voir toutes les automatisations d\'avertissement',
+        fr: "Voir toutes les automatisations d'avertissement",
       },
       delete: {
         en: 'Delete a warning automation',
         de: 'Eine Warnungsautomatisierung löschen',
         es: 'Eliminar una automatización de advertencia',
-        fr: 'Supprimer une automatisation d\'avertissement',
+        fr: "Supprimer une automatisation d'avertissement",
       },
     },
   },
@@ -225,10 +225,10 @@ export const subcommandDescriptions = {
       fr: 'Mettre un utilisateur en timeout',
     },
     resetxp: {
-      en: 'Reset a user\'s XP',
+      en: "Reset a user's XP",
       de: 'XP eines Benutzers zurücksetzen',
       es: 'Reiniciar el XP de un usuario',
-      fr: 'Réinitialiser l\'XP d\'un utilisateur',
+      fr: "Réinitialiser l'XP d'un utilisateur",
     },
   },
 };
@@ -239,48 +239,48 @@ export const optionDescriptions = {
     en: 'The user to target',
     de: 'Der Zielbenutzer',
     es: 'El usuario objetivo',
-    fr: 'L\'utilisateur cible',
+    fr: "L'utilisateur cible",
   },
   title: {
     en: 'Title of the warning',
     de: 'Titel der Warnung',
     es: 'Título de la advertencia',
-    fr: 'Titre de l\'avertissement',
+    fr: "Titre de l'avertissement",
   },
   description: {
     en: 'Description of the warning',
     de: 'Beschreibung der Warnung',
     es: 'Descripción de la advertencia',
-    fr: 'Description de l\'avertissement',
+    fr: "Description de l'avertissement",
   },
   level: {
     en: 'Warning level (1-10)',
     de: 'Warnstufe (1-10)',
     es: 'Nivel de advertencia (1-10)',
-    fr: 'Niveau d\'avertissement (1-10)',
+    fr: "Niveau d'avertissement (1-10)",
   },
   proof: {
     en: 'Proof attachment for the warning',
     de: 'Beweisanhang für die Warnung',
     es: 'Prueba adjunta para la advertencia',
-    fr: 'Preuve jointe pour l\'avertissement',
+    fr: "Preuve jointe pour l'avertissement",
   },
   warnid: {
     en: 'The warning ID',
     de: 'Die Warnungs-ID',
     es: 'El ID de advertencia',
-    fr: 'L\'ID d\'avertissement',
+    fr: "L'ID d'avertissement",
   },
   reason: {
     en: 'Reason for the action',
     de: 'Grund für die Aktion',
     es: 'Razón de la acción',
-    fr: 'Raison de l\'action',
+    fr: "Raison de l'action",
   },
   duration: {
     en: 'Duration of the action',
     de: 'Dauer der Aktion',
     es: 'Duración de la acción',
-    fr: 'Durée de l\'action',
+    fr: "Durée de l'action",
   },
 };

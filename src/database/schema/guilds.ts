@@ -9,7 +9,9 @@ export const guilds = pgTable('guilds', {
 });
 
 export const guildSettings = pgTable('guild_settings', {
-  guildId: varchar('guild_id', { length: 20 }).primaryKey().references(() => guilds.id, { onDelete: 'cascade' }),
+  guildId: varchar('guild_id', { length: 20 })
+    .primaryKey()
+    .references(() => guilds.id, { onDelete: 'cascade' }),
   // Welcome configuration
   welcomeEnabled: boolean('welcome_enabled').default(false).notNull(),
   welcomeChannel: varchar('welcome_channel', { length: 20 }),

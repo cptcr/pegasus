@@ -12,7 +12,7 @@ export class SteamService {
       )
       .setColor(0x1b2838)
       .setTimestamp();
-    
+
     return embed;
   }
 

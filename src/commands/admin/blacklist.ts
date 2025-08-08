@@ -115,12 +115,7 @@ async function handleBlacklistUser(interaction: ChatInputCommandInteraction): Pr
   const [existing] = await db
     .select()
     .from(blacklist)
-    .where(
-      and(
-        eq(blacklist.entityId, user.id),
-        eq(blacklist.entityType, 'user')
-      )
-    )
+    .where(and(eq(blacklist.entityId, user.id), eq(blacklist.entityType, 'user')))
     .limit(1);
 
   if (existing) {
@@ -156,11 +151,13 @@ async function handleBlacklistUser(interaction: ChatInputCommandInteraction): Pr
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle(t('commands.blacklist.subcommands.user.success.title'))
-      .setDescription(t('commands.blacklist.subcommands.user.success.description', {
-        user: user.tag,
-      }))
+      .setDescription(
+        t('commands.blacklist.subcommands.user.success.description', {
+          user: user.tag,
+        })
+      )
       .addFields(
         {
           name: t('commands.blacklist.subcommands.user.success.reason'),
@@ -218,12 +215,14 @@ async function handleBlacklistView(interaction: ChatInputCommandInteraction): Pr
   const totalPages = Math.ceil(Number(count) / pageSize);
 
   const embed = new EmbedBuilder()
-    .setColor(0xFF0000)
+    .setColor(0xff0000)
     .setTitle(t('commands.blacklist.subcommands.view.title'))
-    .setDescription(t('commands.blacklist.subcommands.view.description', {
-      page,
-      totalPages,
-    }))
+    .setDescription(
+      t('commands.blacklist.subcommands.view.description', {
+        page,
+        totalPages,
+      })
+    )
     .setTimestamp();
 
   // Add blacklisted users
@@ -256,12 +255,7 @@ async function handleBlacklistRemove(interaction: ChatInputCommandInteraction): 
     const db = getDatabase();
     const deleted = await db
       .delete(blacklist)
-      .where(
-        and(
-          eq(blacklist.entityId, user.id),
-          eq(blacklist.entityType, 'user')
-        )
-      )
+      .where(and(eq(blacklist.entityId, user.id), eq(blacklist.entityType, 'user')))
       .returning();
 
     if (deleted.length === 0) {
@@ -272,11 +266,13 @@ async function handleBlacklistRemove(interaction: ChatInputCommandInteraction): 
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle(t('commands.blacklist.subcommands.remove.success.title'))
-      .setDescription(t('commands.blacklist.subcommands.remove.success.description', {
-        user: user.tag,
-      }))
+      .setDescription(
+        t('commands.blacklist.subcommands.remove.success.description', {
+          user: user.tag,
+        })
+      )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });

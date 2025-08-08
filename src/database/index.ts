@@ -17,30 +17,30 @@ const queryClient = postgres(connectionString, {
   // Connection pool settings optimized for Discord bot workloads
   prepare: true, // Prepared statements for better performance
   ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
-  
+
   // Error handling
-  onnotice: (notice) => {
+  onnotice: notice => {
     if (process.env.NODE_ENV === 'development') {
       logger.debug('Database notice:', notice);
     }
   },
-  
+
   // Transform options for BigInt handling
   transform: {
     ...postgres.camel,
     undefined: null, // Convert undefined to null
   },
-  
+
   // Types configuration for proper BigInt handling
   types: {
     bigint: postgres.BigInt,
-  }
+  },
 });
 
 // Create drizzle instance with schema
-export const db = drizzle(queryClient, { 
+export const db = drizzle(queryClient, {
   schema,
-  logger: process.env.NODE_ENV === 'development'
+  logger: process.env.NODE_ENV === 'development',
 });
 
 // Export schema for use in other files
@@ -74,49 +74,50 @@ export async function withTransaction<T>(
   retries = 3
 ): Promise<T> {
   let lastError: Error | undefined;
-  
+
   for (let i = 0; i < retries; i++) {
     try {
-      return await db.transaction(async (tx) => {
+      return await db.transaction(async tx => {
         return await callback(tx as typeof db);
       });
     } catch (error) {
       lastError = error as Error;
-      
+
       // Don't retry on constraint violations or other non-retryable errors
-      if (error instanceof Error && (
-        error.message.includes('constraint') ||
-        error.message.includes('duplicate') ||
-        error.message.includes('violates')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('constraint') ||
+          error.message.includes('duplicate') ||
+          error.message.includes('violates'))
+      ) {
         throw error;
       }
-      
+
       // Wait before retry with exponential backoff
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 100));
       }
     }
   }
-  
+
   throw lastError || new Error('Transaction failed after retries');
 }
 
 // Query performance monitoring
 export function createQueryTimer(queryName: string) {
   const startTime = process.hrtime.bigint();
-  
+
   return {
     end: () => {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
-      
+
       if (duration > 1000) {
         logger.warn(`Slow query detected: ${queryName} took ${duration.toFixed(2)}ms`);
       } else if (process.env.NODE_ENV === 'development') {
         logger.debug(`Query ${queryName} took ${duration.toFixed(2)}ms`);
       }
-    }
+    },
   };
 }
 

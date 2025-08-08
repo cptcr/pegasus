@@ -5,7 +5,7 @@ import {
   Guild,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
 } from 'discord.js';
 import { giveawayRepository } from '../repositories/giveawayRepository';
 import { auditLogger } from '../security/audit';
@@ -69,9 +69,13 @@ export class GiveawayService {
     return giveawayRepository.getGiveaway(giveawayId);
   }
 
-  async enterGiveaway(giveawayId: string, userId: string, guild: Guild): Promise<{ success: boolean; error?: string; entries?: number }> {
+  async enterGiveaway(
+    giveawayId: string,
+    userId: string,
+    guild: Guild
+  ): Promise<{ success: boolean; error?: string; entries?: number }> {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     if (!giveaway) {
       return { success: false, error: 'Giveaway not found' };
     }
@@ -101,9 +105,12 @@ export class GiveawayService {
     return { success: true, entries: totalEntries };
   }
 
-  async removeEntry(giveawayId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+  async removeEntry(
+    giveawayId: string,
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     if (!giveaway) {
       return { success: false, error: 'Giveaway not found' };
     }
@@ -118,7 +125,7 @@ export class GiveawayService {
 
   async endGiveaway(giveawayId: string, endedBy: User): Promise<GiveawayResult> {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     if (!giveaway) {
       return { success: false, error: 'Giveaway not found' };
     }
@@ -163,9 +170,13 @@ export class GiveawayService {
     return { success: true, winners };
   }
 
-  async rerollGiveaway(giveawayId: string, rerolledBy: User, newWinnerCount?: number): Promise<GiveawayResult> {
+  async rerollGiveaway(
+    giveawayId: string,
+    rerolledBy: User,
+    newWinnerCount?: number
+  ): Promise<GiveawayResult> {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     if (!giveaway) {
       return { success: false, error: 'Giveaway not found' };
     }
@@ -206,7 +217,7 @@ export class GiveawayService {
 
   async updateGiveaway(giveawayId: string, updates: any, updatedBy: User) {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     if (!giveaway || giveaway.status !== 'active') {
       throw new Error('Giveaway not found or not active');
     }
@@ -229,10 +240,13 @@ export class GiveawayService {
     });
   }
 
-  private async checkRequirements(member: any, requirements: any): Promise<{ met: boolean; reason?: string }> {
+  private async checkRequirements(
+    member: any,
+    requirements: any
+  ): Promise<{ met: boolean; reason?: string }> {
     // Check role requirements
     if (requirements.roleIds?.length > 0) {
-      const hasRequiredRole = requirements.roleIds.some((roleId: string) => 
+      const hasRequiredRole = requirements.roleIds.some((roleId: string) =>
         member.roles.cache.has(roleId)
       );
       if (!hasRequiredRole) {
@@ -255,9 +269,12 @@ export class GiveawayService {
 
       const timeInServer = Date.now() - joinedAt.getTime();
       const requiredTime = this.parseTimeRequirement(requirements.minTimeInServer);
-      
+
       if (timeInServer < requiredTime) {
-        return { met: false, reason: `You must be in the server for at least ${requirements.minTimeInServer}` };
+        return {
+          met: false,
+          reason: `You must be in the server for at least ${requirements.minTimeInServer}`,
+        };
       }
     }
 
@@ -298,7 +315,7 @@ export class GiveawayService {
     // Shuffle and select unique winners
     const shuffled = weightedEntries.sort(() => Math.random() - 0.5);
     const winners = new Set<string>();
-    
+
     for (const userId of shuffled) {
       winners.add(userId);
       if (winners.size >= Math.min(count, entries.length)) break;
@@ -312,18 +329,24 @@ export class GiveawayService {
     if (!client) return;
 
     try {
-      const channel = await client.channels.fetch(giveaway.channelId).catch(() => null) as TextChannel;
+      const channel = (await client.channels
+        .fetch(giveaway.channelId)
+        .catch(() => null)) as TextChannel;
       if (!channel || !giveaway.messageId) return;
 
       const message = await channel.messages.fetch(giveaway.messageId).catch(() => null);
       if (!message) return;
 
       const embed = new EmbedBuilder()
-        .setColor(giveaway.status === 'active' ? (giveaway.embedColor || 0x0099FF) : 0x808080)
-        .setTitle(giveaway.status === 'active' ? t('commands.giveaway.embed.title') : t('commands.giveaway.embed.ended'))
+        .setColor(giveaway.status === 'active' ? giveaway.embedColor || 0x0099ff : 0x808080)
+        .setTitle(
+          giveaway.status === 'active'
+            ? t('commands.giveaway.embed.title')
+            : t('commands.giveaway.embed.ended')
+        )
         .setDescription(
-          giveaway.description || 
-          t('commands.giveaway.embed.description', { prize: giveaway.prize })
+          giveaway.description ||
+            t('commands.giveaway.embed.description', { prize: giveaway.prize })
         )
         .addFields(
           {
@@ -362,20 +385,23 @@ export class GiveawayService {
         });
       }
 
-      const components = giveaway.status === 'active' ? [
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`gw_enter:${giveaway.giveawayId}`)
-            .setLabel(t('commands.giveaway.buttons.enter'))
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji('🎉'),
-          new ButtonBuilder()
-            .setCustomId(`gw_info:${giveaway.giveawayId}`)
-            .setLabel(t('commands.giveaway.buttons.info'))
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji('ℹ️')
-        )
-      ] : [];
+      const components =
+        giveaway.status === 'active'
+          ? [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`gw_enter:${giveaway.giveawayId}`)
+                  .setLabel(t('commands.giveaway.buttons.enter'))
+                  .setStyle(ButtonStyle.Primary)
+                  .setEmoji('🎉'),
+                new ButtonBuilder()
+                  .setCustomId(`gw_info:${giveaway.giveawayId}`)
+                  .setLabel(t('commands.giveaway.buttons.info'))
+                  .setStyle(ButtonStyle.Secondary)
+                  .setEmoji('ℹ️')
+              ),
+            ]
+          : [];
 
       await message.edit({ embeds: [embed], components });
 
@@ -395,7 +421,7 @@ export class GiveawayService {
 
   private scheduleGiveawayEnd(giveaway: any) {
     const timeUntilEnd = giveaway.endTime.getTime() - Date.now();
-    
+
     if (timeUntilEnd <= 0) {
       // Giveaway should have already ended
       this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
@@ -412,7 +438,7 @@ export class GiveawayService {
 
   async initializeActiveGiveaways() {
     const activeGiveaways = await giveawayRepository.getActiveGiveaways();
-    
+
     for (const giveaway of activeGiveaways) {
       this.scheduleGiveawayEnd(giveaway);
     }
@@ -421,12 +447,12 @@ export class GiveawayService {
   private parseTimeRequirement(time: string): number {
     const regex = /^(\d+)([dhm])$/;
     const match = time.match(regex);
-    
+
     if (!match) return 0;
-    
+
     const value = parseInt(match[1]);
     const unit = match[2];
-    
+
     switch (unit) {
       case 'd':
         return value * 24 * 60 * 60 * 1000;

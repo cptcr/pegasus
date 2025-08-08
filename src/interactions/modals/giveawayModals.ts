@@ -1,4 +1,11 @@
-import { ModalSubmitInteraction, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import {
+  ModalSubmitInteraction,
+  TextChannel,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
 import { giveawayService } from '../../services/giveawayService';
 import { t } from '../../i18n';
 
@@ -65,7 +72,7 @@ async function handleGiveawayStart(interaction: ModalSubmitInteraction, params: 
   }
 
   // Parse embed color
-  let embedColor = 0x0099FF;
+  let embedColor = 0x0099ff;
   if (embedColorText) {
     const colorMatch = embedColorText.match(/^#?([0-9A-Fa-f]{6})$/);
     if (colorMatch) {
@@ -132,7 +139,9 @@ async function handleGiveawayStart(interaction: ModalSubmitInteraction, params: 
     if (Object.keys(requirements).length > 0) {
       const reqLines = [];
       if (requirements.roleIds?.length > 0) {
-        reqLines.push(`• Roles: ${requirements.roleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
+        reqLines.push(
+          `• Roles: ${requirements.roleIds.map((id: string) => `<@&${id}>`).join(', ')}`
+        );
       }
       if (requirements.minLevel) {
         reqLines.push(`• Minimum Level: ${requirements.minLevel}`);

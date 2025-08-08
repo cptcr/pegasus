@@ -65,7 +65,7 @@ export class XPService {
     const key = `${userId}-${guildId}`;
     const now = Date.now();
     const lastGain = this.xpCooldowns.get(key) || 0;
-    
+
     return now - lastGain < cooldownSeconds * 1000;
   }
 
@@ -94,7 +94,7 @@ export class XPService {
 
       // Check role multipliers
       const memberRoles = member.roles.cache.map(role => role.id);
-      
+
       // Check if member has any ignored roles
       if (memberRoles.some(roleId => config.ignoredRoles.includes(roleId))) {
         return 0;
@@ -145,7 +145,7 @@ export class XPService {
   ): Promise<XPGainResult | null> {
     try {
       const config = await configurationService.getXPConfig(guildId);
-      
+
       // Check if XP is enabled
       if (!config.enabled) return null;
 
@@ -164,7 +164,7 @@ export class XPService {
       }
 
       // Get or create user XP data
-    const [userXpData] = await getDatabase()
+      const [userXpData] = await getDatabase()
         .select()
         .from(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)))
@@ -187,15 +187,13 @@ export class XPService {
           })
           .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
       } else {
-        await getDatabase()
-          .insert(userXp)
-          .values({
-            userId,
-            guildId,
-            xp: newXp,
-            level: newLevel,
-            lastXpGain: new Date(),
-          });
+        await getDatabase().insert(userXp).values({
+          userId,
+          guildId,
+          xp: newXp,
+          level: newLevel,
+          lastXpGain: new Date(),
+        });
       }
 
       // Check for level up
@@ -205,7 +203,7 @@ export class XPService {
       if (leveledUp && config.levelUpRewardsEnabled) {
         // Get role rewards for levels between old and new
         const roleRewards = await configurationService.getXPRoleRewards(guildId);
-        
+
         if (config.stackRoleRewards) {
           // Give all role rewards up to the new level
           rewardRoles = roleRewards
@@ -215,7 +213,7 @@ export class XPService {
           // Give only the highest level role reward
           const applicableRewards = roleRewards.filter(reward => reward.level <= newLevel);
           if (applicableRewards.length > 0) {
-            const highestReward = applicableRewards.reduce((prev, current) => 
+            const highestReward = applicableRewards.reduce((prev, current) =>
               current.level > prev.level ? current : prev
             );
             rewardRoles = [highestReward.roleId];
@@ -241,7 +239,7 @@ export class XPService {
   async getUserRank(userId: string, guildId: string): Promise<RankData | null> {
     try {
       // Get user XP data
-    const [userXpData] = await getDatabase()
+      const [userXpData] = await getDatabase()
         .select({
           userId: userXp.userId,
           guildId: userXp.guildId,
@@ -266,11 +264,13 @@ export class XPService {
           rank: sql<number>`COUNT(*) + 1`,
         })
         .from(userXp)
-        .where(and(
-          eq(userXp.guildId, guildId),
-          gte(userXp.xp, userXpData.xp),
-          sql`${userXp.userId} != ${userId}`
-        ));
+        .where(
+          and(
+            eq(userXp.guildId, guildId),
+            gte(userXp.xp, userXpData.xp),
+            sql`${userXp.userId} != ${userId}`
+          )
+        );
 
       const rank = rankResult?.rank || 1;
 
@@ -298,7 +298,11 @@ export class XPService {
   }
 
   // Get leaderboard
-  async getLeaderboard(guildId: string, page: number = 1, limit: number = 10): Promise<{
+  async getLeaderboard(
+    guildId: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
     entries: LeaderboardEntry[];
     totalPages: number;
     currentPage: number;
@@ -362,7 +366,7 @@ export class XPService {
       await getDatabase()
         .delete(userXp)
         .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
-      
+
       return true;
     } catch (error) {
       logger.error(`Failed to reset XP for user ${userId} in guild ${guildId}:`, error);
@@ -403,7 +407,10 @@ export class XPService {
   }
 
   // Save rank card customization
-  async saveRankCardCustomization(userId: string, customization: RankCardCustomization): Promise<boolean> {
+  async saveRankCardCustomization(
+    userId: string,
+    customization: RankCardCustomization
+  ): Promise<boolean> {
     try {
       await getDatabase()
         .update(users)
@@ -412,7 +419,7 @@ export class XPService {
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
-      
+
       return true;
     } catch (error) {
       logger.error(`Failed to save rank card customization for user ${userId}:`, error);
@@ -426,22 +433,26 @@ export class XPService {
     this.voiceStates.set(key, Date.now());
   }
 
-  async stopVoiceTracking(userId: string, guildId: string, member: GuildMember): Promise<XPGainResult | null> {
+  async stopVoiceTracking(
+    userId: string,
+    guildId: string,
+    member: GuildMember
+  ): Promise<XPGainResult | null> {
     const key = `${userId}-${guildId}`;
     const startTime = this.voiceStates.get(key);
-    
+
     if (!startTime) return null;
-    
+
     this.voiceStates.delete(key);
-    
+
     const duration = Date.now() - startTime;
     const minutes = Math.floor(duration / 60000);
-    
+
     if (minutes < 1) return null;
-    
+
     const config = await configurationService.getXPConfig(guildId);
     const xpToAdd = minutes * config.perVoiceMinute;
-    
+
     // Update last voice activity
     await getDatabase()
       .update(userXp)
@@ -450,7 +461,7 @@ export class XPService {
         updatedAt: new Date(),
       })
       .where(and(eq(userXp.userId, userId), eq(userXp.guildId, guildId)));
-    
+
     return this.addXP(userId, guildId, member, xpToAdd);
   }
 

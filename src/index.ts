@@ -67,7 +67,20 @@ class PegasusBot extends Client {
 
       // Initialize database
       logger.info(chalk.blue('Connecting to database...'));
-      await initializeDatabase();
+      try {
+        await initializeDatabase();
+        logger.info(chalk.green('Database connected successfully'));
+      } catch (error) {
+        logger.warn(
+          chalk.yellow('Database connection failed - bot will run with limited functionality')
+        );
+        logger.warn(
+          chalk.yellow(
+            'Some features like economy, XP, and moderation may not work without database'
+          )
+        );
+        // Continue without database - bot can still run basic commands
+      }
 
       // Load commands
       logger.info(chalk.blue('Loading commands...'));

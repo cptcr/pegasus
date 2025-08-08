@@ -43,7 +43,7 @@ export class EconomyService {
   // Balance management
   async getOrCreateBalance(userId: string, guildId: string): Promise<EconomyBalance> {
     let balance = await economyRepository.getBalance(userId, guildId);
-    
+
     if (!balance) {
       const settings = await economyRepository.ensureSettings(guildId);
       balance = await economyRepository.createBalance({
@@ -52,7 +52,7 @@ export class EconomyService {
         balance: settings.startingBalance,
       });
     }
-    
+
     return balance;
   }
 
@@ -66,12 +66,12 @@ export class EconomyService {
   ): Promise<TransactionResult> {
     try {
       await this.getOrCreateBalance(userId, guildId);
-      
+
       const updatedBalance = await economyRepository.addToBalance(userId, guildId, amount);
       if (!updatedBalance) {
         return { success: false, error: 'Failed to update balance' };
       }
-      
+
       const transaction = await economyRepository.createTransaction({
         userId,
         guildId,
@@ -80,7 +80,7 @@ export class EconomyService {
         description,
         metadata,
       });
-      
+
       return { success: true, balance: updatedBalance, transaction };
     } catch (error) {
       console.error('Error adding money:', error);
@@ -97,11 +97,11 @@ export class EconomyService {
   ): Promise<TransactionResult> {
     try {
       const fromBalance = await this.getOrCreateBalance(fromUserId, guildId);
-      
+
       if (fromBalance.balance < amount) {
         return { success: false, error: 'Insufficient funds' };
       }
-      
+
       // Deduct from sender
       const senderResult = await this.addMoney(
         fromUserId,
@@ -111,11 +111,11 @@ export class EconomyService {
         description || `Transfer to user`,
         { relatedUserId: toUserId }
       );
-      
+
       if (!senderResult.success) {
         return senderResult;
       }
-      
+
       // Add to receiver
       await this.addMoney(
         toUserId,
@@ -125,7 +125,7 @@ export class EconomyService {
         description || `Transfer from user`,
         { relatedUserId: fromUserId }
       );
-      
+
       return senderResult;
     } catch (error) {
       console.error('Error transferring money:', error);
@@ -142,21 +142,24 @@ export class EconomyService {
         const timeLeft = cooldown!.nextAvailable.getTime() - Date.now();
         const hours = Math.floor(timeLeft / 1000 / 60 / 60);
         const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
-        return { success: false, error: `You can claim your daily reward in ${hours}h ${minutes}m` };
+        return {
+          success: false,
+          error: `You can claim your daily reward in ${hours}h ${minutes}m`,
+        };
       }
-      
+
       const settings = await economyRepository.ensureSettings(guildId);
-      
+
       // Calculate streak bonus
       const lastCooldown = await economyRepository.getCooldown(userId, guildId, 'daily');
       let streakDays = 1;
       let totalAmount = settings.dailyAmount;
-      
+
       if (lastCooldown && settings.dailyStreak) {
         const lastClaimTime = lastCooldown.lastUsed.getTime();
         const timeSinceLastClaim = Date.now() - lastClaimTime;
         const oneDayMs = 24 * 60 * 60 * 1000;
-        
+
         // If claimed within 48 hours, continue streak
         if (timeSinceLastClaim < oneDayMs * 2) {
           const metadata = lastCooldown as any;
@@ -164,7 +167,7 @@ export class EconomyService {
           totalAmount += settings.dailyStreakBonus * (streakDays - 1);
         }
       }
-      
+
       // Set cooldown
       const now = new Date();
       const nextAvailable = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -175,7 +178,7 @@ export class EconomyService {
         lastUsed: now,
         nextAvailable,
       });
-      
+
       // Add money
       const result = await this.addMoney(
         userId,
@@ -185,7 +188,7 @@ export class EconomyService {
         `Daily reward (${streakDays} day streak)`,
         { streakDays }
       );
-      
+
       return result;
     } catch (error) {
       console.error('Error claiming daily:', error);
@@ -197,7 +200,7 @@ export class EconomyService {
   async work(userId: string, guildId: string): Promise<TransactionResult> {
     try {
       const settings = await economyRepository.ensureSettings(guildId);
-      
+
       const isOnCooldown = await economyRepository.isOnCooldown(userId, guildId, 'work');
       if (isOnCooldown) {
         const cooldown = await economyRepository.getCooldown(userId, guildId, 'work');
@@ -206,12 +209,13 @@ export class EconomyService {
         const seconds = Math.floor((timeLeft / 1000) % 60);
         return { success: false, error: `You can work again in ${minutes}m ${seconds}s` };
       }
-      
+
       // Random amount between min and max
       const amount = Math.floor(
-        Math.random() * (settings.workMaxAmount - settings.workMinAmount + 1) + settings.workMinAmount
+        Math.random() * (settings.workMaxAmount - settings.workMinAmount + 1) +
+          settings.workMinAmount
       );
-      
+
       // Set cooldown
       const now = new Date();
       const nextAvailable = new Date(now.getTime() + settings.workCooldown * 1000);
@@ -222,7 +226,7 @@ export class EconomyService {
         lastUsed: now,
         nextAvailable,
       });
-      
+
       // Random work descriptions
       const workDescriptions = [
         'You worked as a programmer and fixed bugs',
@@ -234,9 +238,9 @@ export class EconomyService {
         'You walked dogs for your neighbors',
         'You tutored students online',
       ];
-      
+
       const description = workDescriptions[Math.floor(Math.random() * workDescriptions.length)];
-      
+
       return await this.addMoney(userId, guildId, amount, 'work', description);
     } catch (error) {
       console.error('Error working:', error);
@@ -248,11 +252,11 @@ export class EconomyService {
   async rob(robberId: string, victimId: string, guildId: string): Promise<RobResult> {
     try {
       const settings = await economyRepository.ensureSettings(guildId);
-      
+
       if (!settings.robEnabled) {
         return { success: false, error: 'Robbing is disabled in this server' };
       }
-      
+
       const isOnCooldown = await economyRepository.isOnCooldown(robberId, guildId, 'rob');
       if (isOnCooldown) {
         const cooldown = await economyRepository.getCooldown(robberId, guildId, 'rob');
@@ -261,7 +265,7 @@ export class EconomyService {
         const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
         return { success: false, error: `You can rob again in ${hours}h ${minutes}m` };
       }
-      
+
       // Check if victim has protection
       const hasProtection = await economyRepository.hasActiveProtection(victimId, guildId);
       if (hasProtection) {
@@ -275,16 +279,16 @@ export class EconomyService {
           lastUsed: now,
           nextAvailable,
         });
-        
+
         return { success: false, protected: true, error: 'This user has rob protection!' };
       }
-      
+
       const victimBalance = await this.getOrCreateBalance(victimId, guildId);
-      
+
       if (victimBalance.balance < settings.robMinAmount) {
-        return { success: false, error: 'This user doesn\'t have enough money to rob' };
+        return { success: false, error: "This user doesn't have enough money to rob" };
       }
-      
+
       // Set cooldown
       const now = new Date();
       const nextAvailable = new Date(now.getTime() + settings.robCooldown * 1000);
@@ -295,26 +299,33 @@ export class EconomyService {
         lastUsed: now,
         nextAvailable,
       });
-      
+
       // Calculate success
       const successRoll = Math.random() * 100;
       const success = successRoll < settings.robSuccessRate;
-      
+
       if (success) {
         // Calculate amount to steal (10-50% of victim's balance, max 50% of robber's balance)
         const percentage = Math.random() * 0.4 + 0.1; // 10-50%
         let amount = Math.floor(victimBalance.balance * percentage);
-        
+
         const robberBalance = await this.getOrCreateBalance(robberId, guildId);
         const maxSteal = Math.floor(robberBalance.balance * 0.5);
         amount = Math.min(amount, maxSteal);
-        
+
         // Transfer money
         await this.addMoney(victimId, guildId, -amount, 'rob', 'Got robbed', { robberId });
-        const robberResult = await this.addMoney(robberId, guildId, amount, 'rob', 'Successful robbery', { victimId });
-        
+        const robberResult = await this.addMoney(
+          robberId,
+          guildId,
+          amount,
+          'rob',
+          'Successful robbery',
+          { victimId }
+        );
+
         const updatedVictimBalance = await economyRepository.getBalance(victimId, guildId);
-        
+
         return {
           success: true,
           amount,
@@ -325,9 +336,16 @@ export class EconomyService {
         // Failed rob - pay a fine
         const robberBalance = await this.getOrCreateBalance(robberId, guildId);
         const fine = Math.floor(robberBalance.balance * 0.2); // 20% fine
-        
+
         if (fine > 0) {
-          const result = await this.addMoney(robberId, guildId, -fine, 'rob', 'Failed robbery fine', { victimId });
+          const result = await this.addMoney(
+            robberId,
+            guildId,
+            -fine,
+            'rob',
+            'Failed robbery fine',
+            { victimId }
+          );
           return {
             success: false,
             amount: -fine,
@@ -335,7 +353,7 @@ export class EconomyService {
             error: `You were caught and fined ${fine} ${settings.currencyName}!`,
           };
         }
-        
+
         return { success: false, error: 'You failed to rob the user!' };
       }
     } catch (error) {
@@ -345,34 +363,39 @@ export class EconomyService {
   }
 
   // Shop operations
-  async purchaseItem(userId: string, guildId: string, itemId: string, quantity = 1): Promise<PurchaseResult> {
+  async purchaseItem(
+    userId: string,
+    guildId: string,
+    itemId: string,
+    quantity = 1
+  ): Promise<PurchaseResult> {
     try {
       const item = await economyRepository.getShopItem(itemId);
       if (!item || item.guildId !== guildId) {
         return { success: false, error: 'Item not found' };
       }
-      
+
       if (!item.enabled) {
         return { success: false, error: 'This item is not available for purchase' };
       }
-      
+
       if (item.stock !== null && item.stock !== -1 && item.stock < quantity) {
         return { success: false, error: 'Not enough stock available' };
       }
-      
+
       const totalCost = item.price * quantity;
       const balance = await this.getOrCreateBalance(userId, guildId);
-      
+
       if (balance.balance < totalCost) {
         return { success: false, error: 'Insufficient funds' };
       }
-      
+
       // Check role requirement
       if (item.requiresRole) {
         // This would need to be checked in the command handler with Discord.js
         // For now, we'll skip this check in the service layer
       }
-      
+
       // Deduct money
       const transactionResult = await this.addMoney(
         userId,
@@ -382,14 +405,14 @@ export class EconomyService {
         `Purchased ${quantity}x ${item.name}`,
         { itemId, quantity }
       );
-      
+
       if (!transactionResult.success) {
         return { success: false, error: transactionResult.error };
       }
-      
+
       // Check if user already has this item
       const existingItem = await economyRepository.getUserItem(userId, guildId, itemId);
-      
+
       let userItem: EconomyUserItem;
       if (existingItem) {
         // Update quantity
@@ -403,7 +426,7 @@ export class EconomyService {
           const duration = (item.effectValue as any).duration || 86400;
           expiresAt = new Date(Date.now() + duration * 1000);
         }
-        
+
         // Add item to user inventory
         userItem = await economyRepository.addUserItem({
           userId,
@@ -413,14 +436,14 @@ export class EconomyService {
           expiresAt,
         });
       }
-      
+
       // Update stock if not unlimited
       if (item.stock !== null && item.stock !== -1) {
         await economyRepository.updateShopItem(itemId, {
           stock: item.stock - quantity,
         });
       }
-      
+
       return {
         success: true,
         item: userItem,
@@ -433,14 +456,18 @@ export class EconomyService {
   }
 
   // Gambling helpers
-  async canAffordBet(userId: string, guildId: string, amount: number): Promise<{ canAfford: boolean; balance?: EconomyBalance; settings?: EconomySettings }> {
+  async canAffordBet(
+    userId: string,
+    guildId: string,
+    amount: number
+  ): Promise<{ canAfford: boolean; balance?: EconomyBalance; settings?: EconomySettings }> {
     const balance = await this.getOrCreateBalance(userId, guildId);
     const settings = await economyRepository.ensureSettings(guildId);
-    
+
     if (amount < settings.minBet || amount > settings.maxBet) {
       return { canAfford: false };
     }
-    
+
     return {
       canAfford: balance.balance >= amount,
       balance,
@@ -459,7 +486,7 @@ export class EconomyService {
   ): Promise<GamblingResult> {
     const payout = won ? Math.floor(wagered * multiplier) : 0;
     const profit = payout - wagered;
-    
+
     // Update balance
     const balanceResult = await this.addMoney(
       userId,
@@ -469,13 +496,13 @@ export class EconomyService {
       `${gameType} - ${won ? 'Won' : 'Lost'}`,
       { gameType, wagered, payout, won, details }
     );
-    
+
     // Update gambling stats
     await economyRepository.addToBalance(userId, guildId, 0); // Ensure balance exists
     await economyRepository.updateBalance(userId, guildId, {
       totalGambled: (await economyRepository.getBalance(userId, guildId))!.totalGambled + wagered,
     });
-    
+
     const stats = await economyRepository.updateGamblingStats(
       userId,
       guildId,
@@ -484,7 +511,7 @@ export class EconomyService {
       wagered,
       payout
     );
-    
+
     return {
       won,
       payout,
@@ -505,7 +532,10 @@ export class EconomyService {
     return await economyRepository.ensureSettings(guildId);
   }
 
-  async updateSettings(guildId: string, updates: Partial<Omit<EconomySettings, 'guildId' | 'createdAt'>>): Promise<EconomySettings | null> {
+  async updateSettings(
+    guildId: string,
+    updates: Partial<Omit<EconomySettings, 'guildId' | 'createdAt'>>
+  ): Promise<EconomySettings | null> {
     return await economyRepository.updateSettings(guildId, updates);
   }
 }

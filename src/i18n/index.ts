@@ -5,22 +5,20 @@ import { logger } from '../utils/logger';
 
 export async function initializeI18n(): Promise<void> {
   try {
-    await i18next
-      .use(Backend)
-      .init({
-        backend: {
-          loadPath: join(__dirname, 'locales', '{{lng}}.json'),
-        },
-        fallbackLng: 'en',
-        supportedLngs: ['en', 'es', 'fr', 'de', 'nl', 'pt', 'ru', 'ja', 'ko', 'zh'],
-        preload: ['en'],
-        interpolation: {
-          escapeValue: false,
-        },
-        returnObjects: true,
-        debug: process.env.NODE_ENV === 'development',
-      });
-    
+    await i18next.use(Backend).init({
+      backend: {
+        loadPath: join(__dirname, 'locales', '{{lng}}.json'),
+      },
+      fallbackLng: 'en',
+      supportedLngs: ['en', 'es', 'fr', 'de', 'nl', 'pt', 'ru', 'ja', 'ko', 'zh'],
+      preload: ['en'],
+      interpolation: {
+        escapeValue: false,
+      },
+      returnObjects: true,
+      debug: process.env.NODE_ENV === 'development',
+    });
+
     logger.info('i18n initialized successfully');
   } catch (error) {
     logger.error('Failed to initialize i18n:', error);
@@ -88,8 +86,8 @@ export async function getTranslation(guildId: string, userId: string): Promise<L
   const userLocale = getUserLocale(userId);
   const guildLocale = getGuildLocale(guildId);
   const locale = userLocale || guildLocale || 'en';
-  
-  return i18next.getResourceBundle(locale, 'translation') as LocaleObject || {} as LocaleObject;
+
+  return (i18next.getResourceBundle(locale, 'translation') as LocaleObject) || ({} as LocaleObject);
 }
 
 export { i18next };

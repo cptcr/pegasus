@@ -1,8 +1,4 @@
-import { 
-  ButtonInteraction, 
-  PermissionFlagsBits,
-  EmbedBuilder
-} from 'discord.js';
+import { ButtonInteraction, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 import { warningRepository } from '../../repositories/warningRepository';
 import { t } from '../../i18n';
 
@@ -82,7 +78,7 @@ async function handleWarningAction(
       case 'mute':
         const duration = parseInt(params[1]) || 60; // Default 60 minutes
         const muteRole = interaction.guild!.roles.cache.find(r => r.name.toLowerCase() === 'muted');
-        
+
         if (!muteRole) {
           await interaction.editReply({
             content: 'Mute role not found. Please create a role named "Muted"',
@@ -91,21 +87,24 @@ async function handleWarningAction(
         }
 
         await member.roles.add(muteRole, 'Warning threshold reached');
-        
+
         // Schedule unmute
-        setTimeout(async () => {
-          try {
-            await member.roles.remove(muteRole);
-          } catch (error) {
-            // Member might have left or role might be deleted
-          }
-        }, duration * 60 * 1000);
+        setTimeout(
+          async () => {
+            try {
+              await member.roles.remove(muteRole);
+            } catch (error) {
+              // Member might have left or role might be deleted
+            }
+          },
+          duration * 60 * 1000
+        );
 
         await interaction.editReply({
           content: `Successfully muted ${member.user.tag} for ${duration} minutes`,
         });
         break;
-        
+
       default:
         await interaction.editReply({
           content: 'Unknown action',
@@ -116,14 +115,13 @@ async function handleWarningAction(
     // Update the original message to show action taken
     const message = interaction.message;
     const embed = message.embeds[0];
-    
+
     if (embed) {
-      const updatedEmbed = EmbedBuilder.from(embed)
-        .addFields({
-          name: 'Action Taken',
-          value: `${action.charAt(0).toUpperCase() + action.slice(1)} by ${interaction.user.tag}`,
-          inline: false,
-        });
+      const updatedEmbed = EmbedBuilder.from(embed).addFields({
+        name: 'Action Taken',
+        value: `${action.charAt(0).toUpperCase() + action.slice(1)} by ${interaction.user.tag}`,
+        inline: false,
+      });
 
       await message.edit({ embeds: [updatedEmbed], components: [] });
     }
@@ -150,12 +148,14 @@ async function handleWarningView(interaction: ButtonInteraction, userId: string)
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0xFFA500)
+    .setColor(0xffa500)
     .setTitle(t('commands.warn.subcommands.view.title', { user: user?.tag || userId }))
-    .setDescription(t('commands.warn.subcommands.view.stats', { 
-      count: stats.count, 
-      level: stats.totalLevel 
-    }))
+    .setDescription(
+      t('commands.warn.subcommands.view.stats', {
+        count: stats.count,
+        level: stats.totalLevel,
+      })
+    )
     .setTimestamp();
 
   // Add warning fields (max 10)

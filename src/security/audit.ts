@@ -28,7 +28,8 @@ export class AuditLogger {
 
   async getAuditLogs(guildId: string, limit: number = 50) {
     const db = getDatabase();
-    return db.select()
+    return db
+      .select()
       .from(auditLogs)
       .where(eq(auditLogs.guildId, guildId))
       .orderBy(desc(auditLogs.createdAt))
@@ -37,28 +38,20 @@ export class AuditLogger {
 
   async getUserAuditLogs(guildId: string, userId: string, limit: number = 50) {
     const db = getDatabase();
-    return db.select()
+    return db
+      .select()
       .from(auditLogs)
-      .where(
-        and(
-          eq(auditLogs.guildId, guildId),
-          eq(auditLogs.userId, userId)
-        )
-      )
+      .where(and(eq(auditLogs.guildId, guildId), eq(auditLogs.userId, userId)))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
   }
 
   async getTargetAuditLogs(guildId: string, targetId: string, limit: number = 50) {
     const db = getDatabase();
-    return db.select()
+    return db
+      .select()
       .from(auditLogs)
-      .where(
-        and(
-          eq(auditLogs.guildId, guildId),
-          eq(auditLogs.targetId, targetId)
-        )
-      )
+      .where(and(eq(auditLogs.guildId, guildId), eq(auditLogs.targetId, targetId)))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
   }

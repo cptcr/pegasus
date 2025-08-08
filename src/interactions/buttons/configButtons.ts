@@ -19,7 +19,7 @@ import { logger } from '../../utils/logger';
 
 export async function handleConfigButton(interaction: ButtonInteraction) {
   const [prefix, category, action] = interaction.customId.split('_');
-  
+
   if (prefix !== 'config') return;
 
   // Check permissions
@@ -50,12 +50,12 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
       await interaction.deferUpdate();
       const config = await configurationService.getXPConfig(interaction.guildId!);
       await configurationService.updateXPConfig(interaction.guildId!, { enabled: !config.enabled });
-      
+
       // Refresh the XP config embed
       await refreshXPConfigEmbed(interaction);
       break;
     }
-    
+
     case 'rates': {
       const modal = new ModalBuilder()
         .setCustomId('config_xp_rates_modal')
@@ -113,33 +113,36 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
 
     case 'channels': {
       await interaction.deferReply({ ephemeral: true });
-      
+
       const config = await configurationService.getXPConfig(interaction.guildId!);
-      
+
       const embed = new EmbedBuilder()
-        .setColor(0x0099FF)
+        .setColor(0x0099ff)
         .setTitle(t('config.xp.channels.title'))
         .setDescription(t('config.xp.channels.description'))
         .addFields(
           {
             name: t('config.xp.channels.ignored'),
-            value: config.ignoredChannels.length > 0
-              ? config.ignoredChannels.map(id => `<#${id}>`).join(', ')
-              : t('common.none'),
+            value:
+              config.ignoredChannels.length > 0
+                ? config.ignoredChannels.map(id => `<#${id}>`).join(', ')
+                : t('common.none'),
             inline: false,
           },
           {
             name: t('config.xp.channels.noXp'),
-            value: config.noXpChannels.length > 0
-              ? config.noXpChannels.map(id => `<#${id}>`).join(', ')
-              : t('common.none'),
+            value:
+              config.noXpChannels.length > 0
+                ? config.noXpChannels.map(id => `<#${id}>`).join(', ')
+                : t('common.none'),
             inline: false,
           },
           {
             name: t('config.xp.channels.doubleXp'),
-            value: config.doubleXpChannels.length > 0
-              ? config.doubleXpChannels.map(id => `<#${id}>`).join(', ')
-              : t('common.none'),
+            value:
+              config.doubleXpChannels.length > 0
+                ? config.doubleXpChannels.map(id => `<#${id}>`).join(', ')
+                : t('common.none'),
             inline: false,
           }
         );
@@ -166,7 +169,7 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
         ]);
 
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.editReply({
         embeds: [embed],
         components: [row],
@@ -208,11 +211,11 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
 
     case 'rewards': {
       await interaction.deferReply({ ephemeral: true });
-      
+
       const rewards = await configurationService.getXPRoleRewards(interaction.guildId!);
-      
+
       const embed = new EmbedBuilder()
-        .setColor(0x0099FF)
+        .setColor(0x0099ff)
         .setTitle(t('config.xp.rewards.title'))
         .setDescription(t('config.xp.rewards.description'));
 
@@ -221,7 +224,7 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
           .sort((a, b) => a.level - b.level)
           .map(r => `**Level ${r.level}:** <@&${r.roleId}>`)
           .join('\n');
-        
+
         embed.addFields({
           name: t('config.xp.rewards.current'),
           value: rewardList,
@@ -257,7 +260,7 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
         ]);
 
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.editReply({
         embeds: [embed],
         components: [row],
@@ -414,11 +417,11 @@ async function handleEcoConfigButton(interaction: ButtonInteraction, action: str
 
     case 'shop': {
       await interaction.deferReply({ ephemeral: true });
-      
+
       const items = await configurationService.getShopItems(interaction.guildId!);
-      
+
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setTitle(t('config.eco.shop.title'))
         .setDescription(t('config.eco.shop.description'));
 
@@ -430,9 +433,11 @@ async function handleEcoConfigButton(interaction: ButtonInteraction, action: str
             inline: false,
           });
         }
-        
+
         if (items.length > 10) {
-          embed.setFooter({ text: t('config.eco.shop.showing', { shown: 10, total: items.length }) });
+          embed.setFooter({
+            text: t('config.eco.shop.showing', { shown: 10, total: items.length }),
+          });
         }
       } else {
         embed.addFields({
@@ -464,7 +469,7 @@ async function handleEcoConfigButton(interaction: ButtonInteraction, action: str
         ]);
 
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.editReply({
         embeds: [embed],
         components: [row],
@@ -479,8 +484,10 @@ async function handleWelcomeConfigButton(interaction: ButtonInteraction, action:
     case 'toggle': {
       await interaction.deferUpdate();
       const config = await configurationService.getWelcomeConfig(interaction.guildId!);
-      await configurationService.updateWelcomeConfig(interaction.guildId!, { enabled: !config.enabled });
-      
+      await configurationService.updateWelcomeConfig(interaction.guildId!, {
+        enabled: !config.enabled,
+      });
+
       // Refresh the welcome config embed
       await refreshWelcomeConfigEmbed(interaction);
       break;
@@ -493,7 +500,7 @@ async function handleWelcomeConfigButton(interaction: ButtonInteraction, action:
         .setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]);
 
       const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.reply({
         content: t('config.welcome.selectChannelPrompt'),
         components: [row],
@@ -618,13 +625,18 @@ async function handleWelcomeConfigButton(interaction: ButtonInteraction, action:
   }
 }
 
-async function handleAutoroleConfigButton(interaction: ButtonInteraction, action: string): Promise<any> {
+async function handleAutoroleConfigButton(
+  interaction: ButtonInteraction,
+  action: string
+): Promise<any> {
   switch (action) {
     case 'toggle': {
       await interaction.deferUpdate();
       const config = await configurationService.getAutoroleConfig(interaction.guildId!);
-      await configurationService.updateAutoroleConfig(interaction.guildId!, { enabled: !config.enabled });
-      
+      await configurationService.updateAutoroleConfig(interaction.guildId!, {
+        enabled: !config.enabled,
+      });
+
       // Refresh the autorole config embed
       await refreshAutoroleConfigEmbed(interaction);
       break;
@@ -637,7 +649,7 @@ async function handleAutoroleConfigButton(interaction: ButtonInteraction, action
         .setMaxValues(5);
 
       const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.reply({
         content: t('config.autorole.selectRolePrompt'),
         components: [row],
@@ -648,7 +660,7 @@ async function handleAutoroleConfigButton(interaction: ButtonInteraction, action
 
     case 'remove': {
       const config = await configurationService.getAutoroleConfig(interaction.guildId!);
-      
+
       if (config.roles.length === 0) {
         return interaction.reply({
           content: t('config.autorole.noRoles'),
@@ -667,7 +679,7 @@ async function handleAutoroleConfigButton(interaction: ButtonInteraction, action
         .addOptions(options);
 
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.reply({
         content: t('config.autorole.selectRoleToRemovePrompt'),
         components: [row],
@@ -679,7 +691,7 @@ async function handleAutoroleConfigButton(interaction: ButtonInteraction, action
     case 'clear': {
       await interaction.deferUpdate();
       await configurationService.updateAutoroleConfig(interaction.guildId!, { roles: [] });
-      
+
       // Refresh the autorole config embed
       await refreshAutoroleConfigEmbed(interaction);
       break;
@@ -692,8 +704,10 @@ async function handleGoodbyeConfigButton(interaction: ButtonInteraction, action:
     case 'toggle': {
       await interaction.deferUpdate();
       const config = await configurationService.getGoodbyeConfig(interaction.guildId!);
-      await configurationService.updateGoodbyeConfig(interaction.guildId!, { enabled: !config.enabled });
-      
+      await configurationService.updateGoodbyeConfig(interaction.guildId!, {
+        enabled: !config.enabled,
+      });
+
       // Refresh the goodbye config embed
       await refreshGoodbyeConfigEmbed(interaction);
       break;
@@ -706,7 +720,7 @@ async function handleGoodbyeConfigButton(interaction: ButtonInteraction, action:
         .setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]);
 
       const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(selectMenu);
-      
+
       await interaction.reply({
         content: t('config.goodbye.selectChannelPrompt'),
         components: [row],
@@ -806,7 +820,7 @@ async function refreshXPConfigEmbed(interaction: ButtonInteraction) {
     const roleRewards = await configurationService.getXPRoleRewards(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle(t('commands.config.subcommands.xp.embed.title'))
       .setDescription(t('commands.config.subcommands.xp.embed.description'))
       .addFields(
@@ -847,37 +861,37 @@ async function refreshXPConfigEmbed(interaction: ButtonInteraction) {
         },
         {
           name: t('commands.config.subcommands.xp.embed.fields.roleRewards'),
-          value: roleRewards.length > 0
-            ? roleRewards.map(r => `Level ${r.level}: <@&${r.roleId}>`).join('\n')
-            : t('common.none'),
+          value:
+            roleRewards.length > 0
+              ? roleRewards.map(r => `Level ${r.level}: <@&${r.roleId}>`).join('\n')
+              : t('common.none'),
           inline: false,
         }
       )
       .setTimestamp();
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_xp_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_xp_rates')
-          .setLabel(t('commands.config.subcommands.xp.buttons.rates'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_channels')
-          .setLabel(t('commands.config.subcommands.xp.buttons.channels'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_roles')
-          .setLabel(t('commands.config.subcommands.xp.buttons.roles'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_xp_rewards')
-          .setLabel(t('commands.config.subcommands.xp.buttons.rewards'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_xp_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_xp_rates')
+        .setLabel(t('commands.config.subcommands.xp.buttons.rates'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_channels')
+        .setLabel(t('commands.config.subcommands.xp.buttons.channels'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_roles')
+        .setLabel(t('commands.config.subcommands.xp.buttons.roles'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_xp_rewards')
+        .setLabel(t('commands.config.subcommands.xp.buttons.rewards'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -893,7 +907,7 @@ async function refreshWelcomeConfigEmbed(interaction: ButtonInteraction) {
     const config = await configurationService.getWelcomeConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
+      .setColor(0x0099ff)
       .setTitle(t('commands.config.subcommands.welcome.embed.title'))
       .setDescription(t('commands.config.subcommands.welcome.embed.description'))
       .addFields(
@@ -927,29 +941,28 @@ async function refreshWelcomeConfigEmbed(interaction: ButtonInteraction) {
       });
     }
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_welcome_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_channel')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.channel'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_message')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.message'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_embed')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.embed'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_welcome_dm')
-          .setLabel(t('commands.config.subcommands.welcome.buttons.dm'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_welcome_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_channel')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.channel'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_message')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.message'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_embed')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.embed'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_welcome_dm')
+        .setLabel(t('commands.config.subcommands.welcome.buttons.dm'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -965,7 +978,7 @@ async function refreshAutoroleConfigEmbed(interaction: ButtonInteraction) {
     const config = await configurationService.getAutoroleConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0x9B59B6)
+      .setColor(0x9b59b6)
       .setTitle(t('commands.config.subcommands.autorole.embed.title'))
       .setDescription(t('commands.config.subcommands.autorole.embed.description'))
       .addFields(
@@ -976,36 +989,36 @@ async function refreshAutoroleConfigEmbed(interaction: ButtonInteraction) {
         },
         {
           name: t('commands.config.subcommands.autorole.embed.fields.roles'),
-          value: config.roles.length > 0
-            ? config.roles.map(r => `<@&${r}>`).join('\n')
-            : t('common.none'),
+          value:
+            config.roles.length > 0
+              ? config.roles.map(r => `<@&${r}>`).join('\n')
+              : t('common.none'),
           inline: false,
         }
       )
       .setTimestamp();
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_autorole_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_add')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.add'))
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(config.roles.length >= 10),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_remove')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.remove'))
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(config.roles.length === 0),
-        new ButtonBuilder()
-          .setCustomId('config_autorole_clear')
-          .setLabel(t('commands.config.subcommands.autorole.buttons.clear'))
-          .setStyle(ButtonStyle.Danger)
-          .setDisabled(config.roles.length === 0)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_autorole_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_add')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.add'))
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(config.roles.length >= 10),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_remove')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.remove'))
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(config.roles.length === 0),
+      new ButtonBuilder()
+        .setCustomId('config_autorole_clear')
+        .setLabel(t('commands.config.subcommands.autorole.buttons.clear'))
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(config.roles.length === 0)
+    );
 
     await interaction.editReply({
       embeds: [embed],
@@ -1021,7 +1034,7 @@ async function refreshGoodbyeConfigEmbed(interaction: ButtonInteraction) {
     const config = await configurationService.getGoodbyeConfig(interaction.guild!.id);
 
     const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
+      .setColor(0xff0000)
       .setTitle(t('commands.config.subcommands.goodbye.embed.title'))
       .setDescription(t('commands.config.subcommands.goodbye.embed.description'))
       .addFields(
@@ -1050,25 +1063,24 @@ async function refreshGoodbyeConfigEmbed(interaction: ButtonInteraction) {
       });
     }
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_toggle')
-          .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
-          .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_channel')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.channel'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_message')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.message'))
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('config_goodbye_embed')
-          .setLabel(t('commands.config.subcommands.goodbye.buttons.embed'))
-          .setStyle(ButtonStyle.Primary)
-      );
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_toggle')
+        .setLabel(config.enabled ? t('common.disable') : t('common.enable'))
+        .setStyle(config.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_channel')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.channel'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_message')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.message'))
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('config_goodbye_embed')
+        .setLabel(t('commands.config.subcommands.goodbye.buttons.embed'))
+        .setStyle(ButtonStyle.Primary)
+    );
 
     await interaction.editReply({
       embeds: [embed],

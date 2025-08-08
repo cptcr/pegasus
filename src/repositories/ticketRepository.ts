@@ -34,75 +34,67 @@ export class TicketRepository {
 
   // Panel operations
   async createPanel(data: TicketPanelData) {
-    const [panel] = await this.db.insert(ticketPanels).values({
-      ...data,
-      supportRoles: data.supportRoles || [],
-    }).returning();
+    const [panel] = await this.db
+      .insert(ticketPanels)
+      .values({
+        ...data,
+        supportRoles: data.supportRoles || [],
+      })
+      .returning();
     return panel;
   }
 
   async updatePanel(panelId: string, guildId: string, updates: Partial<TicketPanelData>) {
-    const [panel] = await this.db.update(ticketPanels)
+    const [panel] = await this.db
+      .update(ticketPanels)
       .set(updates)
-      .where(and(
-        eq(ticketPanels.panelId, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+      .where(and(eq(ticketPanels.panelId, panelId), eq(ticketPanels.guildId, guildId)))
       .returning();
     return panel;
   }
 
   async getPanel(panelId: string, guildId: string) {
-    const [panel] = await this.db.select()
+    const [panel] = await this.db
+      .select()
       .from(ticketPanels)
-      .where(and(
-        eq(ticketPanels.panelId, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ));
+      .where(and(eq(ticketPanels.panelId, panelId), eq(ticketPanels.guildId, guildId)));
     return panel;
   }
 
   async getPanelById(id: string) {
-    const [panel] = await this.db.select()
-      .from(ticketPanels)
-      .where(eq(ticketPanels.id, id));
+    const [panel] = await this.db.select().from(ticketPanels).where(eq(ticketPanels.id, id));
     return panel;
   }
 
   async getPanelByMessage(messageId: string, channelId: string) {
-    const [panel] = await this.db.select()
+    const [panel] = await this.db
+      .select()
       .from(ticketPanels)
-      .where(and(
-        eq(ticketPanels.messageId, messageId),
-        eq(ticketPanels.channelId, channelId)
-      ));
+      .where(and(eq(ticketPanels.messageId, messageId), eq(ticketPanels.channelId, channelId)));
     return panel;
   }
 
   async getGuildPanels(guildId: string) {
-    return await this.db.select()
+    return await this.db
+      .select()
       .from(ticketPanels)
       .where(eq(ticketPanels.guildId, guildId))
       .orderBy(desc(ticketPanels.createdAt));
   }
 
   async deletePanel(panelId: string, guildId: string) {
-    const [deleted] = await this.db.delete(ticketPanels)
-      .where(and(
-        eq(ticketPanels.panelId, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+    const [deleted] = await this.db
+      .delete(ticketPanels)
+      .where(and(eq(ticketPanels.panelId, panelId), eq(ticketPanels.guildId, guildId)))
       .returning();
     return deleted;
   }
 
   async setPanelMessage(panelId: string, guildId: string, messageId: string, channelId: string) {
-    const [panel] = await this.db.update(ticketPanels)
+    const [panel] = await this.db
+      .update(ticketPanels)
       .set({ messageId, channelId })
-      .where(and(
-        eq(ticketPanels.panelId, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+      .where(and(eq(ticketPanels.panelId, panelId), eq(ticketPanels.guildId, guildId)))
       .returning();
     return panel;
   }
@@ -114,47 +106,44 @@ export class TicketRepository {
   }
 
   async getTicket(ticketId: string) {
-    const [ticket] = await this.db.select()
-      .from(tickets)
-      .where(eq(tickets.id, ticketId));
+    const [ticket] = await this.db.select().from(tickets).where(eq(tickets.id, ticketId));
     return ticket;
   }
 
   async getTicketByChannel(channelId: string) {
-    const [ticket] = await this.db.select()
-      .from(tickets)
-      .where(eq(tickets.channelId, channelId));
+    const [ticket] = await this.db.select().from(tickets).where(eq(tickets.channelId, channelId));
     return ticket;
   }
 
   async getUserOpenTickets(userId: string, guildId: string) {
-    return await this.db.select()
+    return await this.db
+      .select()
       .from(tickets)
-      .where(and(
-        eq(tickets.userId, userId),
-        eq(tickets.guildId, guildId),
-        or(
-          eq(tickets.status, 'open'),
-          eq(tickets.status, 'claimed')
+      .where(
+        and(
+          eq(tickets.userId, userId),
+          eq(tickets.guildId, guildId),
+          or(eq(tickets.status, 'open'), eq(tickets.status, 'claimed'))
         )
-      ));
+      );
   }
 
   async getUserOpenTicketsByPanel(userId: string, panelId: string) {
-    return await this.db.select()
+    return await this.db
+      .select()
       .from(tickets)
-      .where(and(
-        eq(tickets.userId, userId),
-        eq(tickets.panelId, panelId),
-        or(
-          eq(tickets.status, 'open'),
-          eq(tickets.status, 'claimed')
+      .where(
+        and(
+          eq(tickets.userId, userId),
+          eq(tickets.panelId, panelId),
+          or(eq(tickets.status, 'open'), eq(tickets.status, 'claimed'))
         )
-      ));
+      );
   }
 
   async getNextTicketNumber(guildId: string): Promise<number> {
-    const [result] = await this.db.select({ max: sql<number>`COALESCE(MAX(ticket_number), 0)` })
+    const [result] = await this.db
+      .select({ max: sql<number>`COALESCE(MAX(ticket_number), 0)` })
       .from(tickets)
       .where(eq(tickets.guildId, guildId));
     return (result?.max || 0) + 1;
@@ -182,7 +171,8 @@ export class TicketRepository {
         break;
     }
 
-    const [ticket] = await this.db.update(tickets)
+    const [ticket] = await this.db
+      .update(tickets)
       .set(updates)
       .where(eq(tickets.id, ticketId))
       .returning();
@@ -190,7 +180,8 @@ export class TicketRepository {
   }
 
   async closeTicket(ticketId: string, closedBy: string, reason?: string) {
-    const [ticket] = await this.db.update(tickets)
+    const [ticket] = await this.db
+      .update(tickets)
       .set({
         status: 'closed',
         closedBy,
@@ -203,7 +194,8 @@ export class TicketRepository {
   }
 
   async setTicketTranscript(ticketId: string, transcript: string) {
-    const [ticket] = await this.db.update(tickets)
+    const [ticket] = await this.db
+      .update(tickets)
       .set({ transcript })
       .where(eq(tickets.id, ticketId))
       .returning();
@@ -211,18 +203,27 @@ export class TicketRepository {
   }
 
   // Message operations
-  async addTicketMessage(ticketId: string, userId: string, content: string, attachments: any[] = []) {
-    const [message] = await this.db.insert(ticketMessages).values({
-      ticketId,
-      userId,
-      content,
-      attachments,
-    }).returning();
+  async addTicketMessage(
+    ticketId: string,
+    userId: string,
+    content: string,
+    attachments: any[] = []
+  ) {
+    const [message] = await this.db
+      .insert(ticketMessages)
+      .values({
+        ticketId,
+        userId,
+        content,
+        attachments,
+      })
+      .returning();
     return message;
   }
 
   async getTicketMessages(ticketId: string) {
-    return await this.db.select()
+    return await this.db
+      .select()
       .from(ticketMessages)
       .where(eq(ticketMessages.ticketId, ticketId))
       .orderBy(ticketMessages.createdAt);
@@ -230,14 +231,15 @@ export class TicketRepository {
 
   // Stats
   async getTicketStats(guildId: string) {
-    const [stats] = await this.db.select({
-      total: count(),
-      open: sql<number>`COUNT(*) FILTER (WHERE status = 'open')`,
-      claimed: sql<number>`COUNT(*) FILTER (WHERE status = 'claimed')`,
-      closed: sql<number>`COUNT(*) FILTER (WHERE status = 'closed')`,
-      locked: sql<number>`COUNT(*) FILTER (WHERE status = 'locked')`,
-      frozen: sql<number>`COUNT(*) FILTER (WHERE status = 'frozen')`,
-    })
+    const [stats] = await this.db
+      .select({
+        total: count(),
+        open: sql<number>`COUNT(*) FILTER (WHERE status = 'open')`,
+        claimed: sql<number>`COUNT(*) FILTER (WHERE status = 'claimed')`,
+        closed: sql<number>`COUNT(*) FILTER (WHERE status = 'closed')`,
+        locked: sql<number>`COUNT(*) FILTER (WHERE status = 'locked')`,
+        frozen: sql<number>`COUNT(*) FILTER (WHERE status = 'frozen')`,
+      })
       .from(tickets)
       .where(eq(tickets.guildId, guildId));
     return stats;

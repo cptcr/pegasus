@@ -1,8 +1,4 @@
-import { 
-  SlashCommandBuilder, 
-  ChatInputCommandInteraction, 
-  EmbedBuilder
-} from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { economyGamblingService } from '../../services/economyGamblingService';
 import { economyRepository } from '../../repositories/economyRepository';
@@ -10,12 +6,12 @@ import { embedBuilder } from '../../handlers/embedBuilder';
 import { Validator, CommandSchemas } from '../../security/validator';
 import { RateLimitError } from '../../security/errors';
 import { auditLogger } from '../../security/audit';
-import type { 
-  DiceResult, 
-  CoinflipResult, 
-  SlotsResult, 
-  BlackjackResult, 
-  RouletteResult 
+import type {
+  DiceResult,
+  CoinflipResult,
+  SlotsResult,
+  BlackjackResult,
+  RouletteResult,
 } from '../../services/economyGamblingService';
 
 export const data = new SlashCommandBuilder()
@@ -23,8 +19,8 @@ export const data = new SlashCommandBuilder()
   .setDescription('Play various gambling games')
   .setDescriptionLocalizations({
     'es-ES': 'Juega varios juegos de azar',
-    'fr': 'Jouez à divers jeux de hasard',
-    'de': 'Spiele verschiedene Glücksspiele',
+    fr: 'Jouez à divers jeux de hasard',
+    de: 'Spiele verschiedene Glücksspiele',
   })
   .addSubcommand(subcommand =>
     subcommand
@@ -32,8 +28,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('Roll dice against the dealer')
       .setDescriptionLocalizations({
         'es-ES': 'Tira los dados contra el crupier',
-        'fr': 'Lancez les dés contre le croupier',
-        'de': 'Würfle gegen den Dealer',
+        fr: 'Lancez les dés contre le croupier',
+        de: 'Würfle gegen den Dealer',
       })
       .addIntegerOption(option =>
         option
@@ -41,8 +37,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Amount to bet')
           .setDescriptionLocalizations({
             'es-ES': 'Cantidad a apostar',
-            'fr': 'Montant à parier',
-            'de': 'Einsatzbetrag',
+            fr: 'Montant à parier',
+            de: 'Einsatzbetrag',
           })
           .setRequired(true)
           .setMinValue(1)
@@ -54,15 +50,11 @@ export const data = new SlashCommandBuilder()
       .setDescription('Flip a coin')
       .setDescriptionLocalizations({
         'es-ES': 'Lanza una moneda',
-        'fr': 'Lancez une pièce',
-        'de': 'Wirf eine Münze',
+        fr: 'Lancez une pièce',
+        de: 'Wirf eine Münze',
       })
       .addIntegerOption(option =>
-        option
-          .setName('bet')
-          .setDescription('Amount to bet')
-          .setRequired(true)
-          .setMinValue(1)
+        option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
       )
       .addStringOption(option =>
         option
@@ -70,14 +62,11 @@ export const data = new SlashCommandBuilder()
           .setDescription('Heads or tails')
           .setDescriptionLocalizations({
             'es-ES': 'Cara o cruz',
-            'fr': 'Pile ou face',
-            'de': 'Kopf oder Zahl',
+            fr: 'Pile ou face',
+            de: 'Kopf oder Zahl',
           })
           .setRequired(true)
-          .addChoices(
-            { name: 'Heads', value: 'heads' },
-            { name: 'Tails', value: 'tails' }
-          )
+          .addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })
       )
   )
   .addSubcommand(subcommand =>
@@ -86,15 +75,11 @@ export const data = new SlashCommandBuilder()
       .setDescription('Play the slot machine')
       .setDescriptionLocalizations({
         'es-ES': 'Juega a la máquina tragamonedas',
-        'fr': 'Jouez à la machine à sous',
-        'de': 'Spiele am Spielautomaten',
+        fr: 'Jouez à la machine à sous',
+        de: 'Spiele am Spielautomaten',
       })
       .addIntegerOption(option =>
-        option
-          .setName('bet')
-          .setDescription('Amount to bet')
-          .setRequired(true)
-          .setMinValue(1)
+        option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
       )
   )
   .addSubcommand(subcommand =>
@@ -103,15 +88,11 @@ export const data = new SlashCommandBuilder()
       .setDescription('Play blackjack against the dealer')
       .setDescriptionLocalizations({
         'es-ES': 'Juega al blackjack contra el crupier',
-        'fr': 'Jouez au blackjack contre le croupier',
-        'de': 'Spiele Blackjack gegen den Dealer',
+        fr: 'Jouez au blackjack contre le croupier',
+        de: 'Spiele Blackjack gegen den Dealer',
       })
       .addIntegerOption(option =>
-        option
-          .setName('bet')
-          .setDescription('Amount to bet')
-          .setRequired(true)
-          .setMinValue(1)
+        option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
       )
   )
   .addSubcommand(subcommand =>
@@ -120,15 +101,11 @@ export const data = new SlashCommandBuilder()
       .setDescription('Play roulette')
       .setDescriptionLocalizations({
         'es-ES': 'Juega a la ruleta',
-        'fr': 'Jouez à la roulette',
-        'de': 'Spiele Roulette',
+        fr: 'Jouez à la roulette',
+        de: 'Spiele Roulette',
       })
       .addIntegerOption(option =>
-        option
-          .setName('bet')
-          .setDescription('Amount to bet')
-          .setRequired(true)
-          .setMinValue(1)
+        option.setName('bet').setDescription('Amount to bet').setRequired(true).setMinValue(1)
       )
       .addStringOption(option =>
         option
@@ -136,8 +113,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Type of bet')
           .setDescriptionLocalizations({
             'es-ES': 'Tipo de apuesta',
-            'fr': 'Type de pari',
-            'de': 'Art der Wette',
+            fr: 'Type de pari',
+            de: 'Art der Wette',
           })
           .setRequired(true)
           .addChoices(
@@ -159,8 +136,8 @@ export const data = new SlashCommandBuilder()
           .setDescription('Specific number to bet on (0-36)')
           .setDescriptionLocalizations({
             'es-ES': 'Número específico para apostar (0-36)',
-            'fr': 'Numéro spécifique sur lequel parier (0-36)',
-            'de': 'Spezifische Zahl zum Setzen (0-36)',
+            fr: 'Numéro spécifique sur lequel parier (0-36)',
+            de: 'Spezifische Zahl zum Setzen (0-36)',
           })
           .setMinValue(0)
           .setMaxValue(36)
@@ -203,18 +180,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const userBalance = await economyRepository.getBalance(userId, guildId);
     if (!userBalance || userBalance.balance < bet) {
       await interaction.editReply({
-        embeds: [embedBuilder.createErrorEmbed(
-          `Insufficient balance. You have ${settings.currencySymbol}${userBalance?.balance.toLocaleString() || 0}`
-        )]
+        embeds: [
+          embedBuilder.createErrorEmbed(
+            `Insufficient balance. You have ${settings.currencySymbol}${userBalance?.balance.toLocaleString() || 0}`
+          ),
+        ],
       });
       return;
     }
 
     if (bet < settings.minBet || bet > settings.maxBet) {
       await interaction.editReply({
-        embeds: [embedBuilder.createErrorEmbed(
-          `Bet must be between ${settings.currencySymbol}${settings.minBet} and ${settings.currencySymbol}${settings.maxBet}`
-        )]
+        embeds: [
+          embedBuilder.createErrorEmbed(
+            `Bet must be between ${settings.currencySymbol}${settings.minBet} and ${settings.currencySymbol}${settings.maxBet}`
+          ),
+        ],
       });
       return;
     }
@@ -272,7 +253,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           const numberBet = interaction.options.getInteger('number');
           if (numberBet === null) {
             await interaction.editReply({
-              embeds: [embedBuilder.createErrorEmbed('Please specify a number to bet on (0-36)')]
+              embeds: [embedBuilder.createErrorEmbed('Please specify a number to bet on (0-36)')],
             });
             return;
           }
@@ -281,13 +262,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           rouletteBetType = betType;
         }
 
-        result = await economyGamblingService.playRoulette(userId, guildId, bet, rouletteBetType, betValue);
+        result = await economyGamblingService.playRoulette(
+          userId,
+          guildId,
+          bet,
+          rouletteBetType,
+          betValue
+        );
         embed = createRouletteEmbed(result, settings);
         break;
 
       default:
         await interaction.editReply({
-          embeds: [embedBuilder.createErrorEmbed('Invalid gambling game')]
+          embeds: [embedBuilder.createErrorEmbed('Invalid gambling game')],
         });
         return;
     }
@@ -324,14 +311,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
     console.error('Error in gamble command:', error);
-    
+
     // Don't expose internal errors to users
-    const userMessage = error instanceof RateLimitError ? 
-      error.message : 
-      'Failed to process gambling game. Please try again later.';
-    
+    const userMessage =
+      error instanceof RateLimitError
+        ? error.message
+        : 'Failed to process gambling game. Please try again later.';
+
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed(userMessage)]
+      embeds: [embedBuilder.createErrorEmbed(userMessage)],
     });
   }
 }
@@ -339,109 +327,120 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 function createDiceEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as DiceResult;
   const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-  
+
   return new EmbedBuilder()
     .setTitle('🎲 Dice Game')
-    .setDescription(details.tie ? 'It\'s a tie!' : (details.won ? 'You won!' : 'You lost!'))
-    .setColor(details.won ? 0x2ecc71 : (details.tie ? 0xf39c12 : 0xe74c3c))
+    .setDescription(details.tie ? "It's a tie!" : details.won ? 'You won!' : 'You lost!')
+    .setColor(details.won ? 0x2ecc71 : details.tie ? 0xf39c12 : 0xe74c3c)
     .addFields(
-      { 
-        name: 'Your Roll', 
-        value: `${diceEmojis[details.playerRoll - 1]} ${details.playerRoll}`, 
-        inline: true 
+      {
+        name: 'Your Roll',
+        value: `${diceEmojis[details.playerRoll - 1]} ${details.playerRoll}`,
+        inline: true,
       },
-      { 
-        name: 'Dealer Roll', 
-        value: `${diceEmojis[details.dealerRoll - 1]} ${details.dealerRoll}`, 
-        inline: true 
+      {
+        name: 'Dealer Roll',
+        value: `${diceEmojis[details.dealerRoll - 1]} ${details.dealerRoll}`,
+        inline: true,
       },
-      { 
-        name: 'Result', 
-        value: result.profit > 0 ? 
-          `Won ${settings.currencySymbol}${result.profit.toLocaleString()}` : 
-          (result.profit === 0 ? 'Push' : `Lost ${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`), 
-        inline: true 
+      {
+        name: 'Result',
+        value:
+          result.profit > 0
+            ? `Won ${settings.currencySymbol}${result.profit.toLocaleString()}`
+            : result.profit === 0
+              ? 'Push'
+              : `Lost ${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
+        inline: true,
       },
-      { 
-        name: 'New Balance', 
-        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`, 
-        inline: true 
+      {
+        name: 'New Balance',
+        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
+        inline: true,
       }
     )
-    .setFooter({ text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}` })
+    .setFooter({
+      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}`,
+    })
     .setTimestamp();
 }
 
 function createCoinflipEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as CoinflipResult;
   const emoji = details.result === 'heads' ? '🪙' : '🪙';
-  
+
   return new EmbedBuilder()
     .setTitle(`${emoji} Coinflip`)
     .setDescription(`The coin landed on **${details.result}**!`)
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
-      { 
-        name: 'Your Choice', 
-        value: details.choice.charAt(0).toUpperCase() + details.choice.slice(1), 
-        inline: true 
+      {
+        name: 'Your Choice',
+        value: details.choice.charAt(0).toUpperCase() + details.choice.slice(1),
+        inline: true,
       },
-      { 
-        name: 'Result', 
-        value: details.result.charAt(0).toUpperCase() + details.result.slice(1), 
-        inline: true 
+      {
+        name: 'Result',
+        value: details.result.charAt(0).toUpperCase() + details.result.slice(1),
+        inline: true,
       },
-      { 
-        name: details.won ? 'Won' : 'Lost', 
-        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`, 
-        inline: true 
+      {
+        name: details.won ? 'Won' : 'Lost',
+        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
+        inline: true,
       },
-      { 
-        name: 'New Balance', 
-        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`, 
-        inline: true 
+      {
+        name: 'New Balance',
+        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
+        inline: true,
       }
     )
-    .setFooter({ text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}` })
+    .setFooter({
+      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}`,
+    })
     .setTimestamp();
 }
 
 function createSlotsEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as SlotsResult;
-  
+
   const embed = new EmbedBuilder()
     .setTitle('🎰 Slot Machine')
     .setDescription(`**${details.reels.join(' | ')}**`)
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
-      { 
-        name: 'Result', 
-        value: details.won ? 
-          (details.winType === 'jackpot' ? '💰 JACKPOT! 💰' : 
-           details.winType === 'triple' ? '🎉 Triple Match!' : 
-           '✨ Double Match!') : 
-          'No match', 
-        inline: true 
+      {
+        name: 'Result',
+        value: details.won
+          ? details.winType === 'jackpot'
+            ? '💰 JACKPOT! 💰'
+            : details.winType === 'triple'
+              ? '🎉 Triple Match!'
+              : '✨ Double Match!'
+          : 'No match',
+        inline: true,
       },
-      { 
-        name: details.won ? 'Won' : 'Lost', 
-        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`, 
-        inline: true 
+      {
+        name: details.won ? 'Won' : 'Lost',
+        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
+        inline: true,
       },
-      { 
-        name: 'New Balance', 
-        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`, 
-        inline: true 
+      {
+        name: 'New Balance',
+        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
+        inline: true,
       }
     )
-    .setFooter({ text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Best Win: ${settings.currencySymbol}${result.stats.biggestWin}` })
+    .setFooter({
+      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Best Win: ${settings.currencySymbol}${result.stats.biggestWin}`,
+    })
     .setTimestamp();
 
   if (details.winType === 'jackpot') {
     embed.addFields({
       name: '🎊 Congratulations!',
       value: `You hit the JACKPOT with triple 7s! ${details.multiplier}x multiplier!`,
-      inline: false
+      inline: false,
     });
   }
 
@@ -450,7 +449,7 @@ function createSlotsEmbed(result: any, settings: any): EmbedBuilder {
 
 function createBlackjackEmbed(result: any, settings: any, avatarUrl: string): EmbedBuilder {
   const details = result.details as BlackjackResult;
-  
+
   const formatHand = (hand: any) => {
     return hand.cards.map((c: any) => `${c.rank}${c.suit}`).join(' ');
   };
@@ -458,35 +457,37 @@ function createBlackjackEmbed(result: any, settings: any, avatarUrl: string): Em
   const embed = new EmbedBuilder()
     .setTitle('🃏 Blackjack')
     .setThumbnail(avatarUrl)
-    .setColor(details.won ? 0x2ecc71 : (details.push ? 0xf39c12 : 0xe74c3c))
+    .setColor(details.won ? 0x2ecc71 : details.push ? 0xf39c12 : 0xe74c3c)
     .addFields(
-      { 
-        name: 'Your Hand', 
-        value: `${formatHand(details.playerHand)}\nValue: ${details.playerHand.value}${details.playerHand.blackjack ? ' - Blackjack!' : ''}${details.playerHand.bust ? ' - Bust!' : ''}`, 
-        inline: true 
+      {
+        name: 'Your Hand',
+        value: `${formatHand(details.playerHand)}\nValue: ${details.playerHand.value}${details.playerHand.blackjack ? ' - Blackjack!' : ''}${details.playerHand.bust ? ' - Bust!' : ''}`,
+        inline: true,
       },
-      { 
-        name: 'Dealer Hand', 
-        value: `${formatHand(details.dealerHand)}\nValue: ${details.dealerHand.value}${details.dealerHand.blackjack ? ' - Blackjack!' : ''}${details.dealerHand.bust ? ' - Bust!' : ''}`, 
-        inline: true 
+      {
+        name: 'Dealer Hand',
+        value: `${formatHand(details.dealerHand)}\nValue: ${details.dealerHand.value}${details.dealerHand.blackjack ? ' - Blackjack!' : ''}${details.dealerHand.bust ? ' - Bust!' : ''}`,
+        inline: true,
       },
-      { 
-        name: 'Result', 
-        value: details.push ? 'Push' : (details.won ? 'You won!' : 'You lost!'), 
-        inline: false 
+      {
+        name: 'Result',
+        value: details.push ? 'Push' : details.won ? 'You won!' : 'You lost!',
+        inline: false,
       },
-      { 
-        name: details.won ? 'Won' : (details.push ? 'Returned' : 'Lost'), 
-        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`, 
-        inline: true 
+      {
+        name: details.won ? 'Won' : details.push ? 'Returned' : 'Lost',
+        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
+        inline: true,
       },
-      { 
-        name: 'New Balance', 
-        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`, 
-        inline: true 
+      {
+        name: 'New Balance',
+        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
+        inline: true,
       }
     )
-    .setFooter({ text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Games Played: ${result.stats.gamesPlayed}` })
+    .setFooter({
+      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Games Played: ${result.stats.gamesPlayed}`,
+    })
     .setTimestamp();
 
   if (details.blackjack && details.won) {
@@ -498,40 +499,42 @@ function createBlackjackEmbed(result: any, settings: any, avatarUrl: string): Em
 
 function createRouletteEmbed(result: any, settings: any): EmbedBuilder {
   const details = result.details as RouletteResult;
-  const colorEmoji = details.color === 'red' ? '🔴' : (details.color === 'black' ? '⚫' : '🟢');
-  
+  const colorEmoji = details.color === 'red' ? '🔴' : details.color === 'black' ? '⚫' : '🟢';
+
   const embed = new EmbedBuilder()
     .setTitle('🎰 Roulette')
     .setDescription(`The ball landed on **${colorEmoji} ${details.number}**`)
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
-      { 
-        name: 'Your Bet', 
-        value: `${details.betType.charAt(0).toUpperCase() + details.betType.slice(1)}`, 
-        inline: true 
+      {
+        name: 'Your Bet',
+        value: `${details.betType.charAt(0).toUpperCase() + details.betType.slice(1)}`,
+        inline: true,
       },
-      { 
-        name: 'Result', 
-        value: `${details.number} (${details.color})`, 
-        inline: true 
+      {
+        name: 'Result',
+        value: `${details.number} (${details.color})`,
+        inline: true,
       },
-      { 
-        name: details.won ? 'Won' : 'Lost', 
-        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`, 
-        inline: true 
+      {
+        name: details.won ? 'Won' : 'Lost',
+        value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
+        inline: true,
       },
-      { 
-        name: 'Multiplier', 
-        value: `${details.multiplier}x`, 
-        inline: true 
+      {
+        name: 'Multiplier',
+        value: `${details.multiplier}x`,
+        inline: true,
       },
-      { 
-        name: 'New Balance', 
-        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`, 
-        inline: true 
+      {
+        name: 'New Balance',
+        value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
+        inline: true,
       }
     )
-    .setFooter({ text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Total Wagered: ${settings.currencySymbol}${result.stats.totalWagered}` })
+    .setFooter({
+      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Total Wagered: ${settings.currencySymbol}${result.stats.totalWagered}`,
+    })
     .setTimestamp();
 
   return embed;

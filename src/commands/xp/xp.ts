@@ -21,22 +21,19 @@ const xpCommand: Command = {
   data: new SlashCommandBuilder()
     .setName('xp')
     .setDescription('XP system commands')
-    .addSubcommand((subcommand) =>
+    .addSubcommand(subcommand =>
       subcommand
         .setName('rank')
         .setDescription('View your XP rank card')
-        .addUserOption((option) =>
-          option
-            .setName('user')
-            .setDescription('User to view rank for')
-            .setRequired(false)
+        .addUserOption(option =>
+          option.setName('user').setDescription('User to view rank for').setRequired(false)
         )
     )
-    .addSubcommand((subcommand) =>
+    .addSubcommand(subcommand =>
       subcommand
         .setName('leaderboard')
         .setDescription('View the server XP leaderboard')
-        .addIntegerOption((option) =>
+        .addIntegerOption(option =>
           option
             .setName('page')
             .setDescription('Page number to view')
@@ -44,15 +41,11 @@ const xpCommand: Command = {
             .setMinValue(1)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('configuration')
-        .setDescription('View current XP configuration')
+    .addSubcommand(subcommand =>
+      subcommand.setName('configuration').setDescription('View current XP configuration')
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('card')
-        .setDescription('Customize your rank card colors')
+    .addSubcommand(subcommand =>
+      subcommand.setName('card').setDescription('Customize your rank card colors')
     ),
   category: CommandCategory.XP,
   cooldown: 5,
@@ -87,9 +80,9 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
 
     if (!rankData) {
       const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setDescription(locale.commands.xp.rank.noData.replace('{{user}}', targetUser.toString()));
-      
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
@@ -112,10 +105,8 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
     );
 
     if (!rankCard) {
-      const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
-        .setDescription(locale.common.error);
-      
+      const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
@@ -123,11 +114,9 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
     await interaction.editReply({ files: [rankCard] });
   } catch (error) {
     logger.error('Failed to handle rank command:', error);
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setDescription(locale.common.error);
-    
+
+    const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
     if (interaction.deferred) {
       await interaction.editReply({ embeds: [embed] });
     } else {
@@ -145,9 +134,9 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
 
     if (leaderboardData.entries.length === 0) {
       const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setDescription(locale.commands.xp.leaderboard.noData);
-      
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }
@@ -162,12 +151,19 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setTitle(locale.commands.xp.leaderboard.title.replace('{{guild}}', interaction.guild!.name))
       .setDescription(
         leaderboardData.entries
-          .map((entry) => {
-            const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `**${entry.rank}.**`;
+          .map(entry => {
+            const medal =
+              entry.rank === 1
+                ? '🥇'
+                : entry.rank === 2
+                  ? '🥈'
+                  : entry.rank === 3
+                    ? '🥉'
+                    : `**${entry.rank}.**`;
             return `${medal} <@${entry.userId}> - ${locale.commands.xp.leaderboard.entry
               .replace('{{level}}', entry.level.toString())
               .replace('{{xp}}', entry.xp.toLocaleString())}`;
@@ -198,11 +194,9 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
     await interaction.editReply({ embeds: [embed], components: [row] });
   } catch (error) {
     logger.error('Failed to handle leaderboard command:', error);
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setDescription(locale.common.error);
-    
+
+    const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
     if (interaction.deferred) {
       await interaction.editReply({ embeds: [embed] });
     } else {
@@ -219,7 +213,7 @@ async function handleConfigurationCommand(interaction: ChatInputCommandInteracti
     const roleRewards = await configurationService.getXPRoleRewards(interaction.guildId!);
 
     const embed = new EmbedBuilder()
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setTitle(locale.commands.xp.configuration.title)
       .setDescription(locale.commands.xp.configuration.description)
       .addFields(
@@ -268,10 +262,15 @@ async function handleConfigurationCommand(interaction: ChatInputCommandInteracti
     if (roleRewards.length > 0) {
       embed.addFields({
         name: locale.commands.xp.configuration.roleRewards,
-        value: roleRewards
-          .slice(0, 10)
-          .map((reward) => `${locale.commands.xp.configuration.level} ${reward.level}: <@&${reward.roleId}>`)
-          .join('\n') + (roleRewards.length > 10 ? `\n... ${locale.commands.xp.configuration.andMore}` : ''),
+        value:
+          roleRewards
+            .slice(0, 10)
+            .map(
+              reward =>
+                `${locale.commands.xp.configuration.level} ${reward.level}: <@&${reward.roleId}>`
+            )
+            .join('\n') +
+          (roleRewards.length > 10 ? `\n... ${locale.commands.xp.configuration.andMore}` : ''),
         inline: false,
       });
     }
@@ -309,11 +308,9 @@ async function handleConfigurationCommand(interaction: ChatInputCommandInteracti
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     logger.error('Failed to handle configuration command:', error);
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setDescription(locale.common.error);
-    
+
+    const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
     if (interaction.deferred) {
       await interaction.editReply({ embeds: [embed] });
     } else {
@@ -322,7 +319,10 @@ async function handleConfigurationCommand(interaction: ChatInputCommandInteracti
   }
 }
 
-async function handleCardCustomizationCommand(interaction: ChatInputCommandInteraction, locale: any) {
+async function handleCardCustomizationCommand(
+  interaction: ChatInputCommandInteraction,
+  locale: any
+) {
   try {
     const modal = new ModalBuilder()
       .setCustomId('xp_card_customization')
@@ -380,11 +380,9 @@ async function handleCardCustomizationCommand(interaction: ChatInputCommandInter
     await interaction.showModal(modal);
   } catch (error) {
     logger.error('Failed to handle card customization command:', error);
-    
-    const embed = new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setDescription(locale.common.error);
-    
+
+    const embed = new EmbedBuilder().setColor(0xff0000).setDescription(locale.common.error);
+
     await interaction.reply({ embeds: [embed], ephemeral: true });
   }
 }

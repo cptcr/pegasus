@@ -19,12 +19,7 @@ async function handleWarnEdit(interaction: ModalSubmitInteraction, warnId: strin
   const description = interaction.fields.getTextInputValue('description');
 
   try {
-    await warningService.editWarning(
-      warnId,
-      title,
-      description || null,
-      interaction.user
-    );
+    await warningService.editWarning(warnId, title, description || null, interaction.user);
 
     await interaction.editReply({
       content: t('commands.warn.subcommands.edit.success', { warnId }),
@@ -42,7 +37,9 @@ async function handleAutomationCreate(interaction: ModalSubmitInteraction) {
 
   const name = interaction.fields.getTextInputValue('name');
   const description = interaction.fields.getTextInputValue('description');
-  const triggerType = interaction.fields.getTextInputValue('triggerType') as 'warn_count' | 'warn_level';
+  const triggerType = interaction.fields.getTextInputValue('triggerType') as
+    | 'warn_count'
+    | 'warn_level';
   const triggerValue = parseInt(interaction.fields.getTextInputValue('triggerValue'));
   const actionsJson = interaction.fields.getTextInputValue('actions');
 

@@ -1,7 +1,18 @@
-import { createCanvas, loadImage } from 'canvas';
 import { AttachmentBuilder } from 'discord.js';
 import type { RankData, RankCardCustomization } from './xpService';
 import { logger } from '../utils/logger';
+
+let canvasModule: any = null;
+let createCanvas: any = null;
+let loadImage: any = null;
+
+try {
+  canvasModule = require('canvas');
+  createCanvas = canvasModule.createCanvas;
+  loadImage = canvasModule.loadImage;
+} catch (error) {
+  logger.warn('Canvas module not available. Rank cards will be disabled.');
+}
 
 export class RankCardService {
   private readonly cardWidth = 934;
@@ -14,6 +25,11 @@ export class RankCardService {
     rankData: RankData,
     customization: RankCardCustomization
   ): Promise<AttachmentBuilder | null> {
+    if (!createCanvas || !loadImage) {
+      logger.warn('Canvas module not available. Cannot generate rank card.');
+      return null;
+    }
+
     try {
       // Create canvas
       const canvas = createCanvas(this.cardWidth, this.cardHeight);
@@ -39,11 +55,11 @@ export class RankCardService {
       // Load and draw avatar
       const avatarX = this.padding;
       const avatarY = (this.cardHeight - this.avatarSize) / 2;
-      
+
       if (rankData.avatarUrl) {
         try {
           const avatar = await loadImage(rankData.avatarUrl);
-          
+
           // Create circular avatar
           ctx.save();
           ctx.beginPath();
@@ -92,7 +108,7 @@ export class RankCardService {
       ctx.font = '24px sans-serif';
       ctx.fillStyle = accentColor;
       ctx.fillText(`Rank #${rankData.rank}`, textX, 110);
-      
+
       ctx.fillStyle = textColor;
       ctx.fillText(`Level ${rankData.level}`, textX + 150, 110);
 
@@ -111,7 +127,7 @@ export class RankCardService {
       // Progress bar background
       const progressY = 180;
       const progressWidth = contentWidth;
-      
+
       ctx.fillStyle = bgColor;
       ctx.strokeStyle = textColor;
       ctx.lineWidth = 2;
@@ -126,7 +142,7 @@ export class RankCardService {
         const gradient = ctx.createLinearGradient(textX + 2, 0, textX + fillWidth, 0);
         gradient.addColorStop(0, progressColor);
         gradient.addColorStop(1, accentColor);
-        
+
         ctx.fillStyle = gradient;
         this.drawRoundedRect(
           ctx,
@@ -169,17 +185,12 @@ export class RankCardService {
     ctx.closePath();
   }
 
-  private drawPlaceholderAvatar(
-    ctx: any,
-    x: number,
-    y: number,
-    color: string
-  ): void {
+  private drawPlaceholderAvatar(ctx: any, x: number, y: number, color: string): void {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x + this.avatarSize / 2, y + this.avatarSize / 2, this.avatarSize / 2, 0, Math.PI * 2);
     ctx.fill();
-    
+
     ctx.fillStyle = '#000000';
     ctx.font = 'bold 48px sans-serif';
     ctx.textAlign = 'center';
@@ -192,15 +203,15 @@ export class RankCardService {
   private truncateText(ctx: any, text: string, maxWidth: number): string {
     const ellipsis = '...';
     let truncated = text;
-    
+
     if (ctx.measureText(text).width <= maxWidth) {
       return text;
     }
-    
+
     while (ctx.measureText(truncated + ellipsis).width > maxWidth && truncated.length > 0) {
       truncated = truncated.substring(0, truncated.length - 1);
     }
-    
+
     return truncated + ellipsis;
   }
 }
