@@ -4,6 +4,7 @@ import { userXp, xpMultipliers } from '../database/schema/xp';
 import { users } from '../database/schema/users';
 import { logger } from '../utils/logger';
 import { configurationService } from './configurationService';
+import { ensureUserExists } from '../utils/userUtils';
 import type { GuildMember } from 'discord.js';
 
 export interface XPGainResult {
@@ -162,6 +163,9 @@ export class XPService {
       if (channelId) {
         this.setCooldown(userId, guildId);
       }
+
+      // Ensure user exists in database before XP operations
+      await ensureUserExists(member.user);
 
       // Get or create user XP data
       const [userXpData] = await getDatabase()
