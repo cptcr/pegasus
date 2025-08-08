@@ -75,7 +75,7 @@ export class ConfigurationService {
   // XP Configuration Methods
   async getXPConfig(guildId: string): Promise<XPConfig> {
     try {
-      const [settings] = await getDatabase()
+      let [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
@@ -88,7 +88,12 @@ export class ConfigurationService {
         .limit(1);
 
       if (!settings) {
-        throw new Error('Guild settings not found');
+        // Create default guild settings
+        const [newSettings] = await getDatabase()
+          .insert(guildSettings)
+          .values({ guildId })
+          .returning();
+        settings = newSettings;
       }
 
       return {
@@ -327,14 +332,19 @@ export class ConfigurationService {
   // Welcome Configuration Methods
   async getWelcomeConfig(guildId: string): Promise<WelcomeConfig> {
     try {
-      const [settings] = await getDatabase()
+      let [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
         .limit(1);
 
       if (!settings) {
-        throw new Error('Guild settings not found');
+        // Create default guild settings
+        const [newSettings] = await getDatabase()
+          .insert(guildSettings)
+          .values({ guildId })
+          .returning();
+        settings = newSettings;
       }
 
       return {
@@ -384,14 +394,19 @@ export class ConfigurationService {
   // Goodbye Configuration Methods
   async getGoodbyeConfig(guildId: string): Promise<GoodbyeConfig> {
     try {
-      const [settings] = await getDatabase()
+      let [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
         .limit(1);
 
       if (!settings) {
-        throw new Error('Guild settings not found');
+        // Create default guild settings
+        const [newSettings] = await getDatabase()
+          .insert(guildSettings)
+          .values({ guildId })
+          .returning();
+        settings = newSettings;
       }
 
       return {
@@ -437,14 +452,19 @@ export class ConfigurationService {
   // Autorole Configuration Methods
   async getAutoroleConfig(guildId: string): Promise<AutoroleConfig> {
     try {
-      const [settings] = await getDatabase()
+      let [settings] = await getDatabase()
         .select()
         .from(guildSettings)
         .where(eq(guildSettings.guildId, guildId))
         .limit(1);
 
       if (!settings) {
-        throw new Error('Guild settings not found');
+        // Create default guild settings
+        const [newSettings] = await getDatabase()
+          .insert(guildSettings)
+          .values({ guildId })
+          .returning();
+        settings = newSettings;
       }
 
       return {
