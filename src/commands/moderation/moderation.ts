@@ -11,6 +11,7 @@ import { auditLogger } from '../../security/audit';
 import { getDatabase } from '../../database/connection';
 import { userXp } from '../../database/schema/xp';
 import { eq, and } from 'drizzle-orm';
+import { ensureUserAndGuildExist } from '../../utils/userUtils';
 
 export const data = new SlashCommandBuilder()
   .setName('moderation')
@@ -166,6 +167,10 @@ async function handleBan(interaction: ChatInputCommandInteraction): Promise<any>
   const reason = interaction.options.getString('reason') || t('common.noReasonProvided');
   const deleteDays = interaction.options.getInteger('delete_days') || 0;
 
+  // Ensure users and guild exist in database
+  await ensureUserAndGuildExist(user, interaction.guild!);
+  await ensureUserAndGuildExist(interaction.user, interaction.guild!);
+
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
 
@@ -279,6 +284,10 @@ async function handleKick(interaction: ChatInputCommandInteraction): Promise<any
   const user = interaction.options.getUser('user', true);
   const reason = interaction.options.getString('reason') || t('common.noReasonProvided');
 
+  // Ensure users and guild exist in database
+  await ensureUserAndGuildExist(user, interaction.guild!);
+  await ensureUserAndGuildExist(interaction.user, interaction.guild!);
+
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
 
@@ -388,6 +397,10 @@ async function handleTimeout(interaction: ChatInputCommandInteraction): Promise<
   const user = interaction.options.getUser('user', true);
   const duration = interaction.options.getInteger('duration', true);
   const reason = interaction.options.getString('reason') || t('common.noReasonProvided');
+
+  // Ensure users and guild exist in database
+  await ensureUserAndGuildExist(user, interaction.guild!);
+  await ensureUserAndGuildExist(interaction.user, interaction.guild!);
 
   // Get member
   const member = await interaction.guild!.members.fetch(user.id).catch(() => null);
@@ -504,6 +517,10 @@ async function handleResetXP(interaction: ChatInputCommandInteraction): Promise<
 
   const user = interaction.options.getUser('user', true);
   const confirm = interaction.options.getBoolean('confirm', true);
+
+  // Ensure users and guild exist in database
+  await ensureUserAndGuildExist(user, interaction.guild!);
+  await ensureUserAndGuildExist(interaction.user, interaction.guild!);
 
   if (!confirm) {
     return interaction.editReply({

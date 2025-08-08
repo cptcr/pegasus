@@ -4,6 +4,7 @@ import { t, setUserLocale, getUserLocale, availableLocales } from '../../i18n';
 import { getDatabase } from '../../database/connection';
 import { users } from '../../database/schema';
 import { eq } from 'drizzle-orm';
+import { ensureUserExists } from '../../utils/userUtils';
 
 export const data = new SlashCommandBuilder()
   .setName('language')
@@ -128,11 +129,17 @@ async function handleSet(interaction: ChatInputCommandInteraction) {
     // Update user locale in memory
     setUserLocale(interaction.user.id, newLocale);
 
+    // Ensure user exists in database first
+    await ensureUserExists(interaction.user);
+    
     // Update user locale in database
     const db = getDatabase();
     await db
       .update(users)
-      .set({ preferredLocale: newLocale })
+      .set({ 
+        preferredLocale: newLocale,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, interaction.user.id));
 
     const languageNames: Record<string, string> = {
