@@ -131,6 +131,11 @@ async function handleAutocomplete(interaction: AutocompleteInteraction) {
 
 async function handleButton(interaction: ButtonInteraction) {
   try {
+    // Check if interaction is still valid (not timed out)
+    if (!interaction.isRepliable()) {
+      return; // Interaction has expired, silently fail
+    }
+
     // Handle warning action buttons
     if (
       interaction.customId.startsWith('warn_action:') ||
@@ -172,17 +177,27 @@ async function handleButton(interaction: ButtonInteraction) {
   } catch (error) {
     logger.error(`Error handling button ${interaction.customId}:`, error);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: t('common.error'),
-        ephemeral: true,
-      });
+    // Only attempt to reply if interaction is still repliable
+    if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+      try {
+        await interaction.reply({
+          content: t('common.error'),
+          ephemeral: true,
+        });
+      } catch (replyError) {
+        logger.error('Failed to reply to button interaction:', replyError);
+      }
     }
   }
 }
 
 async function handleModal(interaction: ModalSubmitInteraction) {
   try {
+    // Check if interaction is still valid (not timed out)
+    if (!interaction.isRepliable()) {
+      return; // Interaction has expired, silently fail
+    }
+
     // Handle warning modals
     if (
       interaction.customId.startsWith('warn_edit:') ||
@@ -220,11 +235,16 @@ async function handleModal(interaction: ModalSubmitInteraction) {
   } catch (error) {
     logger.error(`Error handling modal ${interaction.customId}:`, error);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: t('common.error'),
-        ephemeral: true,
-      });
+    // Only attempt to reply if interaction is still repliable
+    if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+      try {
+        await interaction.reply({
+          content: t('common.error'),
+          ephemeral: true,
+        });
+      } catch (replyError) {
+        logger.error('Failed to reply to modal interaction:', replyError);
+      }
     }
   }
 }

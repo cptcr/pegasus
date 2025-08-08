@@ -5,6 +5,11 @@ import { GuildService } from '../../services/guildService';
 import { t } from '../../i18n';
 
 export async function handleTicketButton(interaction: ButtonInteraction): Promise<void> {
+  // Check if interaction is still valid (not timed out)
+  if (!interaction.isRepliable()) {
+    return; // Interaction has expired, silently fail
+  }
+
   const [action, id] = interaction.customId.split(':');
   const ticketService = new TicketService();
   const ticketRepository = new TicketRepository();
@@ -33,10 +38,18 @@ export async function handleTicketButton(interaction: ButtonInteraction): Promis
         break;
     }
   } catch (error: any) {
-    await interaction.reply({
-      content: t('common.error', { error: error.message }),
-      ephemeral: true,
-    });
+    // Check if we can still respond to the interaction
+    if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+      try {
+        await interaction.reply({
+          content: t('common.error', { error: error.message }),
+          ephemeral: true,
+        });
+      } catch (replyError) {
+        // Interaction may have expired while handling
+        console.error('Failed to reply to ticket button interaction:', replyError);
+      }
+    }
   }
 }
 
