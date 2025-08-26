@@ -168,15 +168,17 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 export function startApiServer() {
-  // Start the stats aggregator
-  statsAggregator.start(500); // Update every 500ms to match dashboard refresh
+  // Start the stats aggregator with a reasonable interval
+  // 5 seconds is enough for real-time monitoring without overwhelming the system
+  const statsInterval = parseInt(process.env.STATS_AGGREGATION_INTERVAL || '5000', 10);
+  statsAggregator.start(statsInterval);
 
   const server = app.listen(PORT, () => {
     logger.info(`API server running on port ${PORT}`);
     logger.info(`API authentication enabled with Bearer token`);
     logger.info(`Caching enabled with TTLs: Stats=${CacheTTL.STATS}ms, Guild=${CacheTTL.GUILD_DATA}ms, Members=${CacheTTL.MEMBER_LIST}ms`);
     logger.info(`Rate limiting enabled: Global=200/min, Per-guild=10/sec`);
-    logger.info(`Stats aggregator running with 500ms update interval`);
+    logger.info(`Stats aggregator running with ${statsInterval}ms update interval`);
   });
 
   // Graceful shutdown

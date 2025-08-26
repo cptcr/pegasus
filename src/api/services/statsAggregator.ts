@@ -48,6 +48,7 @@ interface AggregatedStats {
 class StatsAggregator {
   private stats: AggregatedStats | null = null;
   private updateInterval: NodeJS.Timeout | null = null;
+  private intervalMs: number = 5000;
   private commandStats = {
     total: 0,
     today: 0,
@@ -63,10 +64,12 @@ class StatsAggregator {
   /**
    * Start the aggregator with specified interval
    */
-  start(intervalMs: number = 500): void {
+  start(intervalMs: number = 5000): void {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
     }
+
+    this.intervalMs = intervalMs;
 
     // Initial update
     this.updateStats();
@@ -132,8 +135,15 @@ class StatsAggregator {
       this.lastUpdate = Date.now();
       const updateTime = Date.now() - startTime;
       
-      if (updateTime > 100) {
-        logger.warn(`Stats aggregation took ${updateTime}ms`);
+      // Only warn if aggregation takes more than 80% of the interval
+      // or if it takes more than 2 seconds regardless of interval
+      const warningThreshold = Math.min(this.intervalMs * 0.8, 2000);
+      
+      if (updateTime > warningThreshold) {
+        logger.warn(`Stats aggregation took ${updateTime}ms (interval: ${this.intervalMs}ms)`);
+      } else if (updateTime > this.intervalMs * 0.5) {
+        // Debug level for moderately slow aggregations (more than 50% of interval)
+        logger.debug(`Stats aggregation took ${updateTime}ms`);
       }
     } catch (error) {
       logger.error('Error updating stats:', error);
