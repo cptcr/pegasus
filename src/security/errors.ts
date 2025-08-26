@@ -8,13 +8,13 @@ export abstract class SecurityError extends Error {
   public readonly code: string;
   public readonly severity: 'low' | 'medium' | 'high' | 'critical';
   public readonly timestamp: Date;
-  public readonly context?: Record<string, any>;
+  public readonly context?: Record<string, unknown>;
 
   constructor(
     message: string,
     code: string,
     severity: 'low' | 'medium' | 'high' | 'critical' = 'medium',
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -56,7 +56,7 @@ export abstract class SecurityError extends Error {
 export class RateLimitError extends SecurityError {
   public readonly retryAfter: number;
 
-  constructor(message: string, retryAfter: number, context?: Record<string, any>) {
+  constructor(message: string, retryAfter: number, context?: Record<string, unknown>) {
     super(message, 'RATE_LIMIT_EXCEEDED', 'low', context);
     this.retryAfter = retryAfter;
   }
@@ -68,7 +68,7 @@ export class RateLimitError extends SecurityError {
 export class PermissionError extends SecurityError {
   public readonly missingPermissions: string[];
 
-  constructor(message: string, missingPermissions: string[] = [], context?: Record<string, any>) {
+  constructor(message: string, missingPermissions: string[] = [], context?: Record<string, unknown>) {
     super(message, 'PERMISSION_DENIED', 'medium', context);
     this.missingPermissions = missingPermissions;
   }
@@ -79,9 +79,9 @@ export class PermissionError extends SecurityError {
  */
 export class ValidationError extends SecurityError {
   public readonly field?: string;
-  public readonly value?: any;
+  public readonly value?: unknown;
 
-  constructor(message: string, field?: string, value?: any, context?: Record<string, any>) {
+  constructor(message: string, field?: string, value?: unknown, context?: Record<string, unknown>) {
     super(message, 'VALIDATION_FAILED', 'low', { ...context, field, value });
     this.field = field;
     this.value = value;
@@ -92,7 +92,7 @@ export class ValidationError extends SecurityError {
  * Authentication error
  */
 export class AuthenticationError extends SecurityError {
-  constructor(message: string, context?: Record<string, any>) {
+  constructor(message: string, context?: Record<string, unknown>) {
     super(message, 'AUTHENTICATION_FAILED', 'high', context);
   }
 }
@@ -107,7 +107,7 @@ export class BlacklistError extends SecurityError {
   constructor(
     entityType: 'user' | 'guild' | 'role',
     entityId: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
     super(`${entityType} ${entityId} is blacklisted`, 'BLACKLISTED', 'high', {
       ...context,
@@ -125,7 +125,7 @@ export class BlacklistError extends SecurityError {
 export class SuspiciousActivityError extends SecurityError {
   public readonly activityType: string;
 
-  constructor(activityType: string, message: string, context?: Record<string, any>) {
+  constructor(activityType: string, message: string, context?: Record<string, unknown>) {
     super(message, 'SUSPICIOUS_ACTIVITY', 'critical', { ...context, activityType });
     this.activityType = activityType;
   }
@@ -135,7 +135,7 @@ export class SuspiciousActivityError extends SecurityError {
  * Token compromise error
  */
 export class TokenCompromiseError extends SecurityError {
-  constructor(message: string, context?: Record<string, any>) {
+  constructor(message: string, context?: Record<string, unknown>) {
     super(message, 'TOKEN_COMPROMISE', 'critical', context);
   }
 }
@@ -146,7 +146,7 @@ export class TokenCompromiseError extends SecurityError {
 export class SQLInjectionError extends SecurityError {
   public readonly query?: string;
 
-  constructor(query?: string, context?: Record<string, any>) {
+  constructor(query?: string, context?: Record<string, unknown>) {
     super('SQL injection attempt detected', 'SQL_INJECTION_ATTEMPT', 'critical', {
       ...context,
       query,
@@ -161,7 +161,7 @@ export class SQLInjectionError extends SecurityError {
 export class XSSError extends SecurityError {
   public readonly payload?: string;
 
-  constructor(payload?: string, context?: Record<string, any>) {
+  constructor(payload?: string, context?: Record<string, unknown>) {
     super('XSS attempt detected', 'XSS_ATTEMPT', 'high', { ...context, payload });
     this.payload = payload;
   }
@@ -174,12 +174,12 @@ export class SecurityErrorHandler {
   /**
    * Handle security error and return appropriate response
    */
-  static async handle(error: Error): Promise<{
+  static handle(error: Error): {
     message: string;
     embed?: EmbedBuilder;
     shouldLog: boolean;
     shouldAlert: boolean;
-  }> {
+  } {
     // Security errors
     if (error instanceof SecurityError) {
       const shouldAlert = error.severity === 'critical' || error.severity === 'high';

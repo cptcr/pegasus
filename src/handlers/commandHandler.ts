@@ -5,6 +5,10 @@ import { logger } from '../utils/logger';
 import chalk from 'chalk';
 import type { Command } from '../types/command';
 
+interface ExtendedClient extends Client {
+  __commands?: Array<ReturnType<Command['data']['toJSON']>>;
+}
+
 export async function loadCommands(client: Client): Promise<void> {
   const commands = [];
   const commandsPath = join(__dirname, '..', 'commands');
@@ -19,13 +23,16 @@ export async function loadCommands(client: Client): Promise<void> {
     for (const file of commandFiles) {
       try {
         const filePath = join(categoryPath, file);
-        const commandModule = (await import(filePath)) as {
+        // Use require for CommonJS compatibility in compiled code
+        const commandModule = require(filePath);
+        
+        const module = commandModule as {
           data?: { name: string; toJSON: () => unknown };
           execute?: unknown;
         };
 
-        if (commandModule.data && commandModule.execute) {
-          const command = commandModule as Command;
+        if (module.data && module.execute) {
+          const command = module as Command;
           client.commands.set(command.data.name, command);
           commands.push(command.data.toJSON());
           logger.info(chalk.green(`Loaded command: ${command.data.name} (${category})`));
@@ -41,7 +48,7 @@ export async function loadCommands(client: Client): Promise<void> {
   }
 
   // Store commands for registration after bot is ready
-  (client as any).__commands = commands;
+  (client as ExtendedClient).__commands = commands;
   logger.info(
     chalk.green(`Loaded ${commands.length} commands, waiting for bot to be ready to register...`)
   );
@@ -49,7 +56,7 @@ export async function loadCommands(client: Client): Promise<void> {
 
 export async function registerCommands(client: Client): Promise<void> {
   // Get stored commands
-  const commands = (client as any).__commands || [];
+  const commands = (client as ExtendedClient).__commands || [];
   if (commands.length === 0) {
     logger.warn(chalk.yellow('No commands to register'));
     return;

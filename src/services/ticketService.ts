@@ -104,8 +104,18 @@ export class TicketService {
   }
 
   // Ticket creation
-  async createTicket(interaction: ModalSubmitInteraction, panel: any, reason: string) {
-    const guild = interaction.guild!;
+  async createTicket(interaction: ModalSubmitInteraction, panel: {
+    id: string;
+    maxTicketsPerUser: number;
+    ticketNameFormat: string;
+    categoryId?: string | null;
+    welcomeMessage?: string | null;
+    supportRoles: string[];
+  }, reason: string) {
+    const guild = interaction.guild;
+    if (!guild) {
+      throw new Error('Guild not found');
+    }
     const member = interaction.member as GuildMember;
 
     // Check user's open tickets
@@ -116,7 +126,7 @@ export class TicketService {
 
     // Get next ticket number
     const ticketNumber = await this.ticketRepository.getNextTicketNumber(guild.id);
-    const ticketName = panel.ticketNameFormat.replace('{number}', ticketNumber.toString());
+    const ticketName = (panel.ticketNameFormat ?? 'ticket-{number}').replace('{number}', ticketNumber.toString());
 
     // Get or create category
     let category: CategoryChannel | null = null;
@@ -151,7 +161,7 @@ export class TicketService {
           type: OverwriteType.Member,
         },
         // Add support roles
-        ...panel.supportRoles.map((roleId: string) => ({
+        ...(panel.supportRoles ?? []).map((roleId: string) => ({
           id: roleId,
           allow: [
             PermissionFlagsBits.ViewChannel,
@@ -225,7 +235,7 @@ export class TicketService {
     );
 
     // Send ticket panel and ping support roles
-    const supportPings = panel.supportRoles.map((roleId: string) => `<@&${roleId}>`).join(' ');
+    const supportPings = (panel.supportRoles ?? []).map((roleId: string) => `<@&${roleId}>`).join(' ');
     await ticketChannel.send({
       content: supportPings,
       embeds: [ticketEmbed],
@@ -361,9 +371,19 @@ export class TicketService {
   }
 
   // Helper methods
-  private generateTranscript(messages: any[], ticket: any): string {
+  private generateTranscript(messages: Array<{
+    createdAt: Date | string;
+    userId: string;
+    content: string;
+    attachments?: unknown;
+  }>, ticket: {
+    ticketNumber: number;
+    createdAt: Date | string;
+    userId: string;
+    reason?: string | null;
+  }): string {
     let transcript = `Ticket #${ticket.ticketNumber} Transcript\n`;
-    transcript += `Created: ${ticket.createdAt}\n`;
+    transcript += `Created: ${ticket.createdAt instanceof Date ? ticket.createdAt.toISOString() : ticket.createdAt}\n`;
     transcript += `Closed: ${new Date().toISOString()}\n`;
     transcript += `User: ${ticket.userId}\n`;
     transcript += `Reason: ${ticket.reason || 'No reason provided'}\n\n`;
@@ -371,8 +391,8 @@ export class TicketService {
     transcript += `${'='.repeat(50)}\n\n`;
 
     for (const msg of messages) {
-      transcript += `[${msg.createdAt}] ${msg.userId}: ${msg.content}\n`;
-      if (msg.attachments && msg.attachments.length > 0) {
+      transcript += `[${msg.createdAt instanceof Date ? msg.createdAt.toISOString() : msg.createdAt}] ${msg.userId}: ${msg.content}\n`;
+      if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         transcript += `Attachments: ${JSON.stringify(msg.attachments)}\n`;
       }
       transcript += '\n';

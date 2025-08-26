@@ -41,7 +41,7 @@ export interface PermissionCheckResult {
 export const PermissionPresets = {
   // Owner only
   OWNER_ONLY: {
-    users: [process.env.BOT_OWNER_ID!].filter(Boolean),
+    users: process.env.BOT_OWNER_ID ? [process.env.BOT_OWNER_ID] : [],
     allowOwner: true,
   } as PermissionRequirement,
 
@@ -140,7 +140,11 @@ export class PermissionChecker {
     requirements: PermissionRequirement
   ): Promise<PermissionCheckResult> {
     const member = interaction.member as GuildMember;
-    const guild = interaction.guild!;
+    const guild = interaction.guild;
+    
+    if (!guild) {
+      return { allowed: false, reason: 'This command can only be used in a server' };
+    }
 
     // Check if bot owner (super admin)
     if (requirements.allowOwner !== false && this.isBotOwner(interaction.user.id)) {
@@ -214,7 +218,7 @@ export class PermissionChecker {
         return {
           allowed: false,
           reason: 'You lack the required roles',
-          missingRoles: missingRoles,
+          missingRoles,
         };
       }
     }
@@ -232,7 +236,14 @@ export class PermissionChecker {
 
     // Check server membership duration
     if (requirements.minServerAge) {
-      const serverAge = (Date.now() - member.joinedTimestamp!) / 86400000;
+      const joinedTimestamp = member.joinedTimestamp;
+      if (!joinedTimestamp) {
+        return {
+          allowed: false,
+          reason: 'Unable to verify server membership duration',
+        };
+      }
+      const serverAge = (Date.now() - joinedTimestamp) / 86400000;
       if (serverAge < requirements.minServerAge) {
         return {
           allowed: false,
@@ -243,7 +254,8 @@ export class PermissionChecker {
 
     // Check server boost level
     if (requirements.requiredBoosts) {
-      if (guild.premiumTier < requirements.requiredBoosts) {
+      const boostLevel = guild.premiumTier as number;
+      if (boostLevel < requirements.requiredBoosts) {
         return {
           allowed: false,
           reason: `This server needs to be boost level ${requirements.requiredBoosts}`,

@@ -161,11 +161,11 @@ export class PermissionManager {
   /**
    * Check if bot has permissions in channel
    */
-  static async checkBotPermissions(
+  static checkBotPermissions(
     guild: Guild,
     channel?: GuildChannel | null,
     permissions: bigint[] = []
-  ): Promise<PermissionCheck> {
+  ): PermissionCheck {
     const botMember = guild.members.me;
     if (!botMember) {
       return { allowed: false, reason: 'Bot is not in the guild' };

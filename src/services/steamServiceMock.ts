@@ -2,7 +2,7 @@
 import { EmbedBuilder } from 'discord.js';
 
 export class SteamService {
-  static async getPlayerSummary(steamId: string): Promise<EmbedBuilder> {
+  static getPlayerSummary(steamId: string): EmbedBuilder {
     const embed = new EmbedBuilder()
       .setTitle('Steam Profile (Mock)')
       .setDescription('Steam service is temporarily unavailable')

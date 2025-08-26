@@ -3,6 +3,7 @@ import {
   TextChannel,
   User,
   Guild,
+  GuildMember,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -11,6 +12,18 @@ import { giveawayRepository } from '../repositories/giveawayRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
 import { nanoid } from 'nanoid';
+import { logger } from '../utils/logger';
+
+export interface GiveawayRequirements {
+  roleIds?: string[];
+  minLevel?: number;
+  minTimeInServer?: string;
+}
+
+export interface GiveawayBonusEntries {
+  roles?: Record<string, number>;
+  booster?: number;
+}
 
 export interface CreateGiveawayData {
   guildId: string;
@@ -20,8 +33,8 @@ export interface CreateGiveawayData {
   winnerCount: number;
   endTime: Date;
   description: string | null;
-  requirements: any;
-  bonusEntries: any;
+  requirements: GiveawayRequirements;
+  bonusEntries: GiveawayBonusEntries;
   embedColor: number;
 }
 
@@ -29,6 +42,30 @@ export interface GiveawayResult {
   success: boolean;
   error?: string;
   winners?: string[];
+}
+
+export interface GiveawayEntry {
+  userId: string;
+  entries: number;
+}
+
+export interface GiveawayData {
+  giveawayId: string;
+  guildId: string;
+  channelId: string;
+  messageId: string | null;
+  hostedBy: string;
+  prize: string;
+  winnerCount: number;
+  status: 'active' | 'ended';
+  endTime: Date;
+  description: string | null;
+  requirements: GiveawayRequirements;
+  bonusEntries: GiveawayBonusEntries;
+  embedColor: number;
+  winners: string[];
+  endedAt: Date | null;
+  announcementSent?: boolean;
 }
 
 export class GiveawayService {
@@ -40,10 +77,16 @@ export class GiveawayService {
     const giveaway = await giveawayRepository.createGiveaway({
       giveawayId,
       ...data,
+      requirements: data.requirements as Record<string, unknown>,
+      bonusEntries: data.bonusEntries as Record<string, unknown>,
     });
 
     // Schedule the giveaway end
-    this.scheduleGiveawayEnd(giveaway);
+    this.scheduleGiveawayEnd({
+      giveawayId: giveaway.giveawayId,
+      endTime: giveaway.endTime,
+      status: giveaway.status,
+    });
 
     // Log the action
     await auditLogger.logAction({
@@ -90,13 +133,13 @@ export class GiveawayService {
       return { success: false, error: 'Member not found' };
     }
 
-    const requirementCheck = await this.checkRequirements(member, giveaway.requirements);
+    const requirementCheck = this.checkRequirements(member, giveaway.requirements as GiveawayRequirements);
     if (!requirementCheck.met) {
       return { success: false, error: requirementCheck.reason };
     }
 
     // Calculate entries
-    const bonusMultiplier = await this.calculateBonusEntries(member, giveaway.bonusEntries);
+    const bonusMultiplier = this.calculateBonusEntries(member, giveaway.bonusEntries as GiveawayBonusEntries);
     const totalEntries = 1 * bonusMultiplier;
 
     // Add entry
@@ -156,7 +199,9 @@ export class GiveawayService {
     const updatedGiveaway = await giveawayRepository.getGiveaway(giveawayId);
     
     // Update the giveaway message
-    await this.updateGiveawayEmbed(updatedGiveaway, winners);
+    if (updatedGiveaway) {
+      await this.updateGiveawayEmbed(updatedGiveaway, winners);
+    }
 
     // Log the action
     await auditLogger.logAction({
@@ -218,7 +263,7 @@ export class GiveawayService {
     return { success: true, winners };
   }
 
-  async updateGiveaway(giveawayId: string, updates: any, updatedBy: User) {
+  async updateGiveaway(giveawayId: string, updates: Partial<GiveawayData>, updatedBy: User) {
     const giveaway = await giveawayRepository.getGiveaway(giveawayId);
 
     if (!giveaway || giveaway.status !== 'active') {
@@ -243,12 +288,12 @@ export class GiveawayService {
     });
   }
 
-  private async checkRequirements(
-    member: any,
-    requirements: any
-  ): Promise<{ met: boolean; reason?: string }> {
+  private checkRequirements(
+    member: GuildMember,
+    requirements: GiveawayRequirements
+  ): { met: boolean; reason?: string } {
     // Check role requirements
-    if (requirements.roleIds?.length > 0) {
+    if (requirements.roleIds && requirements.roleIds.length > 0) {
       const hasRequiredRole = requirements.roleIds.some((roleId: string) =>
         member.roles.cache.has(roleId)
       );
@@ -284,14 +329,14 @@ export class GiveawayService {
     return { met: true };
   }
 
-  private async calculateBonusEntries(member: any, bonusEntries: any): Promise<number> {
+  private calculateBonusEntries(member: GuildMember, bonusEntries: GiveawayBonusEntries): number {
     let multiplier = 1;
 
     // Check role bonuses
     if (bonusEntries.roles) {
       for (const [roleId, bonus] of Object.entries(bonusEntries.roles)) {
         if (member.roles.cache.has(roleId)) {
-          multiplier = Math.max(multiplier, bonus as number);
+          multiplier = Math.max(multiplier, bonus);
         }
       }
     }
@@ -304,7 +349,7 @@ export class GiveawayService {
     return multiplier;
   }
 
-  private selectWinners(entries: any[], count: number): string[] {
+  private selectWinners(entries: GiveawayEntry[], count: number): string[] {
     if (entries.length === 0) return [];
 
     // Create weighted array
@@ -327,9 +372,21 @@ export class GiveawayService {
     return Array.from(winners);
   }
 
-  private async updateGiveawayEmbed(giveaway: any, winners?: string[]) {
-    const client = (global as any).client;
-    if (!client) return;
+  private async updateGiveawayEmbed(giveaway: { 
+    giveawayId: string;
+    channelId: string;
+    messageId: string | null;
+    status: string;
+    embedColor: number;
+    description: string | null;
+    prize: string;
+    hostedBy: string;
+    winnerCount: number;
+    endTime: Date;
+    announcementSent?: boolean;
+  } | null, winners?: string[]) {
+    const client = (global as { client?: { channels: { fetch: (id: string) => Promise<unknown> } } }).client;
+    if (!client || !giveaway) return;
 
     try {
       const channel = (await client.channels
@@ -431,7 +488,7 @@ export class GiveawayService {
           reply: { messageReference: giveaway.messageId }
         }).catch(() => {
           // Fallback without reply
-          channel.send({
+          void channel.send({
             content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`
           });
         });
@@ -439,21 +496,25 @@ export class GiveawayService {
         giveaway.announcementSent = true;
       }
     } catch (error) {
-      console.error('Error updating giveaway embed:', error);
+      logger.error('Error updating giveaway embed:', error);
     }
   }
 
-  private scheduleGiveawayEnd(giveaway: any) {
+  private scheduleGiveawayEnd(giveaway: {
+    giveawayId: string;
+    endTime: Date;
+    status?: string;
+  }) {
     const endTime = new Date(giveaway.endTime);
     const now = new Date();
     const timeUntilEnd = endTime.getTime() - now.getTime();
 
-    console.log(`Giveaway ${giveaway.giveawayId}: End time: ${endTime.toISOString()}, Now: ${now.toISOString()}, Time until end: ${timeUntilEnd}ms (${Math.floor(timeUntilEnd / 1000)}s)`);
+    logger.info(`Giveaway ${giveaway.giveawayId}: End time: ${endTime.toISOString()}, Now: ${now.toISOString()}, Time until end: ${timeUntilEnd}ms (${Math.floor(timeUntilEnd / 1000)}s)`);
 
     if (timeUntilEnd <= 0) {
       // Giveaway should have already ended
-      console.log(`Ending expired giveaway immediately: ${giveaway.giveawayId}`);
-      this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
+      logger.info(`Ending expired giveaway immediately: ${giveaway.giveawayId}`);
+      void this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
       return;
     }
 
@@ -461,22 +522,26 @@ export class GiveawayService {
     const timeoutValue = Math.min(timeUntilEnd, 2147483647); // Max setTimeout value
 
     const timer = setTimeout(() => {
-      console.log(`Timer triggered for giveaway: ${giveaway.giveawayId}`);
-      this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
+      logger.info(`Timer triggered for giveaway: ${giveaway.giveawayId}`);
+      void this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
       this.activeTimers.delete(giveaway.giveawayId);
     }, timeoutValue);
 
     this.activeTimers.set(giveaway.giveawayId, timer);
-    console.log(`Scheduled giveaway ${giveaway.giveawayId} to end in ${Math.floor(timeUntilEnd / 1000)}s`);
+    logger.info(`Scheduled giveaway ${giveaway.giveawayId} to end in ${Math.floor(timeUntilEnd / 1000)}s`);
   }
 
   async initializeActiveGiveaways() {
     const activeGiveaways = await giveawayRepository.getActiveGiveaways();
 
-    console.log(`Found ${activeGiveaways.length} active giveaways`);
+    logger.info(`Found ${activeGiveaways.length} active giveaways`);
 
     for (const giveaway of activeGiveaways) {
-      this.scheduleGiveawayEnd(giveaway);
+      this.scheduleGiveawayEnd({
+        giveawayId: giveaway.giveawayId,
+        endTime: giveaway.endTime,
+        status: giveaway.status,
+      });
     }
 
     // Start periodic check for expired giveaways (every minute)
@@ -484,12 +549,14 @@ export class GiveawayService {
   }
 
   private startPeriodicExpiredCheck() {
-    setInterval(async () => {
-      try {
-        await this.processExpiredGiveaways();
-      } catch (error) {
-        console.error('Error processing expired giveaways:', error);
-      }
+    setInterval(() => {
+      void (async () => {
+        try {
+          await this.processExpiredGiveaways();
+        } catch (error) {
+          logger.error('Error processing expired giveaways:', error);
+        }
+      })();
     }, 60000); // Check every minute
   }
 
@@ -497,7 +564,7 @@ export class GiveawayService {
     const expiredGiveaways = await giveawayRepository.getExpiredGiveaways();
 
     for (const giveaway of expiredGiveaways) {
-      console.log(`Processing expired giveaway: ${giveaway.giveawayId}`);
+      logger.info(`Processing expired giveaway: ${giveaway.giveawayId}`);
       await this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
     }
   }

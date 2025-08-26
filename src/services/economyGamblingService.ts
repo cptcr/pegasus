@@ -86,7 +86,7 @@ export class EconomyGamblingService {
       bet,
       won || tie,
       multiplier,
-      details
+      details as unknown as Record<string, unknown>
     );
   }
 
@@ -119,7 +119,7 @@ export class EconomyGamblingService {
       bet,
       won,
       multiplier,
-      details
+      details as unknown as Record<string, unknown>
     );
   }
 
@@ -176,7 +176,7 @@ export class EconomyGamblingService {
       bet,
       won,
       multiplier,
-      details
+      details as unknown as Record<string, unknown>
     );
   }
 
@@ -191,12 +191,23 @@ export class EconomyGamblingService {
     this.shuffleDeck(deck);
 
     // Deal initial cards
-    const playerHand: Card[] = [deck.pop()!, deck.pop()!];
-    const dealerHand: Card[] = [deck.pop()!, deck.pop()!];
+    const playerCard1 = deck.pop();
+    const playerCard2 = deck.pop();
+    const dealerCard1 = deck.pop();
+    const dealerCard2 = deck.pop();
+    
+    if (!playerCard1 || !playerCard2 || !dealerCard1 || !dealerCard2) {
+      throw new Error('Failed to deal cards');
+    }
+    
+    const playerHand: Card[] = [playerCard1, playerCard2];
+    const dealerHand: Card[] = [dealerCard1, dealerCard2];
 
     // Simple AI: dealer hits on 16 or less, stands on 17+
     while (this.calculateHandValue(dealerHand).value < 17) {
-      dealerHand.push(deck.pop()!);
+      const card = deck.pop();
+      if (!card) break; // Safety check
+      dealerHand.push(card);
     }
 
     // For simplicity, auto-play optimal strategy for player
@@ -209,9 +220,13 @@ export class EconomyGamblingService {
 
       // Basic strategy
       if (handValue.value < 12) {
-        playerHand.push(deck.pop()!);
+        const card = deck.pop();
+        if (!card) break; // Safety check
+        playerHand.push(card);
       } else if (handValue.value < 17 && dealerUpCard >= 7) {
-        playerHand.push(deck.pop()!);
+        const card = deck.pop();
+        if (!card) break; // Safety check
+        playerHand.push(card);
       } else {
         break;
       }
@@ -258,7 +273,7 @@ export class EconomyGamblingService {
       bet,
       won || push,
       multiplier,
-      details
+      details as unknown as Record<string, unknown>
     );
   }
 
@@ -306,13 +321,14 @@ export class EconomyGamblingService {
         won = number >= 19 && number <= 36;
         multiplier = won ? 2 : 0;
         break;
-      case 'dozen':
+      case 'dozen': {
         const dozen = Number(betValue);
         if (dozen === 1) won = number >= 1 && number <= 12;
         else if (dozen === 2) won = number >= 13 && number <= 24;
         else if (dozen === 3) won = number >= 25 && number <= 36;
         multiplier = won ? 3 : 0; // 2:1 payout
         break;
+      }
     }
 
     const details: RouletteResult = {
@@ -330,7 +346,7 @@ export class EconomyGamblingService {
       bet,
       won,
       multiplier,
-      details
+      details as unknown as Record<string, unknown>
     );
   }
 

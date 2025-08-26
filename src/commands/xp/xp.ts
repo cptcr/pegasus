@@ -15,7 +15,7 @@ import { xpService } from '../../services/xpService';
 import { RankCardService as rankCardService } from '../../services/rankCardServiceMock';
 import { configurationService } from '../../services/configurationService';
 import { logger } from '../../utils/logger';
-import { getTranslation } from '../../i18n';
+import { getTranslation, type LocaleObject } from '../../i18n';
 
 const xpCommand: Command = {
   data: new SlashCommandBuilder()
@@ -71,7 +71,7 @@ const xpCommand: Command = {
   },
 };
 
-async function handleRankCommand(interaction: ChatInputCommandInteraction, locale: any) {
+async function handleRankCommand(interaction: ChatInputCommandInteraction, locale: LocaleObject) {
   try {
     await interaction.deferReply();
 
@@ -125,7 +125,7 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
   }
 }
 
-async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction, locale: any) {
+async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction, locale: LocaleObject) {
   try {
     await interaction.deferReply();
 
@@ -205,7 +205,7 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
   }
 }
 
-async function handleConfigurationCommand(interaction: ChatInputCommandInteraction, locale: any) {
+async function handleConfigurationCommand(interaction: ChatInputCommandInteraction, locale: LocaleObject) {
   try {
     await interaction.deferReply({ ephemeral: true });
 

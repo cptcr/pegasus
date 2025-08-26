@@ -65,7 +65,7 @@ export interface ShopItem {
   price: number;
   type: string;
   effectType?: string;
-  effectValue?: any;
+  effectValue?: unknown;
   stock: number | null;
   requiresRole?: string;
   enabled: boolean;
@@ -106,11 +106,11 @@ export class ConfigurationService {
         levelUpMessage: settings.levelUpMessage || undefined,
         boosterRole: settings.xpBoosterRole || undefined,
         boosterMultiplier: settings.xpBoosterMultiplier,
-        ignoredChannels: xpConfig ? JSON.parse(xpConfig.ignoredChannels) : [],
-        ignoredRoles: xpConfig ? JSON.parse(xpConfig.ignoredRoles) : [],
-        noXpChannels: xpConfig ? JSON.parse(xpConfig.noXpChannels) : [],
-        doubleXpChannels: xpConfig ? JSON.parse(xpConfig.doubleXpChannels) : [],
-        roleMultipliers: xpConfig ? JSON.parse(xpConfig.roleMultipliers) : {},
+        ignoredChannels: xpConfig && xpConfig.ignoredChannels ? JSON.parse(xpConfig.ignoredChannels) as string[] : [],
+        ignoredRoles: xpConfig && xpConfig.ignoredRoles ? JSON.parse(xpConfig.ignoredRoles) as string[] : [],
+        noXpChannels: xpConfig && xpConfig.noXpChannels ? JSON.parse(xpConfig.noXpChannels) as string[] : [],
+        doubleXpChannels: xpConfig && xpConfig.doubleXpChannels ? JSON.parse(xpConfig.doubleXpChannels) as string[] : [],
+        roleMultipliers: xpConfig && xpConfig.roleMultipliers ? JSON.parse(xpConfig.roleMultipliers) as Record<string, number> : {},
         levelUpRewardsEnabled: xpConfig?.levelUpRewardsEnabled ?? true,
         stackRoleRewards: xpConfig?.stackRoleRewards ?? false,
       };
@@ -122,7 +122,7 @@ export class ConfigurationService {
 
   async updateXPConfig(guildId: string, config: Partial<XPConfig>): Promise<void> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof guildSettings.$inferInsert> = {};
 
       // Update guild settings fields
       if (config.enabled !== undefined) updateData.xpEnabled = config.enabled;
@@ -145,7 +145,7 @@ export class ConfigurationService {
       }
 
       // Update xp settings fields
-      const xpUpdateData: any = {};
+      const xpUpdateData: Partial<typeof xpSettings.$inferInsert> = {};
       if (config.ignoredChannels !== undefined)
         xpUpdateData.ignoredChannels = JSON.stringify(config.ignoredChannels);
       if (config.ignoredRoles !== undefined)
@@ -367,7 +367,7 @@ export class ConfigurationService {
 
   async updateWelcomeConfig(guildId: string, config: Partial<WelcomeConfig>): Promise<void> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof guildSettings.$inferInsert> = {};
 
       if (config.enabled !== undefined) updateData.welcomeEnabled = config.enabled;
       if (config.channel !== undefined) updateData.welcomeChannel = config.channel;
@@ -427,7 +427,7 @@ export class ConfigurationService {
 
   async updateGoodbyeConfig(guildId: string, config: Partial<GoodbyeConfig>): Promise<void> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof guildSettings.$inferInsert> = {};
 
       if (config.enabled !== undefined) updateData.goodbyeEnabled = config.enabled;
       if (config.channel !== undefined) updateData.goodbyeChannel = config.channel;
@@ -469,7 +469,7 @@ export class ConfigurationService {
 
       return {
         enabled: settings.autoroleEnabled,
-        roles: JSON.parse(settings.autoroleRoles),
+        roles: settings.autoroleRoles ? JSON.parse(settings.autoroleRoles) as string[] : [],
       };
     } catch (error) {
       logger.error(`Failed to get autorole config for guild ${guildId}:`, error);
@@ -479,7 +479,7 @@ export class ConfigurationService {
 
   async updateAutoroleConfig(guildId: string, config: Partial<AutoroleConfig>): Promise<void> {
     try {
-      const updateData: any = {};
+      const updateData: Partial<typeof guildSettings.$inferInsert> = {};
 
       if (config.enabled !== undefined) updateData.autoroleEnabled = config.enabled;
       if (config.roles !== undefined) updateData.autoroleRoles = JSON.stringify(config.roles);

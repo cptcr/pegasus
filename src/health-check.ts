@@ -55,19 +55,19 @@ async function performHealthCheck(): Promise<HealthStatus> {
 
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        client.destroy();
+        void client.destroy();
         reject(new Error('Discord connection timeout'));
       }, 5000);
 
       client.once('ready', () => {
         clearTimeout(timeout);
-        client.destroy();
+        void client.destroy();
         resolve(true);
       });
 
       client.once('error', error => {
         clearTimeout(timeout);
-        client.destroy();
+        void client.destroy();
         reject(error);
       });
 

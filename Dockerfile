@@ -18,6 +18,26 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Test stage
+FROM node:18-alpine AS test
+
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ cairo-dev jpeg-dev pango-dev giflib-dev
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies including dev
+RUN npm ci
+
+# Copy source code and test files
+COPY . .
+
+# Run tests
+CMD ["npm", "test"]
+
 # Production stage
 FROM node:18-alpine AS runner
 

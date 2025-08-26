@@ -57,7 +57,12 @@ export class SteamService {
         },
       });
 
-      const players = response.data.response.players;
+      const responseData = response.data as {
+        response: {
+          players: SteamProfile[];
+        };
+      };
+      const players = responseData.response.players;
 
       if (players.length === 0) {
         return null;
@@ -83,7 +88,7 @@ export class SteamService {
     }
 
     // Check if it's a custom URL
-    const customUrlMatch = input.match(/steamcommunity\.com\/id\/([^\/]+)/);
+    const customUrlMatch = input.match(/steamcommunity\.com\/id\/([^/]+)/);
     const vanityUrlName = customUrlMatch ? customUrlMatch[1] : input;
 
     try {
@@ -95,8 +100,15 @@ export class SteamService {
         },
       });
 
-      if (response.data.response.success === 1) {
-        return response.data.response.steamid;
+      const responseData = response.data as {
+        response: {
+          success: number;
+          steamid?: string;
+        };
+      };
+      
+      if (responseData.response.success === 1) {
+        return responseData.response.steamid ?? null;
       }
 
       return null;
@@ -130,7 +142,7 @@ export class SteamService {
     return visibilityMap[visibility] || t('commands.utils.steam.unknown', { lng: locale });
   }
 
-  async getRecentGames(steamId: string, count: number = 3): Promise<any[]> {
+  async getRecentGames(steamId: string, count: number = 3): Promise<unknown[]> {
     if (!this.apiKey) {
       throw new Error('Steam API key not configured');
     }
@@ -144,14 +156,19 @@ export class SteamService {
         },
       });
 
-      return response.data.response.games || [];
+      const responseData = response.data as {
+        response: {
+          games?: unknown[];
+        };
+      };
+      return responseData.response.games || [];
     } catch (error) {
       logger.error('Error fetching recent games:', error);
       return [];
     }
   }
 
-  async getOwnedGames(steamId: string): Promise<any> {
+  async getOwnedGames(steamId: string): Promise<unknown> {
     if (!this.apiKey) {
       throw new Error('Steam API key not configured');
     }
@@ -166,7 +183,10 @@ export class SteamService {
         },
       });
 
-      return response.data.response;
+      const responseData = response.data as {
+        response: unknown;
+      };
+      return responseData.response;
     } catch (error) {
       logger.error('Error fetching owned games:', error);
       return { game_count: 0, games: [] };
@@ -186,14 +206,19 @@ export class SteamService {
         },
       });
 
-      return response.data.response.player_level || 0;
+      const responseData = response.data as {
+        response: {
+          player_level?: number;
+        };
+      };
+      return responseData.response.player_level || 0;
     } catch (error) {
       logger.error('Error fetching player level:', error);
       return 0;
     }
   }
 
-  async getPlayerBans(steamId: string): Promise<any> {
+  async getPlayerBans(steamId: string): Promise<unknown> {
     if (!this.apiKey) {
       throw new Error('Steam API key not configured');
     }
@@ -206,7 +231,10 @@ export class SteamService {
         },
       });
 
-      return response.data.players[0] || null;
+      const responseData = response.data as {
+        players: unknown[];
+      };
+      return responseData.players[0] || null;
     } catch (error) {
       logger.error('Error fetching player bans:', error);
       return null;

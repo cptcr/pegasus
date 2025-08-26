@@ -4,6 +4,7 @@ import {
   GuildMember,
   PermissionFlagsBits,
   EmbedBuilder,
+  ApplicationCommandOptionType,
 } from 'discord.js';
 import { checkCommandRateLimit, RateLimitResult } from './rateLimiter';
 import { PermissionManager, PermissionCheck } from './permissions';
@@ -12,6 +13,7 @@ import { Sanitizer } from './sanitizer';
 import { auditLogger } from './audit';
 import { logger } from '../utils/logger';
 import { t } from '../i18n';
+import { securityService } from '../services/securityService';
 import type { Command } from '../types/command';
 
 export interface SecurityContext {
@@ -28,7 +30,7 @@ export interface SecurityCheckResult {
   passed: boolean;
   error?: string;
   code?: 'RATE_LIMIT' | 'PERMISSION' | 'VALIDATION' | 'BLACKLIST' | 'MAINTENANCE';
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -40,12 +42,14 @@ export async function securityMiddleware(
 ): Promise<SecurityCheckResult> {
   const context: SecurityContext = {
     userId: interaction.user.id,
-    guildId: interaction.guildId!,
+    guildId: interaction.guildId || '',
     channelId: interaction.channelId,
     commandName: `${command.data.name}`,
     timestamp: Date.now(),
     isOwner: PermissionManager.isBotOwner(interaction.user.id),
-    permissions: (interaction.member as GuildMember)?.permissions.bitfield || 0n,
+    permissions: interaction.member && 'permissions' in interaction.member 
+      ? (interaction.member as GuildMember).permissions.bitfield 
+      : 0n,
   };
 
   try {
@@ -67,7 +71,7 @@ export async function securityMiddleware(
     // 3. Check rate limits
     const rateLimitCheck = await checkRateLimit(context);
     if (!rateLimitCheck.passed) {
-      await handleRateLimit(interaction, rateLimitCheck.details as RateLimitResult);
+      await handleRateLimit(interaction, rateLimitCheck.details as unknown as RateLimitResult);
       return rateLimitCheck;
     }
 
@@ -77,17 +81,33 @@ export async function securityMiddleware(
       const permissionBits = command.permissions.map(p => {
         if (typeof p === 'bigint') return p;
         if (typeof p === 'string') {
-          // Handle string permissions - convert to bigint if it's a valid bigint string
+          // Handle string permissions - check if it's a permission flag name
+          const permissionFlag = PermissionFlagsBits[p as keyof typeof PermissionFlagsBits];
+          if (permissionFlag !== undefined) {
+            return permissionFlag;
+          }
+          // Try to parse as bigint string
           try {
             return BigInt(p);
           } catch {
-            // If it's not a valid bigint string, it might be a permission name
-            // For now, return 0n as a fallback
+            // Invalid permission string
             return 0n;
           }
         }
         if (typeof p === 'number') return BigInt(p);
-        // Handle arrays or other types
+        // Handle arrays - combine permissions
+        if (Array.isArray(p)) {
+          return p.reduce((acc: bigint, perm) => {
+            if (typeof perm === 'bigint') return acc | perm;
+            if (typeof perm === 'string') {
+              const flag = PermissionFlagsBits[perm as keyof typeof PermissionFlagsBits];
+              return flag ? acc | flag : acc;
+            }
+            if (typeof perm === 'number') return acc | BigInt(perm);
+            return acc;
+          }, 0n);
+        }
+        // Default fallback
         return 0n;
       });
       const permissionCheck = await PermissionManager.checkCommandPermissions(
@@ -101,15 +121,16 @@ export async function securityMiddleware(
           passed: false,
           error: permissionCheck.reason,
           code: 'PERMISSION',
-          details: permissionCheck,
+          details: permissionCheck as unknown as Record<string, unknown>,
         };
       }
     }
 
     // 5. Validate input
-    const validationCheck = await validateCommandInput(interaction, command);
+    const validationCheck = validateCommandInput(interaction, command);
     if (!validationCheck.passed) {
-      await handleValidationError(interaction, validationCheck.error!);
+      const error = validationCheck.error || 'Validation failed';
+      await handleValidationError(interaction, error);
       return validationCheck;
     }
 
@@ -141,7 +162,7 @@ export async function securityMiddleware(
  */
 async function checkBlacklist(context: SecurityContext): Promise<SecurityCheckResult> {
   // Check user blacklist
-  const userBlacklisted = await isBlacklisted('user', context.userId);
+  const userBlacklisted = await securityService.isBlacklisted('user', context.userId);
   if (userBlacklisted) {
     return {
       passed: false,
@@ -151,7 +172,7 @@ async function checkBlacklist(context: SecurityContext): Promise<SecurityCheckRe
   }
 
   // Check guild blacklist
-  const guildBlacklisted = await isBlacklisted('guild', context.guildId);
+  const guildBlacklisted = await securityService.isBlacklisted('guild', context.guildId);
   if (guildBlacklisted) {
     return {
       passed: false,
@@ -189,7 +210,7 @@ async function checkRateLimit(context: SecurityContext): Promise<SecurityCheckRe
         seconds: Math.ceil(result.msBeforeNext / 1000),
       }),
       code: 'RATE_LIMIT',
-      details: result,
+      details: result as unknown as Record<string, unknown>,
     };
   }
 
@@ -199,22 +220,36 @@ async function checkRateLimit(context: SecurityContext): Promise<SecurityCheckRe
 /**
  * Validate command input
  */
-async function validateCommandInput(
+function validateCommandInput(
   interaction: ChatInputCommandInteraction,
   command: Command
-): Promise<SecurityCheckResult> {
+): SecurityCheckResult {
   const commandName = command.data.name;
   const subcommand = interaction.options.getSubcommand(false);
   const subcommandGroup = interaction.options.getSubcommandGroup(false);
 
   // Get validation schema
   let schema = null;
+  const commandSchemas = CommandSchemas as Record<string, Record<string, unknown>>;
+  
   if (subcommandGroup && subcommand) {
-    schema = (CommandSchemas as any)[commandName]?.[subcommandGroup]?.[subcommand];
+    const groupSchemas = commandSchemas[commandName];
+    if (groupSchemas && typeof groupSchemas === 'object') {
+      const subcommandSchemas = groupSchemas[subcommandGroup];
+      if (subcommandSchemas && typeof subcommandSchemas === 'object') {
+        schema = (subcommandSchemas as Record<string, unknown>)[subcommand];
+      }
+    }
   } else if (subcommand) {
-    schema = (CommandSchemas as any)[commandName]?.[subcommand];
+    const subcommandSchemas = commandSchemas[commandName];
+    if (subcommandSchemas && typeof subcommandSchemas === 'object') {
+      schema = subcommandSchemas[subcommand];
+    }
   } else {
-    schema = (CommandSchemas as any)[commandName]?.['default'];
+    const defaultSchemas = commandSchemas[commandName];
+    if (defaultSchemas && typeof defaultSchemas === 'object') {
+      schema = defaultSchemas['default'];
+    }
   }
   
   if (!schema) {
@@ -223,14 +258,14 @@ async function validateCommandInput(
 
   try {
     // Extract options
-    const options: Record<string, any> = {};
+    const options: Record<string, unknown> = {};
     
     // Navigate through the command structure
     let targetOptions = interaction.options.data;
     
     // If there's a subcommand group, navigate to it
     if (subcommandGroup) {
-      const group = targetOptions.find(opt => opt.name === subcommandGroup && opt.type === 2);
+      const group = targetOptions.find(opt => opt.name === subcommandGroup && opt.type === ApplicationCommandOptionType.SubcommandGroup);
       if (group?.options) {
         targetOptions = group.options;
       }
@@ -238,7 +273,7 @@ async function validateCommandInput(
     
     // If there's a subcommand, navigate to it
     if (subcommand) {
-      const sub = targetOptions.find(opt => opt.name === subcommand && opt.type === 1);
+      const sub = targetOptions.find(opt => opt.name === subcommand && opt.type === ApplicationCommandOptionType.Subcommand);
       if (sub?.options) {
         targetOptions = sub.options;
       }
@@ -257,10 +292,10 @@ async function validateCommandInput(
     });
 
     // Validate
-    Validator.validate(schema, options);
+    Validator.validate(schema as Parameters<typeof Validator.validate>[0], options);
 
     // Additional security checks
-    await performSecurityChecks(options);
+    performSecurityChecks(options);
 
     return { passed: true };
   } catch (error) {
@@ -278,8 +313,8 @@ async function validateCommandInput(
 /**
  * Perform additional security checks on input
  */
-async function performSecurityChecks(options: Record<string, any>): Promise<void> {
-  for (const [_key, value] of Object.entries(options)) {
+function performSecurityChecks(options: Record<string, unknown>): void {
+  for (const value of Object.values(options)) {
     if (typeof value === 'string') {
       // Check for mass mentions
       if (Sanitizer.hasMassMentions(value)) {
@@ -386,23 +421,21 @@ async function handleValidationError(
 /**
  * Sanitize options for logging
  */
-function sanitizeOptions(options: any[]): any[] {
-  return options.map(opt => ({
-    name: opt.name,
-    type: opt.type,
-    value: typeof opt.value === 'string' ? Sanitizer.removeSensitive(opt.value) : opt.value,
-    options: opt.options ? sanitizeOptions(opt.options) : undefined,
-  }));
+function sanitizeOptions(options: unknown[]): unknown[] {
+  return options.map(opt => {
+    if (typeof opt === 'object' && opt !== null && 'name' in opt && 'type' in opt) {
+      const option = opt as { name: unknown; type: unknown; value?: unknown; options?: unknown[] };
+      return {
+        name: option.name,
+        type: option.type,
+        value: typeof option.value === 'string' ? Sanitizer.removeSensitive(option.value) : option.value,
+        options: option.options ? sanitizeOptions(option.options) : undefined,
+      };
+    }
+    return opt;
+  });
 }
 
-/**
- * Check if entity is blacklisted (implement based on your database)
- */
-async function isBlacklisted(_type: 'user' | 'guild', _id: string): Promise<boolean> {
-  // TODO: Implement database check
-  // For now, return false
-  return false;
-}
 
 /**
  * Message security middleware

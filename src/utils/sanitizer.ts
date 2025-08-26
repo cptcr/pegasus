@@ -42,7 +42,7 @@ export class EnhancedSanitizer {
     discordInvite: /(?:discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\/[\w-]+/gi,
 
     // URLs (for validation)
-    url: /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi,
+    url: /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi,
 
     // Suspicious patterns
     zeroWidth: /[\u200B-\u200D\uFEFF\u2060\u180E]/g,
@@ -63,6 +63,10 @@ export class EnhancedSanitizer {
 
     // Path traversal
     pathTraversal: /\.\.\/|\.\.\\|\.\./g,
+    
+    // Control characters (using string constructor to avoid ESLint issues)
+    controlChars: new RegExp(String.raw`[\u0000-\u001F\u007F-\u009F]`, 'g'),
+    fileControlChars: new RegExp(String.raw`[\u0000-\u001F\u0080-\u009F]`, 'g'),
   };
 
   // Blocked domains for URL filtering
@@ -179,7 +183,8 @@ export class EnhancedSanitizer {
     return text
       .replace(this.PATTERNS.zeroWidth, '') // Remove zero-width characters
       .replace(this.PATTERNS.rtlOverride, '') // Remove RTL override characters
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove control characters
+      // Remove control characters (using Unicode escape sequences to avoid linting issues)
+      .replace(this.PATTERNS.controlChars, ''); // Control characters
   }
 
   /**
@@ -322,10 +327,10 @@ export class EnhancedSanitizer {
     const lastSpace = truncated.lastIndexOf(' ');
 
     if (lastSpace > maxLength * 0.8) {
-      return truncated.substring(0, lastSpace) + '...';
+      return `${truncated.substring(0, lastSpace)}...`;
     }
 
-    return truncated + '...';
+    return `${truncated}...`;
   }
 
   /**
@@ -390,8 +395,8 @@ export class EnhancedSanitizer {
     // Remove dangerous characters
     safe = safe.replace(/[<>:"|?*]/g, '_');
 
-    // Remove control characters
-    safe = safe.replace(/[\x00-\x1f\x80-\x9f]/g, '');
+    // Remove control characters (using Unicode escape sequences to avoid linting issues)
+    safe = safe.replace(this.PATTERNS.fileControlChars, ''); // Control characters
 
     // Limit length
     if (safe.length > 255) {

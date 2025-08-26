@@ -200,7 +200,7 @@ export class Sanitizer {
    */
   static sanitizeFilename(filename: string): string {
     // Remove path traversal attempts
-    let safe = filename.replace(/[\/\\]/g, '_');
+    let safe = filename.replace(/[/\\]/g, '_');
 
     // Remove special characters
     safe = safe.replace(/[^a-zA-Z0-9._-]/g, '_');

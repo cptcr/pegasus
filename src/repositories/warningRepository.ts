@@ -25,7 +25,12 @@ export interface CreateAutomationData {
   description?: string;
   triggerType: 'warn_count' | 'warn_level';
   triggerValue: number;
-  actions: any[];
+  actions: Array<{
+    type: 'ban' | 'kick' | 'mute' | 'role' | 'message';
+    duration?: number;
+    roleId?: string;
+    message?: string;
+  }>;
   createdBy: string;
 }
 

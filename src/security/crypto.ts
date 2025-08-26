@@ -262,7 +262,7 @@ export class CryptoUtils {
   /**
    * Encrypt sensitive configuration
    */
-  static encryptConfig(config: Record<string, any>, masterKey: string): string {
+  static encryptConfig(config: Record<string, unknown>, masterKey: string): string {
     const jsonString = JSON.stringify(config);
     return this.encrypt(jsonString, masterKey);
   }
@@ -270,12 +270,12 @@ export class CryptoUtils {
   /**
    * Decrypt sensitive configuration
    */
-  static decryptConfig(encryptedConfig: string, masterKey: string): Record<string, any> | null {
+  static decryptConfig(encryptedConfig: string, masterKey: string): Record<string, unknown> | null {
     const decrypted = this.decrypt(encryptedConfig, masterKey);
     if (!decrypted) return null;
 
     try {
-      return JSON.parse(decrypted);
+      return JSON.parse(decrypted) as Record<string, unknown>;
     } catch {
       return null;
     }

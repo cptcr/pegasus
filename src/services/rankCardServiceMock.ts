@@ -1,16 +1,27 @@
 // Temporary mock for rankCardService until canvas is properly installed
 import { AttachmentBuilder } from 'discord.js';
 
+interface User {
+  username: string;
+}
+
+interface Customization {
+  backgroundColor?: string;
+  progressBarColor?: string;
+  textColor?: string;
+  accentColor?: string;
+}
+
 export class RankCardService {
-  static async generateRankCard(
-    user: any,
+  static generateRankCard(
+    user: User,
     rank: number,
     level: number,
     currentXp: number,
     requiredXp: number,
     totalXp: number,
-    _customization?: any
-  ): Promise<AttachmentBuilder> {
+    _customization?: Customization
+  ): AttachmentBuilder {
     // Return a simple text attachment instead of canvas image
     const content = `
 🏆 **Rank Card**

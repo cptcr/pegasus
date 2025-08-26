@@ -150,7 +150,18 @@ export class TicketRepository {
   }
 
   async updateTicketStatus(ticketId: string, status: string, updatedBy?: string) {
-    const updates: any = { status };
+    interface TicketUpdate {
+      status: string;
+      claimedBy?: string;
+      closedBy?: string;
+      closedAt?: Date;
+      lockedBy?: string;
+      lockedAt?: Date;
+      frozenBy?: string;
+      frozenAt?: Date;
+    }
+    
+    const updates: TicketUpdate = { status };
     const now = new Date();
 
     switch (status) {
@@ -207,7 +218,11 @@ export class TicketRepository {
     ticketId: string,
     userId: string,
     content: string,
-    attachments: any[] = []
+    attachments: Array<{
+      url: string;
+      name?: string;
+      size?: number;
+    }> = []
   ) {
     const [message] = await this.db
       .insert(ticketMessages)

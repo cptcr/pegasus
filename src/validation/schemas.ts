@@ -28,7 +28,7 @@ export const CommonSchemas = {
     .string()
     .min(1, 'Username is required')
     .max(32, 'Username too long')
-    .regex(/^[a-zA-Z0-9_\-]+$/, 'Username contains invalid characters'),
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Username contains invalid characters'),
 
   title: z
     .string()
@@ -570,7 +570,7 @@ export class SchemaValidator {
     commandName: string,
     subcommand: string | null,
     data: unknown
-  ): { success: boolean; data?: any; error?: string } {
+  ): { success: boolean; data?: unknown; error?: string } {
     try {
       const schemas =
         CommandValidationSchemas[commandName as keyof typeof CommandValidationSchemas];
@@ -586,14 +586,14 @@ export class SchemaValidator {
         return { success: true }; // No schema for this subcommand
       }
 
-      const result = (schema as any).safeParse(data);
+      const result = (schema as { safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: { errors: Array<{ path: string[]; message: string }> } } }).safeParse(data);
 
       if (result.success) {
         return { success: true, data: result.data };
       } else {
-        const errors = result.error.errors
-          .map((e: any) => `${e.path.join('.')}: ${e.message}`)
-          .join(', ');
+        const errors = result.error?.errors
+          ?.map((e) => `${e.path.join('.')}: ${e.message}`)
+          .join(', ') || 'Validation error';
         return { success: false, error: errors };
       }
     } catch (error) {
@@ -624,7 +624,7 @@ export class SchemaValidator {
 
     // Truncate if needed
     if (sanitized.length > maxLength) {
-      sanitized = sanitized.substring(0, maxLength - 3) + '...';
+      sanitized = `${sanitized.substring(0, maxLength - 3)}...`;
     }
 
     return sanitized;

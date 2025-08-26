@@ -210,11 +210,11 @@ export class XPRepository {
 
       return {
         guildId: result.guildId,
-        ignoredChannels: JSON.parse(result.ignoredChannels),
-        ignoredRoles: JSON.parse(result.ignoredRoles),
-        noXpChannels: JSON.parse(result.noXpChannels),
-        doubleXpChannels: JSON.parse(result.doubleXpChannels),
-        roleMultipliers: JSON.parse(result.roleMultipliers),
+        ignoredChannels: JSON.parse(result.ignoredChannels) as string[],
+        ignoredRoles: JSON.parse(result.ignoredRoles) as string[],
+        noXpChannels: JSON.parse(result.noXpChannels) as string[],
+        doubleXpChannels: JSON.parse(result.doubleXpChannels) as string[],
+        roleMultipliers: JSON.parse(result.roleMultipliers) as Record<string, number>,
         levelUpRewardsEnabled: result.levelUpRewardsEnabled,
         stackRoleRewards: result.stackRoleRewards,
       };

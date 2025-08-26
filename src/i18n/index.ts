@@ -68,21 +68,43 @@ export const availableLocales = ['en', 'de', 'es', 'fr'];
 
 // Type for locale object structure
 export interface LocaleObject {
-  common: Record<string, string>;
-  commands?: {
-    xp?: {
-      levelUp?: {
-        defaultMessage?: string;
-        title?: string;
-        rolesEarned?: string;
+  common: {
+    error: string;
+    success: string;
+    [key: string]: string;
+  };
+  commands: {
+    xp: {
+      rank: {
+        noData: string;
+        [key: string]: string;
       };
+      levelUp: {
+        defaultMessage: string;
+        title: string;
+        rolesEarned: string;
+        [key: string]: string;
+      };
+      leaderboard: {
+        title: string;
+        noData: string;
+        position: string;
+        level: string;
+        xp: string;
+        [key: string]: string;
+      };
+      configuration: {
+        title: string;
+        [key: string]: string;
+      };
+      [key: string]: Record<string, unknown>;
     };
-    [key: string]: unknown;
+    [key: string]: Record<string, unknown>;
   };
   [key: string]: unknown;
 }
 
-export async function getTranslation(guildId: string, userId: string): Promise<LocaleObject> {
+export function getTranslation(guildId: string, userId: string): LocaleObject {
   const userLocale = getUserLocale(userId);
   const guildLocale = getGuildLocale(guildId);
   const locale = userLocale || guildLocale || 'en';

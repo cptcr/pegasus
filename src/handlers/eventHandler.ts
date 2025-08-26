@@ -13,26 +13,36 @@ export async function loadEvents(client: Client): Promise<void> {
   for (const file of eventFiles) {
     try {
       const filePath = join(eventsPath, file);
-      const eventModule = (await import(filePath)) as {
+      // Use require for CommonJS compatibility
+      const eventModule = require(filePath);
+      
+      const module = eventModule as {
         name?: string;
         once?: boolean;
         execute?: (...args: unknown[]) => Promise<void> | void;
       };
 
-      if (!eventModule.name || !eventModule.execute) {
+      if (!module.name || !module.execute) {
         logger.warn(
           chalk.yellow(`Event at ${filePath} is missing required "name" or "execute" property`)
         );
         continue;
       }
 
-      if (eventModule.once) {
-        client.once(eventModule.name, (...args) => void eventModule.execute!(...args));
+      // Fix unsafe spread by properly typing the args
+      const typedExecute = module.execute as (...args: unknown[]) => Promise<void> | void;
+      
+      if (module.once) {
+        client.once(module.name, (...args: unknown[]) => {
+          void typedExecute(...args);
+        });
       } else {
-        client.on(eventModule.name, (...args) => void eventModule.execute!(...args));
+        client.on(module.name, (...args: unknown[]) => {
+          void typedExecute(...args);
+        });
       }
 
-      logger.info(chalk.green(`Loaded event: ${eventModule.name}`));
+      logger.info(chalk.green(`Loaded event: ${module.name}`));
     } catch (error) {
       logger.error(chalk.red(`Failed to load event ${file}:`), error);
     }

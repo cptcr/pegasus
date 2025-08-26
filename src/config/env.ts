@@ -24,7 +24,7 @@ const EnvSchema = z.object({
   // Security & Access Control
   DEVELOPER_IDS: z.string().transform(str => {
     try {
-      const parsed = JSON.parse(str);
+      const parsed: unknown = JSON.parse(str);
       return z.array(z.string().regex(/^\d{17,19}$/)).parse(parsed);
     } catch {
       throw new Error('DEVELOPER_IDS must be a valid JSON array of Discord IDs');
@@ -169,6 +169,15 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .transform(val => val === 'true')
     .default('false'),
+  
+  // API Configuration
+  ENABLE_API: z
+    .enum(['true', 'false'])
+    .transform(val => val === 'true')
+    .default('true'),
+  API_PORT: z.coerce.number().min(1024).max(65535).default(2000),
+  BOT_API_TOKEN: z.string().min(20, 'API token must be at least 20 characters'),
+  API_TOKEN: z.string().min(20, 'API token must be at least 20 characters'),
 });
 
 type EnvConfig = z.infer<typeof EnvSchema>;

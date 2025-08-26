@@ -44,7 +44,7 @@ async function runMigrations() {
 }
 
 if (require.main === module) {
-  runMigrations();
+  void runMigrations();
 }
 
 export { runMigrations };

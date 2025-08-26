@@ -36,7 +36,7 @@ export interface GamblingResult {
   profit: number;
   balance: EconomyBalance;
   stats: EconomyGamblingStats;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export class EconomyService {
@@ -62,7 +62,7 @@ export class EconomyService {
     amount: number,
     type: string,
     description?: string,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<TransactionResult> {
     try {
       await this.getOrCreateBalance(userId, guildId);
@@ -78,7 +78,7 @@ export class EconomyService {
         type,
         amount,
         description,
-        metadata,
+        metadata: metadata ?? undefined,
       });
 
       return { success: true, balance: updatedBalance, transaction };
@@ -139,7 +139,10 @@ export class EconomyService {
       const isOnCooldown = await economyRepository.isOnCooldown(userId, guildId, 'daily');
       if (isOnCooldown) {
         const cooldown = await economyRepository.getCooldown(userId, guildId, 'daily');
-        const timeLeft = cooldown!.nextAvailable.getTime() - Date.now();
+        if (!cooldown) {
+          return { success: false, error: 'Cooldown not found' };
+        }
+        const timeLeft = cooldown.nextAvailable.getTime() - Date.now();
         const hours = Math.floor(timeLeft / 1000 / 60 / 60);
         const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
         return {
@@ -162,8 +165,11 @@ export class EconomyService {
 
         // If claimed within 48 hours, continue streak
         if (timeSinceLastClaim < oneDayMs * 2) {
-          const metadata = lastCooldown as any;
-          streakDays = (metadata.streakDays || 0) + 1;
+          type CooldownWithMetadata = typeof lastCooldown & {
+            streakDays?: number;
+          };
+          const metadata = lastCooldown as CooldownWithMetadata;
+          streakDays = (metadata.streakDays ?? 0) + 1;
           totalAmount += settings.dailyStreakBonus * (streakDays - 1);
         }
       }
@@ -204,7 +210,10 @@ export class EconomyService {
       const isOnCooldown = await economyRepository.isOnCooldown(userId, guildId, 'work');
       if (isOnCooldown) {
         const cooldown = await economyRepository.getCooldown(userId, guildId, 'work');
-        const timeLeft = cooldown!.nextAvailable.getTime() - Date.now();
+        if (!cooldown) {
+          return { success: false, error: 'Cooldown not found' };
+        }
+        const timeLeft = cooldown.nextAvailable.getTime() - Date.now();
         const minutes = Math.floor(timeLeft / 1000 / 60);
         const seconds = Math.floor((timeLeft / 1000) % 60);
         return { success: false, error: `You can work again in ${minutes}m ${seconds}s` };
@@ -260,7 +269,10 @@ export class EconomyService {
       const isOnCooldown = await economyRepository.isOnCooldown(robberId, guildId, 'rob');
       if (isOnCooldown) {
         const cooldown = await economyRepository.getCooldown(robberId, guildId, 'rob');
-        const timeLeft = cooldown!.nextAvailable.getTime() - Date.now();
+        if (!cooldown) {
+          return { success: false, error: 'Cooldown not found' };
+        }
+        const timeLeft = cooldown.nextAvailable.getTime() - Date.now();
         const hours = Math.floor(timeLeft / 1000 / 60 / 60);
         const minutes = Math.floor((timeLeft / 1000 / 60) % 60);
         return { success: false, error: `You can rob again in ${hours}h ${minutes}m` };
@@ -329,8 +341,8 @@ export class EconomyService {
         return {
           success: true,
           amount,
-          victimBalance: updatedVictimBalance!,
-          robberBalance: robberResult.balance!,
+          victimBalance: updatedVictimBalance ?? ({} as EconomyBalance),
+          robberBalance: robberResult.balance ?? ({} as EconomyBalance),
         };
       } else {
         // Failed rob - pay a fine
@@ -349,7 +361,7 @@ export class EconomyService {
           return {
             success: false,
             amount: -fine,
-            robberBalance: result.balance!,
+            robberBalance: result.balance ?? ({} as EconomyBalance),
             error: `You were caught and fined ${fine} ${settings.currencyName}!`,
           };
         }
@@ -416,14 +428,22 @@ export class EconomyService {
       let userItem: EconomyUserItem;
       if (existingItem) {
         // Update quantity
-        userItem = (await economyRepository.updateUserItem(existingItem.id, {
+        const updatedItem = await economyRepository.updateUserItem(existingItem.id, {
           quantity: existingItem.quantity + quantity,
-        }))!;
+        });
+        if (!updatedItem) {
+          return { success: false, error: 'Failed to update item quantity' };
+        }
+        userItem = updatedItem;
       } else {
         // Calculate expiration if applicable
         let expiresAt: Date | undefined;
         if (item.effectType === 'rob_protection' && item.effectValue) {
-          const duration = (item.effectValue as any).duration || 86400;
+          interface EffectValue {
+            duration?: number;
+          }
+          const effectValue = item.effectValue as EffectValue;
+          const duration = effectValue.duration ?? 86400;
           expiresAt = new Date(Date.now() + duration * 1000);
         }
 
@@ -447,7 +467,7 @@ export class EconomyService {
       return {
         success: true,
         item: userItem,
-        balance: transactionResult.balance!,
+        balance: transactionResult.balance ?? ({} as EconomyBalance),
       };
     } catch (error) {
       console.error('Error purchasing item:', error);
@@ -482,7 +502,7 @@ export class EconomyService {
     wagered: number,
     won: boolean,
     multiplier: number,
-    details?: any
+    details?: Record<string, unknown>
   ): Promise<GamblingResult> {
     const payout = won ? Math.floor(wagered * multiplier) : 0;
     const profit = payout - wagered;
@@ -494,13 +514,13 @@ export class EconomyService {
       profit,
       'gamble',
       `${gameType} - ${won ? 'Won' : 'Lost'}`,
-      { gameType, wagered, payout, won, details }
+      { gameType, wagered, payout, won, details: details ?? undefined }
     );
 
     // Update gambling stats
     await economyRepository.addToBalance(userId, guildId, 0); // Ensure balance exists
     await economyRepository.updateBalance(userId, guildId, {
-      totalGambled: (await economyRepository.getBalance(userId, guildId))!.totalGambled + wagered,
+      totalGambled: ((await economyRepository.getBalance(userId, guildId))?.totalGambled ?? 0) + wagered,
     });
 
     const stats = await economyRepository.updateGamblingStats(
@@ -516,9 +536,9 @@ export class EconomyService {
       won,
       payout,
       profit,
-      balance: balanceResult.balance!,
+      balance: balanceResult.balance ?? ({} as EconomyBalance),
       stats,
-      details,
+      details: details ?? undefined,
     };
   }
 

@@ -7,14 +7,15 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  ChannelType,
 } from 'discord.js';
 import { getDatabase } from '../database/connection';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { securityLogs, blacklist } from '../database/schema/security';
 import { guildSettings } from '../database/schema/guilds';
+import { logger } from '../utils/logger';
 // import { rateLimiter } from '../security/rateLimiter';
 import { auditLogger } from '../security/audit';
-import { logger } from '../utils/logger';
 import { CryptoUtils } from '../security/crypto';
 
 export interface SecurityIncident {
@@ -23,7 +24,7 @@ export interface SecurityIncident {
   userId?: string;
   guildId: string;
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SecurityConfig {
@@ -53,10 +54,10 @@ export class SecurityService {
   /**
    * Initialize security monitoring
    */
-  async initialize(guild: Guild): Promise<void> {
+  initialize(guild: Guild): void {
     // Find or create security log channel
     const channel = guild.channels.cache.find(
-      ch => ch.name === 'security-logs' && ch.type === 0
+      ch => ch.name === 'security-logs' && ch.type === ChannelType.GuildText
     ) as TextChannel;
 
     if (channel) {
@@ -160,7 +161,7 @@ export class SecurityService {
    * Detect and handle raid attempts
    */
   async detectRaid(guild: Guild): Promise<boolean> {
-    const recentJoins = await this.getRecentJoins(guild.id, 60); // Last minute
+    const recentJoins = this.getRecentJoins(guild.id, 60); // Last minute
 
     // Raid detection thresholds
     const thresholds = {
@@ -189,7 +190,7 @@ export class SecurityService {
   /**
    * Handle detected raid
    */
-  private async handleRaid(guild: Guild, raiders: any[]): Promise<void> {
+  private async handleRaid(guild: Guild, raiders: Array<{ userId: string; username: string }>): Promise<void> {
     await this.logIncident({
       type: 'RAID_DETECTED',
       severity: 'critical',
@@ -202,7 +203,7 @@ export class SecurityService {
     });
 
     // Auto-response actions
-    const config = await this.getSecurityConfig(guild.id);
+    const config = this.getSecurityConfig(guild.id);
     if (config.antiRaidEnabled) {
       // Enable server lockdown
       await this.enableLockdown(guild);
@@ -270,9 +271,9 @@ export class SecurityService {
     });
 
     // Sync with other instances if enabled
-    const config = await this.getGlobalSecurityConfig();
+    const config = this.getGlobalSecurityConfig();
     if (config.blacklistSync) {
-      await this.syncBlacklist();
+      this.syncBlacklist();
     }
   }
 
@@ -468,16 +469,19 @@ export class SecurityService {
   }
 
   // Placeholder methods - implement based on your database schema
-  private async getRecentJoins(_guildId: string, _seconds: number): Promise<any[]> {
+  private getRecentJoins(_guildId: string, _seconds: number): Array<{ userId: string; username: string }> {
     // TODO: Implement based on your member tracking
     return [];
   }
 
-  private async getUserIncidents(userId: string, guildId: string, days: number): Promise<any[]> {
+  private async getUserIncidents(userId: string, guildId: string, days: number): Promise<Array<{ type: string; createdAt: Date }>> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    return getDatabase()
-      .select()
+    const incidents = await getDatabase()
+      .select({
+        type: securityLogs.action,
+        createdAt: securityLogs.createdAt,
+      })
       .from(securityLogs)
       .where(
         and(
@@ -487,9 +491,11 @@ export class SecurityService {
         )
       )
       .orderBy(desc(securityLogs.createdAt));
+    
+    return incidents;
   }
 
-  private async getSecurityConfig(_guildId: string): Promise<SecurityConfig> {
+  private getSecurityConfig(_guildId: string): SecurityConfig {
     // TODO: Implement based on your guild config schema
     return {
       enabled: true,
@@ -503,12 +509,12 @@ export class SecurityService {
     };
   }
 
-  private async getGlobalSecurityConfig(): Promise<SecurityConfig> {
+  private getGlobalSecurityConfig(): SecurityConfig {
     // TODO: Implement global config
     return this.getSecurityConfig('global');
   }
 
-  private async syncBlacklist(): Promise<void> {
+  private syncBlacklist(): void {
     // TODO: Implement blacklist synchronization with external service
     logger.info('Blacklist sync requested');
   }

@@ -27,7 +27,6 @@ const queryClient = postgres(connectionString, {
 
   // Transform options for BigInt handling
   transform: {
-    ...postgres.camel,
     undefined: null, // Convert undefined to null
   },
 
@@ -131,8 +130,8 @@ export function fromDiscordId(value: string): bigint {
 }
 
 // Batch insert helper for better performance
-export async function batchInsert<T extends Record<string, any>>(
-  table: any,
+export async function batchInsert<T extends Record<string, unknown>>(
+  table: ReturnType<typeof import('drizzle-orm/pg-core').pgTable>,
   data: T[],
   batchSize = 1000
 ): Promise<void> {

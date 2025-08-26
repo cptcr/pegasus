@@ -5,12 +5,22 @@ import { join } from 'path';
 import { Command, CommandCategory } from '../types/command';
 import { logger } from '../utils/logger';
 
+interface CommandModule {
+  default?: Command | Record<string, unknown>;
+  data?: Command['data'];
+  execute?: Command['execute'];
+  category?: CommandCategory;
+  cooldown?: number;
+  permissions?: Command['permissions'];
+  autocomplete?: Command['autocomplete'];
+}
+
 export class HelpService {
   private commands: Map<string, Command> = new Map();
   private commandsByCategory: Map<CommandCategory, Command[]> = new Map();
 
   constructor() {
-    this.loadCommands();
+    void this.loadCommands();
   }
 
   private async loadCommands(): Promise<void> {
@@ -29,23 +39,26 @@ export class HelpService {
         for (const file of commandFiles) {
           try {
             const filePath = join(categoryPath, file);
-            const commandModule = await import(filePath);
+            const commandModule = await import(filePath) as CommandModule;
 
-            let commandData: any = null;
+            let commandData: Command['data'] | null = null;
             let commandCategory: CommandCategory = this.getCategoryFromPath(category);
-            let executeFunction: any = null;
+            let executeFunction: Command['execute'] | null = null;
 
             // Handle different export patterns
-            if (commandModule.default) {
+            if (commandModule.default && typeof commandModule.default === 'object') {
               // Default export pattern
-              if ('data' in commandModule.default && 'execute' in commandModule.default) {
-                commandData = commandModule.default.data;
-                commandCategory = commandModule.default.category || this.getCategoryFromPath(category);
-                executeFunction = commandModule.default.execute;
+              const defaultExport = commandModule.default as Command;
+              if ('data' in defaultExport && 'execute' in defaultExport && 
+                  typeof defaultExport.execute === 'function') {
+                commandData = defaultExport.data;
+                commandCategory = defaultExport.category || this.getCategoryFromPath(category);
+                executeFunction = defaultExport.execute;
               }
             } else {
               // Named export pattern (data, execute, category)
-              if (commandModule.data && commandModule.execute) {
+              if (commandModule.data && commandModule.execute && 
+                  typeof commandModule.execute === 'function') {
                 commandData = commandModule.data;
                 commandCategory = commandModule.category || this.getCategoryFromPath(category);
                 executeFunction = commandModule.execute;
@@ -53,13 +66,14 @@ export class HelpService {
             }
 
             if (commandData && executeFunction) {
+              const moduleExport = (commandModule.default as Command) || commandModule;
               const cmd: Command = {
                 data: commandData,
                 execute: executeFunction,
                 category: commandCategory,
-                cooldown: commandModule.cooldown,
-                permissions: commandModule.permissions,
-                autocomplete: commandModule.autocomplete,
+                cooldown: typeof moduleExport === 'object' && moduleExport && 'cooldown' in moduleExport ? moduleExport.cooldown : commandModule.cooldown,
+                permissions: typeof moduleExport === 'object' && moduleExport && 'permissions' in moduleExport ? moduleExport.permissions : commandModule.permissions,
+                autocomplete: typeof moduleExport === 'object' && moduleExport && 'autocomplete' in moduleExport ? moduleExport.autocomplete : commandModule.autocomplete,
               };
 
               const commandName = cmd.data.name;
@@ -69,7 +83,10 @@ export class HelpService {
                 this.commandsByCategory.set(cmd.category, []);
               }
 
-              this.commandsByCategory.get(cmd.category)!.push(cmd);
+              const categoryCommands = this.commandsByCategory.get(cmd.category);
+              if (categoryCommands) {
+                categoryCommands.push(cmd);
+              }
               logger.debug(`Loaded command: ${commandName} (${cmd.category})`);
             }
           } catch (error) {
@@ -99,7 +116,7 @@ export class HelpService {
     return categoryMap[categoryPath.toLowerCase()] || CommandCategory.Utility;
   }
 
-  async getHelpMenu(locale: string): Promise<EmbedBuilder> {
+  getHelpMenu(locale: string): EmbedBuilder {
     const embed = new EmbedBuilder()
       .setTitle(t('commands.help.title', { lng: locale }))
       .setDescription(t('commands.help.description', { lng: locale }))
@@ -138,7 +155,7 @@ export class HelpService {
     return embed;
   }
 
-  async getCommandHelp(commandName: string, locale: string): Promise<EmbedBuilder | null> {
+  getCommandHelp(commandName: string, locale: string): EmbedBuilder | null {
     const command = this.commands.get(commandName);
 
     if (!command) {
@@ -193,7 +210,7 @@ export class HelpService {
     if (command.permissions && command.permissions.length > 0) {
       embed.addFields({
         name: t('commands.help.permissions', { lng: locale }),
-        value: command.permissions.map(p => `\`${p}\``).join(', '),
+        value: command.permissions.map(p => `\`${String(p)}\``).join(', '),
         inline: false,
       });
     }
@@ -223,7 +240,18 @@ export class HelpService {
     let usage = `\`/${command.data.name}`;
 
     if ('options' in command.data && command.data.options) {
-      const options = command.data.options as any[];
+      const options = command.data.options as unknown as Array<{
+        type: number;
+        name: string;
+        description?: string;
+        required?: boolean;
+        options?: Array<{
+          type: number;
+          name: string;
+          description?: string;
+          required?: boolean;
+        }>;
+      }>;
 
       for (const option of options) {
         if (option.type === 1) {
@@ -241,7 +269,7 @@ export class HelpService {
       }
     }
 
-    usage = usage.replace(/\n\`\/[^`]+$/, '');
+    usage = usage.replace(/\n`\/[^`]+$/, '');
     usage += '`';
 
     return usage;
@@ -251,17 +279,28 @@ export class HelpService {
     const subcommands: string[] = [];
 
     if ('options' in command.data && command.data.options) {
-      const options = command.data.options as any[];
+      const options = command.data.options as unknown as Array<{
+        type: number;
+        name: string;
+        description?: string;
+        required?: boolean;
+        options?: Array<{
+          type: number;
+          name: string;
+          description?: string;
+          required?: boolean;
+        }>;
+      }>;
 
       for (const option of options) {
         if (option.type === 1) {
           // Subcommand
-          subcommands.push(`• \`${option.name}\` - ${option.description}`);
+          subcommands.push(`• \`${option.name}\` - ${option.description || 'No description'}`);
         } else if (option.type === 2) {
           // Subcommand group
           for (const subOption of option.options || []) {
             if (subOption.type === 1) {
-              subcommands.push(`• \`${option.name} ${subOption.name}\` - ${subOption.description}`);
+              subcommands.push(`• \`${option.name} ${subOption.name}\` - ${subOption.description || 'No description'}`);
             }
           }
         }

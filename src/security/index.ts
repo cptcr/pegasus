@@ -4,9 +4,10 @@ import {
   EmbedBuilder,
   WebhookClient,
   Colors,
+  ApplicationCommandOptionType,
 } from 'discord.js';
 import { rateLimiterInstance, RateLimitPresets } from '../middleware/rateLimiter';
-import { PermissionChecker } from '../middleware/permissions';
+import { PermissionChecker, type PermissionRequirement } from '../middleware/permissions';
 import { EnhancedSanitizer, sanitizeUserInput } from '../utils/sanitizer';
 import { SchemaValidator } from '../validation/schemas';
 import { logger } from '../utils/logger';
@@ -41,7 +42,7 @@ const defaultConfig: SecurityConfig = {
   maxViolationsBeforeBan: 10,
   violationDecayTime: 3600000, // 1 hour
   trustedRoles: [],
-  immuneUsers: [process.env.BOT_OWNER_ID!].filter(Boolean),
+  immuneUsers: [process.env.BOT_OWNER_ID].filter(Boolean) as string[],
 };
 
 // ===========================
@@ -84,7 +85,10 @@ export class SecurityManager {
     command: Command
   ): Promise<SecurityCheckResult> {
     const userId = interaction.user.id;
-    const guildId = interaction.guildId!;
+    const guildId = interaction.guildId;
+    if (!guildId) {
+      return { allowed: false, reason: 'Guild not found', checks: {} };
+    }
 
     // Check if user is immune
     if (this.config.immuneUsers.includes(userId)) {
@@ -95,7 +99,7 @@ export class SecurityManager {
 
     // 1. Rate Limiting
     if (this.config.enableRateLimiting) {
-      const rateLimitResult = await this.checkRateLimit(
+      const rateLimitResult = this.checkRateLimit(
         userId,
         guildId,
         command.data.name,
@@ -107,7 +111,7 @@ export class SecurityManager {
         await this.recordViolation(userId, 'rate_limit', interaction);
         return {
           allowed: false,
-          reason: `Rate limited. Try again in ${Math.ceil(rateLimitResult.retryAfter! / 1000)} seconds.`,
+          reason: `Rate limited. Try again in ${Math.ceil((rateLimitResult.retryAfter || 0) / 1000)} seconds.`,
           checks,
         };
       }
@@ -130,7 +134,7 @@ export class SecurityManager {
 
     // 3. Input Validation
     if (this.config.enableInputValidation) {
-      const validationResult = await this.validateInput(interaction);
+      const validationResult = this.validateInput(interaction);
       checks.validation = validationResult;
 
       if (!validationResult.passed) {
@@ -144,7 +148,7 @@ export class SecurityManager {
     }
 
     // 4. Check for security violations
-    const violationCheck = await this.checkViolations(userId);
+    const violationCheck = this.checkViolations(userId);
     if (violationCheck.banned) {
       return {
         allowed: false,
@@ -183,7 +187,7 @@ export class SecurityManager {
         'high',
         {
           userId: message.author.id,
-          guildId: message.guildId!,
+          guildId: message.guildId || 'unknown',
           counts: mentionCheck.counts,
         }
       );
@@ -215,7 +219,7 @@ export class SecurityManager {
         'critical',
         {
           userId: message.author.id,
-          guildId: message.guildId!,
+          guildId: message.guildId || 'unknown',
           channelId: message.channelId,
         }
       );
@@ -232,13 +236,13 @@ export class SecurityManager {
   /**
    * Check rate limits
    */
-  private async checkRateLimit(
+  private checkRateLimit(
     userId: string,
     guildId: string,
     commandName: string,
     category?: string
-  ): Promise<SecurityCheckDetail> {
-    const result = await rateLimiterInstance.consumeHierarchical(
+  ): SecurityCheckDetail {
+    const result = rateLimiterInstance.consumeHierarchical(
       userId,
       guildId,
       commandName,
@@ -257,9 +261,9 @@ export class SecurityManager {
    */
   private async checkPermissions(
     interaction: ChatInputCommandInteraction,
-    requirements: any
+    requirements: unknown
   ): Promise<SecurityCheckDetail> {
-    const result = await PermissionChecker.check(interaction, requirements);
+    const result = await PermissionChecker.check(interaction, requirements as PermissionRequirement);
 
     return {
       passed: result.allowed,
@@ -274,16 +278,16 @@ export class SecurityManager {
   /**
    * Validate command input
    */
-  private async validateInput(
+  private validateInput(
     interaction: ChatInputCommandInteraction
-  ): Promise<SecurityCheckDetail> {
+  ): SecurityCheckDetail {
     const commandName = interaction.commandName;
     const subcommand = interaction.options.getSubcommand(false);
 
     // Extract options
-    const options: Record<string, any> = {};
+    const options: Record<string, unknown> = {};
     interaction.options.data.forEach(opt => {
-      if (opt.type === 1) {
+      if (opt.type === ApplicationCommandOptionType.Subcommand) {
         // Subcommand
         opt.options?.forEach(subOpt => {
           // Sanitize string inputs
@@ -362,7 +366,9 @@ export class SecurityManager {
       type,
       timestamp: Date.now(),
       guildId:
-        'guildId' in context ? (context as any).guildId : (context as any).guild?.id || undefined,
+        'guildId' in context 
+          ? (context as ChatInputCommandInteraction).guildId || undefined
+          : (context as Message).guildId || undefined,
     });
     record.totalCount++;
 
@@ -390,7 +396,7 @@ export class SecurityManager {
   /**
    * Check user violations
    */
-  private async checkViolations(userId: string): Promise<{ banned: boolean; count: number }> {
+  private checkViolations(userId: string): { banned: boolean; count: number } {
     const record = this.violations.get(userId);
 
     if (!record) {
@@ -416,7 +422,7 @@ export class SecurityManager {
     title: string,
     description: string,
     severity: 'low' | 'medium' | 'high' | 'critical',
-    data?: any
+    data?: Record<string, unknown>
   ): Promise<void> {
     if (!this.config.enableSecurityAlerts) {
       return;
@@ -443,7 +449,7 @@ export class SecurityManager {
     if (data) {
       embed.addFields({
         name: 'Details',
-        value: '```json\n' + JSON.stringify(data, null, 2).substring(0, 1000) + '```',
+        value: `\`\`\`json\n${JSON.stringify(data, null, 2).substring(0, 1000)}\`\`\``,
         inline: false,
       });
     }
@@ -501,9 +507,9 @@ export class SecurityManager {
   /**
    * Get security status for user
    */
-  async getUserSecurityStatus(userId: string): Promise<UserSecurityStatus> {
+  getUserSecurityStatus(userId: string): UserSecurityStatus {
     const violations = this.violations.get(userId);
-    const rateLimitStatus = await rateLimiterInstance.getInstance().getStatus(`user:${userId}`);
+    const rateLimitStatus = rateLimiterInstance.getInstance().getStatus(`user:${userId}`);
 
     return {
       userId,
@@ -559,7 +565,7 @@ export interface SecurityCheckDetail {
   passed: boolean;
   reason?: string;
   retryAfter?: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface MessageSecurityResult {

@@ -95,9 +95,13 @@ class PegasusBot extends Client {
       logger.info(chalk.blue('Logging in to Discord...'));
       await this.login(config.DISCORD_TOKEN);
 
-      // Start API server
-      logger.info(chalk.blue('Starting API server...'));
-      startApiServer();
+      // Start API server if enabled
+      if (config.ENABLE_API) {
+        logger.info(chalk.blue('Starting API server...'));
+        startApiServer();
+      } else {
+        logger.info(chalk.yellow('API server disabled - bot running in standalone mode'));
+      }
     } catch (error) {
       logger.error(chalk.red('Failed to start bot:'), error);
       process.exit(1);
@@ -118,20 +122,20 @@ process.on('uncaughtException', (error: Error) => {
   process.exit(1);
 });
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   logger.info(chalk.yellow('Received SIGINT, shutting down gracefully...'));
   bot.destroy();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   logger.info(chalk.yellow('Received SIGTERM, shutting down gracefully...'));
   bot.destroy();
   process.exit(0);
 });
 
 // Start the bot
-bot.start();
+void bot.start();
 
 // Export client for API access
 export const client = bot;

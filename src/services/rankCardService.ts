@@ -2,14 +2,69 @@ import { AttachmentBuilder } from 'discord.js';
 import type { RankData, RankCardCustomization } from './xpService';
 import { logger } from '../utils/logger';
 
-let canvasModule: any = null;
-let createCanvas: any = null;
-let loadImage: any = null;
+interface CanvasModule {
+  createCanvas: (width: number, height: number) => Canvas;
+  loadImage: (src: string | Buffer) => Promise<Image>;
+}
+
+interface Canvas {
+  getContext(contextId: '2d'): CanvasRenderingContext2D;
+  toBuffer(type?: string): Buffer;
+}
+
+interface Image {
+  width: number;
+  height: number;
+}
+
+interface CanvasRenderingContext2D {
+  fillStyle: string | CanvasGradient;
+  strokeStyle: string;
+  lineWidth: number;
+  font: string;
+  textAlign: 'left' | 'right' | 'center' | 'start' | 'end';
+  textBaseline: 'top' | 'hanging' | 'middle' | 'alphabetic' | 'ideographic' | 'bottom';
+  globalAlpha: number;
+  shadowColor: string;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
+  fillRect(x: number, y: number, width: number, height: number): void;
+  strokeRect(x: number, y: number, width: number, height: number): void;
+  fillText(text: string, x: number, y: number, maxWidth?: number): void;
+  strokeText(text: string, x: number, y: number, maxWidth?: number): void;
+  measureText(text: string): { width: number };
+  beginPath(): void;
+  closePath(): void;
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, anticlockwise?: boolean): void;
+  arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void;
+  quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
+  fill(): void;
+  stroke(): void;
+  clip(): void;
+  save(): void;
+  restore(): void;
+  drawImage(image: Image, dx: number, dy: number): void;
+  drawImage(image: Image, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(image: Image, sx: number, sy: number, sWidth: number, sHeight: number, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient;
+}
+
+interface CanvasGradient {
+  addColorStop(offset: number, color: string): void;
+}
+
+// Canvas module for dynamic loading
+let createCanvas: ((width: number, height: number) => Canvas) | null = null;
+let loadImage: ((src: string | Buffer) => Promise<Image>) | null = null;
 
 try {
-  canvasModule = require('canvas');
-  createCanvas = canvasModule.createCanvas;
-  loadImage = canvasModule.loadImage;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const module = require('canvas') as CanvasModule;
+  createCanvas = module.createCanvas;
+  loadImage = module.loadImage;
 } catch (error) {
   logger.warn('Canvas module not available. Rank cards will be disabled.');
 }
@@ -33,7 +88,7 @@ export class RankCardService {
     try {
       // Create canvas
       const canvas = createCanvas(this.cardWidth, this.cardHeight);
-      const ctx = canvas.getContext('2d') as any;
+      const ctx = canvas.getContext('2d');
 
       // Default colors
       const bgColor = customization.backgroundColor || '#23272A';
@@ -165,7 +220,7 @@ export class RankCardService {
   }
 
   private drawRoundedRect(
-    ctx: any,
+    ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     width: number,
@@ -185,7 +240,7 @@ export class RankCardService {
     ctx.closePath();
   }
 
-  private drawPlaceholderAvatar(ctx: any, x: number, y: number, color: string): void {
+  private drawPlaceholderAvatar(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x + this.avatarSize / 2, y + this.avatarSize / 2, this.avatarSize / 2, 0, Math.PI * 2);
@@ -200,7 +255,7 @@ export class RankCardService {
     ctx.textBaseline = 'alphabetic';
   }
 
-  private truncateText(ctx: any, text: string, maxWidth: number): string {
+  private truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
     const ellipsis = '...';
     let truncated = text;
 

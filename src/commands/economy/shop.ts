@@ -149,12 +149,11 @@ async function handleViewShop(interaction: ChatInputCommandInteraction) {
 
         embed.addFields({
           name: `${affordableEmoji} ${start + index + 1}. ${item.name}`,
-          value:
-            `${item.description}\n` +
-            `**Price:** ${settings.currencySymbol}${item.price.toLocaleString()} | **Stock:** ${stockText}` +
-            (item.effectType
+          value: `${item.description}\n**Price:** ${settings.currencySymbol}${item.price.toLocaleString()} | **Stock:** ${stockText}${
+            item.effectType
               ? `\n**Effect:** ${formatEffect(item.effectType, item.effectValue)}`
-              : ''),
+              : ''
+          }`,
           inline: false,
         });
       });
@@ -345,12 +344,11 @@ async function handleViewInventory(interaction: ChatInputCommandInteraction) {
 
       embed.addFields({
         name: `${userItem.item.name} (x${userItem.quantity})`,
-        value:
-          `${userItem.item.description}` +
-          (userItem.item.effectType
+        value: `${userItem.item.description}${
+          userItem.item.effectType
             ? `\n**Effect:** ${formatEffect(userItem.item.effectType, userItem.item.effectValue)}`
-            : '') +
-          expiryText,
+            : ''
+        }${expiryText}`,
         inline: false,
       });
     });

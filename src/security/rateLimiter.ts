@@ -47,7 +47,7 @@ export const RateLimitConfigs = {
     'xp.leaderboard': { points: 3, duration: 60 },
     'giveaway.start': { points: 2, duration: 300 },
     'ticket.create': { points: 3, duration: 300 },
-  },
+  } as Record<string, RateLimitOptions>,
 
   // Per-guild limits
   guild: {
@@ -300,7 +300,7 @@ export async function checkCommandRateLimit(
     // Per-command limit
     {
       key: RateLimiter.createKey('command', userId, commandName),
-      config: (RateLimitConfigs.commands as any)[commandName] || RateLimitConfigs.global.command,
+      config: RateLimitConfigs.commands[commandName] || RateLimitConfigs.global.command,
     },
   ];
 

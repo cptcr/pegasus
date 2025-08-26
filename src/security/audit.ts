@@ -7,7 +7,7 @@ export interface AuditLogData {
   userId: string;
   guildId: string;
   targetId?: string;
-  details?: any;
+  details?: unknown;
 }
 
 export class AuditLogger {

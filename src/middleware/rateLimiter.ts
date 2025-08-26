@@ -152,10 +152,10 @@ export class EnhancedRateLimiter {
   /**
    * Check and consume rate limit points
    */
-  async consume(
+  consume(
     key: string,
     config: RateLimitConfig = RateLimitPresets.general
-  ): Promise<RateLimitResult> {
+  ): RateLimitResult {
     const hashedKey = this.hashKey(key);
     const fullKey = `${config.keyPrefix || 'rl'}:${hashedKey}`;
 
@@ -208,10 +208,10 @@ export class EnhancedRateLimiter {
   /**
    * Check rate limit without consuming
    */
-  async check(
+  check(
     key: string,
     config: RateLimitConfig = RateLimitPresets.general
-  ): Promise<RateLimitResult> {
+  ): RateLimitResult {
     const hashedKey = this.hashKey(key);
     const fullKey = `${config.keyPrefix || 'rl'}:${hashedKey}`;
 
@@ -245,7 +245,7 @@ export class EnhancedRateLimiter {
   /**
    * Reset rate limit for a key
    */
-  async reset(key: string, prefix?: string): Promise<void> {
+  reset(key: string, prefix?: string): void {
     const hashedKey = this.hashKey(key);
     const fullKey = `${prefix || 'rl'}:${hashedKey}`;
 
@@ -257,21 +257,21 @@ export class EnhancedRateLimiter {
   /**
    * Get current status for a key
    */
-  async getStatus(
+  getStatus(
     key: string,
     prefix?: string
-  ): Promise<{
+  ): {
     limited: boolean;
     blocked: boolean;
     warnings: number;
     buckets: number;
-  }> {
+  } {
     const hashedKey = this.hashKey(key);
     const fullKey = `${prefix || 'rl'}:${hashedKey}`;
 
     return {
       limited: this.limits.has(fullKey),
-      blocked: this.blocked.has(fullKey) && this.blocked.get(fullKey)! > Date.now(),
+      blocked: this.blocked.has(fullKey) && (this.blocked.get(fullKey) || 0) > Date.now(),
       warnings: this.warnings.get(`warn:${hashedKey}`) || 0,
       buckets: this.limits.filter((_, k) => k.includes(hashedKey)).size,
     };
@@ -387,13 +387,13 @@ export class DistributedRateLimiter {
   /**
    * Apply multiple rate limits in sequence
    */
-  async consumeMultiple(
+  consumeMultiple(
     keys: { key: string; config: RateLimitConfig }[]
-  ): Promise<RateLimitResult[]> {
+  ): RateLimitResult[] {
     const results: RateLimitResult[] = [];
 
     for (const { key, config } of keys) {
-      const result = await this.limiter.consume(key, config);
+      const result = this.limiter.consume(key, config);
       results.push(result);
 
       // Stop if any limit is hit
@@ -408,19 +408,19 @@ export class DistributedRateLimiter {
   /**
    * Apply hierarchical rate limiting (user -> guild -> global)
    */
-  async consumeHierarchical(
+  consumeHierarchical(
     userId: string,
     guildId: string,
     commandName: string,
     commandConfig?: RateLimitConfig
-  ): Promise<{
+  ): {
     allowed: boolean;
     level?: 'command' | 'user' | 'guild' | 'global';
     result: RateLimitResult;
-  }> {
+  } {
     // Command-specific limit
     if (commandConfig) {
-      const commandResult = await this.limiter.consume(
+      const commandResult = this.limiter.consume(
         `cmd:${commandName}:${userId}`,
         commandConfig
       );
@@ -430,19 +430,19 @@ export class DistributedRateLimiter {
     }
 
     // User-level limit
-    const userResult = await this.limiter.consume(`user:${userId}`, RateLimitPresets.global);
+    const userResult = this.limiter.consume(`user:${userId}`, RateLimitPresets.global);
     if (!userResult.allowed) {
       return { allowed: false, level: 'user', result: userResult };
     }
 
     // Guild-level limit
-    const guildResult = await this.limiter.consume(`guild:${guildId}`, RateLimitPresets.guild);
+    const guildResult = this.limiter.consume(`guild:${guildId}`, RateLimitPresets.guild);
     if (!guildResult.allowed) {
       return { allowed: false, level: 'guild', result: guildResult };
     }
 
     // Global limit (all users)
-    const globalResult = await this.limiter.consume('global', {
+    const globalResult = this.limiter.consume('global', {
       points: 1000,
       duration: 60,
       blockDuration: 300,
@@ -457,7 +457,7 @@ export class DistributedRateLimiter {
   /**
    * Apply smart rate limiting with adaptive thresholds
    */
-  async consumeAdaptive(
+  consumeAdaptive(
     key: string,
     baseConfig: RateLimitConfig,
     factors: {
@@ -467,7 +467,7 @@ export class DistributedRateLimiter {
       accountAge?: number; // Days
       previousViolations?: number;
     } = {}
-  ): Promise<RateLimitResult> {
+  ): RateLimitResult {
     // Calculate adjusted config based on factors
     let points = baseConfig.points;
     let blockDuration = baseConfig.blockDuration || 0;
@@ -505,7 +505,7 @@ export class DistributedRateLimiter {
       blockDuration,
     };
 
-    return await this.limiter.consume(key, adjustedConfig);
+    return this.limiter.consume(key, adjustedConfig);
   }
 
   /**
@@ -520,12 +520,12 @@ export class DistributedRateLimiter {
 // RATE LIMIT MIDDLEWARE
 // ===========================
 
-export async function applyRateLimit(
+export function applyRateLimit(
   userId: string,
   guildId: string,
   commandName: string,
   category?: string
-): Promise<RateLimitResult> {
+): RateLimitResult {
   // Get appropriate config for command
   let config = RateLimitPresets.general;
 
@@ -561,7 +561,7 @@ export async function applyRateLimit(
   }
 
   // Apply hierarchical rate limiting
-  const result = await rateLimiterInstance.consumeHierarchical(
+  const result = rateLimiterInstance.consumeHierarchical(
     userId,
     guildId,
     commandName,

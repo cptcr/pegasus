@@ -87,7 +87,7 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
     logger.error(`Error executing command ${interaction.commandName}:`, error);
 
     // Handle security errors specially
-    const errorResponse = await SecurityErrorHandler.handle(error as Error);
+    const errorResponse = SecurityErrorHandler.handle(error as Error);
 
     // Send error response based on interaction state
     try {

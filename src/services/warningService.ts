@@ -6,6 +6,7 @@ import {
   Guild,
   TextChannel,
   User,
+  ChannelType,
 } from 'discord.js';
 import { warningRepository } from '../repositories/warningRepository';
 import { auditLogger } from '../security/audit';
@@ -129,7 +130,11 @@ export class WarningService {
   private async executeAutomation(
     guild: Guild,
     user: User,
-    automation: any,
+    automation: {
+      automationId: string;
+      name: string;
+      actions: unknown;
+    },
     stats: { count: number; totalLevel: number }
   ) {
     const actions = automation.actions as WarningAction[];
@@ -139,7 +144,7 @@ export class WarningService {
       guild.systemChannel ||
       guild.channels.cache.find(
         (ch): ch is TextChannel =>
-          (ch.type === 0 && ch.permissionsFor(guild.members.me!)?.has('SendMessages')) || false
+          ch.type === ChannelType.GuildText && (guild.members.me ? ch.permissionsFor(guild.members.me)?.has('SendMessages') === true : false)
       );
 
     if (notificationChannel) {
