@@ -23,6 +23,9 @@ WORKDIR /app
 RUN mkdir -p logs && \
     chmod 777 logs
 
+# Set default DEVELOPER_IDS for development
+ENV DEVELOPER_IDS='["931870926797160538"]'
+
 COPY package*.json ./
 
 RUN npm install

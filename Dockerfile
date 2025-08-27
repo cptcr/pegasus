@@ -62,6 +62,9 @@ RUN mkdir -p logs && \
     chown -R nodejs:nodejs /app && \
     chown -R nodejs:nodejs logs
 
+# Set default DEVELOPER_IDS if not provided via environment
+ENV DEVELOPER_IDS='["931870926797160538"]'
+
 # Copy package files
 COPY package*.json ./
 
