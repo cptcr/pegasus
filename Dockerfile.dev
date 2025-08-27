@@ -1,0 +1,35 @@
+# Development Dockerfile with hot-reload support
+FROM node:20-alpine
+
+# Install build dependencies for canvas and development tools
+RUN apk add --no-cache \
+    python3 \
+    g++ \
+    make \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    pixman \
+    fontconfig \
+    ttf-dejavu
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies including dev dependencies
+RUN npm ci
+
+# Expose ports
+EXPOSE 2000 9229
+
+# Run in development mode with debugging enabled
+CMD ["npm", "run", "dev"]

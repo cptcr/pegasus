@@ -1,11 +1,62 @@
-node_modules
+# Dependencies
+node_modules/
 npm-debug.log*
-.git
+yarn-error.log*
+
+# Version control
+.git/
 .gitignore
-README.md
+.gitattributes
+
+# Environment and config
 .env
-.nyc_output
-coverage
-.docker
-Dockerfile
-docker-compose.yml
+.env.*
+!.env.example
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+jest.config.js
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+CLAUDE.md
+docs/
+*.md
+
+# Logs
+logs/
+*.log
+
+# IDE
+.eslintcache
+.prettierignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+tmp/
+temp/

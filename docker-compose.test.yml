@@ -1,0 +1,64 @@
+version: '3.9'
+
+# Test configuration for CI/CD pipelines
+# Usage: docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: pegasus-db-test
+    environment:
+      POSTGRES_DB: pegasus_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d pegasus_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: pegasus-redis-test
+    command: redis-server --appendonly no
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  bot-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: pegasus-bot-test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test:test@postgres-test:5432/pegasus_test?sslmode=disable
+      REDIS_URL: redis://redis-test:6379
+      DISCORD_TOKEN: test_token
+      DISCORD_CLIENT_ID: test_client_id
+      DEVELOPER_IDS: '["123456789"]'
+      BOT_API_TOKEN: test_api_token
+      ENCRYPTION_KEY: test_encryption_key_32_characters
+      ENABLE_API: true
+      API_PORT: 2000
+      LOG_LEVEL: error
+    networks:
+      - test-network
+    command: npm run test:ci
+
+networks:
+  test-network:
+    driver: bridge

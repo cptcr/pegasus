@@ -74,6 +74,4 @@ pnpm-lock.yaml
 !SECURITY.md
 !CONTRIBUTING.md
 process.log
-docker-compose.test.yml
-docker-compose.yml
 test-api.js

@@ -1,16 +1,25 @@
-# Multi-stage build for optimal production image
-FROM node:18-alpine AS builder
+# Multi-stage build for optimized production image
+FROM node:20-alpine AS builder
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++ cairo-dev jpeg-dev pango-dev giflib-dev
+# Install build dependencies for canvas
+RUN apk add --no-cache \
+    python3 \
+    g++ \
+    make \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies for building
-RUN npm ci
+# Install all dependencies
+RUN npm ci --include=dev
 
 # Copy source code
 COPY . .
@@ -18,63 +27,59 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Test stage
-FROM node:18-alpine AS test
-
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++ cairo-dev jpeg-dev pango-dev giflib-dev
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install all dependencies including dev
-RUN npm ci
-
-# Copy source code and test files
-COPY . .
-
-# Run tests
-CMD ["npm", "test"]
-
 # Production stage
-FROM node:18-alpine AS runner
+FROM node:20-alpine
 
-# Security: Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S pegasus -u 1001
+# Install runtime dependencies for canvas including Python for node-gyp and pkg-config
+RUN apk add --no-cache \
+    python3 \
+    g++ \
+    make \
+    pkgconf \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    pixman \
+    fontconfig \
+    ttf-dejavu
 
-# Install runtime dependencies for canvas
-RUN apk add --no-cache cairo jpeg pango giflib
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
+# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install production dependencies only
+RUN npm ci --omit=dev && \
+    npm cache clean --force
 
-# Copy built application and necessary files
-COPY --from=builder --chown=pegasus:nodejs /app/dist ./dist
-COPY --chown=pegasus:nodejs drizzle ./drizzle
-COPY --chown=pegasus:nodejs src/i18n/locales ./src/i18n/locales
+# Copy built application from builder
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Create necessary directories
-RUN mkdir -p logs && chown -R pegasus:nodejs logs
+# Copy other necessary files
+COPY --chown=nodejs:nodejs drizzle.config.ts ./
+COPY --chown=nodejs:nodejs src/database ./src/database
+COPY --chown=nodejs:nodejs src/i18n/locales ./src/i18n/locales
 
 # Switch to non-root user
-USER pegasus
+USER nodejs
+
+# Expose API port
+EXPOSE 2000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/health-check.js || exit 1
-
-# Expose port if dashboard is enabled
-EXPOSE 3000
-
-# Set production environment
-ENV NODE_ENV=production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:2000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); });"
 
 # Start the application
 CMD ["node", "dist/index.js"]
