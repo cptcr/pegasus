@@ -64,6 +64,11 @@ RUN mkdir -p logs && \
 
 # Set default DEVELOPER_IDS if not provided via environment
 ENV DEVELOPER_IDS='["931870926797160538"]'
+ENV XP_VOICE_PER_MINUTE=20
+ENV XP_MESSAGE_MIN=15  
+ENV XP_MESSAGE_MAX=25
+ENV XP_COOLDOWN=60000
+ENV XP_BOOSTER_MULTIPLIER=1.5
 
 # Copy package files
 COPY package*.json ./
