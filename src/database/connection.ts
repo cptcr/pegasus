@@ -411,31 +411,324 @@ async function createAllTables() {
       )
     `;
 
-    // Create audit_logs table
+    // Create audit_logs table aligned with Drizzle schema
     await connection`
       CREATE TABLE IF NOT EXISTS audit_logs (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(20),
-        user_id VARCHAR(20),
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         action VARCHAR(100) NOT NULL,
+        user_id VARCHAR(20) NOT NULL,
+        guild_id VARCHAR(20) NOT NULL,
         target_id VARCHAR(20),
         target_type VARCHAR(50),
-        details JSON,
+        details JSONB,
         ip_hash VARCHAR(64),
-        user_agent VARCHAR(255),
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        user_agent TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       )
     `;
 
-    // Create blacklist table
+    // Legacy audit logs migration
+    await connection`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'audit_logs' AND column_name = 'timestamp'
+        ) THEN
+          ALTER TABLE audit_logs DROP COLUMN timestamp;
+        END IF;
+      EXCEPTION
+        WHEN undefined_column THEN NULL;
+      END $$;
+    `;
+
+    await connection`
+      CREATE INDEX IF NOT EXISTS audit_logs_guild_idx ON audit_logs(guild_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS audit_logs_user_idx ON audit_logs(user_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS audit_logs_target_idx ON audit_logs(target_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS audit_logs_action_idx ON audit_logs(action)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs(created_at)
+    `;
+
+    // Create blacklist table aligned with Drizzle schema
     await connection`
       CREATE TABLE IF NOT EXISTS blacklist (
-        user_id VARCHAR(20) PRIMARY KEY,
-        moderator_id VARCHAR(20) NOT NULL,
-        reason TEXT,
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        entity_type VARCHAR(20) NOT NULL,
+        entity_id VARCHAR(20) NOT NULL,
+        reason TEXT NOT NULL,
+        added_by VARCHAR(20) NOT NULL,
+        active BOOLEAN DEFAULT TRUE NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `;
+
+    // Migrate legacy blacklist schema
+    await connection`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'id'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN id UUID;
+        END IF;
+      EXCEPTION
+        WHEN undefined_table THEN NULL;
+      END $$;
+    `;
+
+    await connection`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'entity_type'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN entity_type VARCHAR(20);
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'entity_id'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN entity_id VARCHAR(20);
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'added_by'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN added_by VARCHAR(20);
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'active'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN active BOOLEAN DEFAULT TRUE;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'metadata'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN metadata JSONB;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'updated_at'
+        ) THEN
+          ALTER TABLE blacklist ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+        END IF;
+      EXCEPTION
+        WHEN undefined_table THEN NULL;
+      END $$;
+    `;
+
+    await connection`
+      UPDATE blacklist
+      SET entity_type = 'user'
+      WHERE entity_type IS NULL
+    `;
+    await connection`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'user_id'
+        ) THEN
+          UPDATE blacklist
+          SET entity_id = COALESCE(entity_id, user_id)
+          WHERE entity_id IS NULL;
+        END IF;
+      END $$;
+    `;
+    await connection`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'blacklist' AND column_name = 'moderator_id'
+        ) THEN
+          UPDATE blacklist
+          SET added_by = COALESCE(added_by, moderator_id)
+          WHERE added_by IS NULL;
+        END IF;
+      END $$;
+    `;
+    await connection`
+      UPDATE blacklist
+      SET active = TRUE
+      WHERE active IS NULL
+    `;
+    await connection`
+      UPDATE blacklist
+      SET id = gen_random_uuid()
+      WHERE id IS NULL
+    `;
+    await connection`
+      UPDATE blacklist
+      SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    `;
+
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN id SET DEFAULT gen_random_uuid()
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN id SET NOT NULL
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN entity_type SET NOT NULL
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN entity_id SET NOT NULL
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN added_by SET NOT NULL
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN active SET NOT NULL
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP
+    `;
+    await connection`
+      ALTER TABLE blacklist ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP
+    `;
+
+    await connection`
+      DO $$
+      BEGIN
+        ALTER TABLE blacklist DROP CONSTRAINT IF EXISTS blacklist_pkey;
+        ALTER TABLE blacklist ADD PRIMARY KEY (id);
+      EXCEPTION
+        WHEN undefined_table THEN NULL;
+      END $$;
+    `;
+
+    await connection`
+      CREATE UNIQUE INDEX IF NOT EXISTS blacklist_entity_idx
+      ON blacklist(entity_type, entity_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS blacklist_active_idx
+      ON blacklist(active)
+    `;
+
+    // Create security logs table
+    await connection`
+      CREATE TABLE IF NOT EXISTS security_logs (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        guild_id VARCHAR(20) NOT NULL,
+        user_id VARCHAR(20),
+        action VARCHAR(100) NOT NULL,
+        severity VARCHAR(20) NOT NULL,
+        description TEXT NOT NULL,
+        metadata JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       )
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_logs_guild_idx ON security_logs(guild_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_logs_user_idx ON security_logs(user_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_logs_action_idx ON security_logs(action)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_logs_severity_idx ON security_logs(severity)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_logs_created_at_idx ON security_logs(created_at)
+    `;
+
+    // Create rate limit violations table
+    await connection`
+      CREATE TABLE IF NOT EXISTS rate_limit_violations (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id VARCHAR(20) NOT NULL,
+        guild_id VARCHAR(20),
+        endpoint VARCHAR(100) NOT NULL,
+        violations BIGINT DEFAULT 1 NOT NULL,
+        blocked BOOLEAN DEFAULT FALSE NOT NULL,
+        blocked_until TIMESTAMP,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `;
+    await connection`
+      CREATE UNIQUE INDEX IF NOT EXISTS rate_limit_user_endpoint_idx
+      ON rate_limit_violations(user_id, endpoint)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS rate_limit_blocked_idx
+      ON rate_limit_violations(blocked)
+    `;
+
+    // Create security incidents table
+    await connection`
+      CREATE TABLE IF NOT EXISTS security_incidents (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        incident_id VARCHAR(20) NOT NULL UNIQUE,
+        guild_id VARCHAR(20) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        severity VARCHAR(20) NOT NULL,
+        status VARCHAR(20) DEFAULT 'open' NOT NULL,
+        description TEXT NOT NULL,
+        affected_users JSONB DEFAULT '[]'::jsonb NOT NULL,
+        actions JSONB DEFAULT '[]'::jsonb NOT NULL,
+        resolved_by VARCHAR(20),
+        resolved_at TIMESTAMP,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_incidents_guild_idx ON security_incidents(guild_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_incidents_type_idx ON security_incidents(type)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_incidents_status_idx ON security_incidents(status)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS security_incidents_severity_idx ON security_incidents(severity)
+    `;
+
+    // Create API keys table
+    await connection`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        key_hash VARCHAR(64) NOT NULL UNIQUE,
+        name VARCHAR(100) NOT NULL,
+        user_id VARCHAR(20) NOT NULL,
+        permissions JSONB DEFAULT '[]'::jsonb NOT NULL,
+        rate_limit BIGINT DEFAULT 1000 NOT NULL,
+        expires_at TIMESTAMP,
+        last_used_at TIMESTAMP,
+        active BOOLEAN DEFAULT TRUE NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+      )
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS api_keys_user_idx ON api_keys(user_id)
+    `;
+    await connection`
+      CREATE INDEX IF NOT EXISTS api_keys_active_idx ON api_keys(active)
     `;
 
     // Create indexes for better performance
@@ -449,9 +742,6 @@ async function createAllTables() {
     await connection`CREATE INDEX IF NOT EXISTS idx_giveaways_status ON giveaways(status)`;
     await connection`CREATE INDEX IF NOT EXISTS idx_giveaways_end_time ON giveaways(end_time)`;
     await connection`CREATE INDEX IF NOT EXISTS idx_giveaway_entries_user ON giveaway_entries(user_id)`;
-    await connection`CREATE INDEX IF NOT EXISTS idx_audit_logs_guild ON audit_logs(guild_id)`;
-    await connection`CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)`;
-    await connection`CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)`;
     await connection`CREATE INDEX IF NOT EXISTS idx_economy_balances_user ON economy_balances(user_id)`;
     await connection`CREATE INDEX IF NOT EXISTS idx_economy_balances_guild ON economy_balances(guild_id)`;
     await connection`CREATE INDEX IF NOT EXISTS idx_economy_balances_balance ON economy_balances(balance)`;
@@ -486,13 +776,34 @@ export async function initializeDatabase() {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
+    const parseNumber = (value: string | undefined, fallback: number) => {
+      if (!value) {
+        return fallback;
+      }
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
+
+    const maxConnections = parseNumber(process.env.DB_MAX_CONNECTIONS, 10);
+    const idleTimeout = parseNumber(process.env.DB_IDLE_TIMEOUT, 20);
+    const connectTimeout = parseNumber(process.env.DB_CONNECT_TIMEOUT, 10);
+
+    const connectionOptions: Parameters<typeof postgres>[1] = {
+      max: maxConnections,
+      idle_timeout: idleTimeout,
+      connect_timeout: connectTimeout,
+      onnotice: () => {},
+    };
+
+    const sslPreference = process.env.DB_SSL?.toLowerCase();
+    if (sslPreference === 'true' || sslPreference === 'require') {
+      connectionOptions.ssl = 'require';
+    } else if (connectionString.includes('sslmode=require')) {
+      connectionOptions.ssl = 'require';
+    }
+
     // Create the connection
-    connection = postgres(connectionString, {
-      max: 10, // Maximum number of connections
-      idle_timeout: 20,
-      connect_timeout: 10,
-      onnotice: () => {}, // Suppress NOTICE messages
-    });
+    connection = postgres(connectionString, connectionOptions);
 
     // Create the drizzle instance
     db = drizzle(connection, { schema });

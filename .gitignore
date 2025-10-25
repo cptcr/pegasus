@@ -74,3 +74,4 @@ pnpm-lock.yaml
 !CONTRIBUTING.md
 process.log
 test-api.js
+AGENTS.md
