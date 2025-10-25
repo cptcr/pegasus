@@ -19,6 +19,12 @@
   </p>
 </div>
 
+<div align="center">
+<h1>SPONSORS</h1>
+<p>VaultScope</p>
+<a>https://vaultscope.dev</a>
+</div>
+
 ---
 
 ## 📋 Table of Contents

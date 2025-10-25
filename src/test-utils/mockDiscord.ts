@@ -2,7 +2,6 @@ import {
   Guild, 
   GuildMember, 
   User, 
-  TextChannel, 
   Message,
   ChatInputCommandInteraction,
   ButtonInteraction,
@@ -56,7 +55,7 @@ export const createMockClient = (): any => {
   return mockClient;
 };
 
-export const createMockGuild = (overrides: Partial<Guild> = {}): any => {
+export const createMockGuild = (overrides: Record<string, unknown> = {}): any => {
   const mockGuild = {
     id: '987654321098765432',
     name: 'Test Guild',
@@ -66,7 +65,7 @@ export const createMockGuild = (overrides: Partial<Guild> = {}): any => {
     members: {
       cache: new Collection<string, GuildMember>(),
       fetch: jest.fn(),
-      me: createMockGuildMember(),
+      me: null,
     },
     channels: {
       cache: new Collection<string, any>(),
@@ -92,7 +91,7 @@ export const createMockGuild = (overrides: Partial<Guild> = {}): any => {
   return mockGuild;
 };
 
-export const createMockUser = (overrides: Partial<User> = {}): any => {
+export const createMockUser = (overrides: Record<string, unknown> = {}): any => {
   const mockUser = {
     id: '123456789012345678',
     username: 'TestUser',
@@ -107,11 +106,11 @@ export const createMockUser = (overrides: Partial<User> = {}): any => {
   return mockUser;
 };
 
-export const createMockGuildMember = (overrides: Partial<GuildMember> = {}): any => {
+export const createMockGuildMember = (overrides: Record<string, unknown> = {}): any => {
   const mockMember = {
     id: '123456789012345678',
     user: createMockUser(),
-    guild: createMockGuild(),
+    guild: { id: '987654321098765432', name: 'Test Guild' },
     nickname: null,
     roles: {
       cache: new Collection<string, any>(),
@@ -143,7 +142,7 @@ export const createMockGuildMember = (overrides: Partial<GuildMember> = {}): any
   return mockMember;
 };
 
-export const createMockTextChannel = (overrides: Partial<TextChannel> = {}): any => {
+export const createMockTextChannel = (overrides: Record<string, unknown> = {}): any => {
   const mockChannel = {
     id: '333333333333333333',
     name: 'test-channel',
@@ -152,7 +151,7 @@ export const createMockTextChannel = (overrides: Partial<TextChannel> = {}): any
     guildId: '987654321098765432',
     position: 0,
     parentId: null,
-    send: jest.fn().mockResolvedValue(createMockMessage()),
+    send: jest.fn().mockResolvedValue({}),
     bulkDelete: jest.fn(),
     createMessageCollector: jest.fn(),
     awaitMessages: jest.fn(),
@@ -169,7 +168,10 @@ export const createMockMessage = (overrides: Partial<Message> = {}): any => {
     content: 'Test message',
     author: createMockUser(),
     member: createMockGuildMember(),
-    channel: createMockTextChannel(),
+    channel: {
+      id: '333333333333333333',
+      send: jest.fn(),
+    },
     channelId: '333333333333333333',
     guild: createMockGuild(),
     guildId: '987654321098765432',

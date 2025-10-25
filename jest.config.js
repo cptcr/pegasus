@@ -36,6 +36,6 @@ module.exports = {
     '^@repositories/(.*)$': '<rootDir>/src/repositories/$1',
     '^@i18n/(.*)$': '<rootDir>/src/i18n/$1',
   },
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/src/test-utils/setup.ts'],
   testTimeout: 10000,
 };

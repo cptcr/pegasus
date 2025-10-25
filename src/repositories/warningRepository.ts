@@ -1,7 +1,8 @@
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { getDatabase } from '../database/connection';
 import { warnings, warningAutomations } from '../database/schema';
-import { nanoid } from 'nanoid';
+
+const nanoidPromise = import('nanoid').then(({ nanoid }) => nanoid);
 
 export interface CreateWarningData {
   guildId: string;
@@ -40,7 +41,8 @@ export class WarningRepository {
   }
 
   async createWarning(data: CreateWarningData) {
-    const warnId = `W${nanoid(10)}`;
+    const nanoidFn = await nanoidPromise;
+    const warnId = `W${nanoidFn(10)}`;
 
     const [warning] = await this.db
       .insert(warnings)
@@ -110,7 +112,8 @@ export class WarningRepository {
   }
 
   async createAutomation(data: CreateAutomationData) {
-    const automationId = `AUTO${nanoid(8)}`;
+    const nanoidFn = await nanoidPromise;
+    const automationId = `AUTO${nanoidFn(8)}`;
 
     const [automation] = await this.db
       .insert(warningAutomations)

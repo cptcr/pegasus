@@ -11,8 +11,9 @@ import {
 import { giveawayRepository } from '../repositories/giveawayRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
-import { nanoid } from 'nanoid';
 import { logger } from '../utils/logger';
+
+const nanoidPromise = import('nanoid').then(({ nanoid }) => nanoid);
 
 export interface GiveawayRequirements {
   roleIds?: string[];
@@ -72,7 +73,8 @@ export class GiveawayService {
   private activeTimers = new Map<string, NodeJS.Timeout>();
 
   async createGiveaway(data: CreateGiveawayData) {
-    const giveawayId = `GW${nanoid(10)}`;
+    const nanoidFn = await nanoidPromise;
+    const giveawayId = `GW${nanoidFn(10)}`;
 
     const giveaway = await giveawayRepository.createGiveaway({
       giveawayId,

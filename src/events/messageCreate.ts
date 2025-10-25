@@ -2,6 +2,7 @@ import { Events, Message, EmbedBuilder, TextChannel } from 'discord.js';
 import { xpService } from '../services/xpService';
 import { configurationService } from '../services/configurationService';
 import { guildService } from '../services/guildService';
+import { listCommandService } from '../services/listCommandService';
 import { logger } from '../utils/logger';
 import { getTranslation } from '../i18n';
 
@@ -18,6 +19,10 @@ export async function execute(message: Message) {
   try {
     // Ensure guild exists in database
     await guildService.ensureGuild(message.guild);
+
+    // Handle prefix list commands before processing XP
+    const handled = await listCommandService.handle(message);
+    if (handled) return;
 
     // Process XP gain
     await processXPGain(message);
