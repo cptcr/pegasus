@@ -93,17 +93,14 @@ export class ListCommandService {
       return false;
     }
 
+    const description = definition.entries
+      .map(entry => `• [${entry.name}](${entry.url})`)
+      .join('\n');
+
     const embed = new EmbedBuilder()
       .setTitle(definition.title)
       .setColor(0x5865f2)
-      .setDescription('Here are the resources you requested:')
-      .addFields(
-        definition.entries.map(entry => ({
-          name: entry.name,
-          value: `[Open](${entry.url})`,
-          inline: false,
-        }))
-      )
+      .setDescription(description)
       .setTimestamp();
 
     if (!message.channel || !message.channel.isTextBased() || !('send' in message.channel)) {
@@ -113,11 +110,10 @@ export class ListCommandService {
 
     try {
       const channel = message.channel;
-      // TypeScript guard ensures channel has send method
       if (typeof channel.send !== 'function') {
         return false;
       }
-      await message.channel.send({ embeds: [embed] });
+      await channel.send({ embeds: [embed] });
       return true;
     } catch (error) {
       logger.error(`Failed to send list embed for trigger "${definition.trigger}":`, error);
