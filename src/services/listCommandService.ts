@@ -1,5 +1,5 @@
 import { EmbedBuilder, Message } from 'discord.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, watch } from 'node:fs';
 import path from 'node:path';
 import { logger } from '../utils/logger';
 
@@ -22,8 +22,7 @@ function formatTitleFromKey(key: string): string {
   return words.join(' ');
 }
 
-function loadListDefinitions(): ListCommandMap {
-  const configPath = path.join(__dirname, '..', '..', 'lists.json');
+function loadListDefinitions(configPath: string): ListCommandMap {
   try {
     const raw = readFileSync(configPath, 'utf-8');
     const data = JSON.parse(raw) as Record<string, unknown>;
@@ -77,10 +76,14 @@ function loadListDefinitions(): ListCommandMap {
 }
 
 export class ListCommandService {
-  private readonly commands: ListCommandMap;
+  private commands: ListCommandMap;
+  private readonly configPath: string;
+  private reloadTimer: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.commands = loadListDefinitions();
+    this.configPath = path.join(__dirname, '..', '..', 'lists.json');
+    this.commands = loadListDefinitions(this.configPath);
+    this.watchForUpdates();
   }
 
   async handle(message: Message): Promise<boolean> {
@@ -118,6 +121,36 @@ export class ListCommandService {
     } catch (error) {
       logger.error(`Failed to send list embed for trigger "${definition.trigger}":`, error);
       return false;
+    }
+  }
+
+  private watchForUpdates(): void {
+    try {
+      watch(this.configPath, { persistent: false }, () => {
+        if (this.reloadTimer) {
+          clearTimeout(this.reloadTimer);
+        }
+
+        this.reloadTimer = setTimeout(() => {
+          this.reloadTimer = null;
+          try {
+            const updated = loadListDefinitions(this.configPath);
+            if (updated.size > 0) {
+              this.commands.clear();
+              updated.forEach((definition, trigger) => {
+                this.commands.set(trigger, definition);
+              });
+              logger.info('List command definitions reloaded after lists.json change');
+            } else {
+              logger.warn('lists.json reload produced no list command definitions');
+            }
+          } catch (error) {
+            logger.error('Failed to reload lists.json after change:', error);
+          }
+        }, 250);
+      });
+    } catch (error) {
+      logger.error('Failed to watch lists.json for prefix command updates:', error);
     }
   }
 }

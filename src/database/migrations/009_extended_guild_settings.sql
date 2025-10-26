@@ -58,5 +58,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Ensure trigger definition remains idempotent when rerunning migrations
+DROP TRIGGER IF EXISTS update_xp_settings_updated_at ON xp_settings;
+
 CREATE TRIGGER update_xp_settings_updated_at BEFORE UPDATE ON xp_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

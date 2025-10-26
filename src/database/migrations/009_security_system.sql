@@ -46,11 +46,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_logs_guild ON audit_logs(guild_id);
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_target ON audit_logs(target_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_guild ON audit_logs(guild_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs(target_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- Rate limit violations table
 CREATE TABLE IF NOT EXISTS rate_limit_violations (
@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS rate_limit_violations (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idx_rate_limit_user_endpoint ON rate_limit_violations(user_id, endpoint);
-CREATE INDEX idx_rate_limit_blocked ON rate_limit_violations(blocked);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rate_limit_user_endpoint ON rate_limit_violations(user_id, endpoint);
+CREATE INDEX IF NOT EXISTS idx_rate_limit_blocked ON rate_limit_violations(blocked);
 
 -- Security incidents table
 CREATE TABLE IF NOT EXISTS security_incidents (
@@ -87,10 +87,10 @@ CREATE TABLE IF NOT EXISTS security_incidents (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_security_incidents_guild ON security_incidents(guild_id);
-CREATE INDEX idx_security_incidents_type ON security_incidents(type);
-CREATE INDEX idx_security_incidents_status ON security_incidents(status);
-CREATE INDEX idx_security_incidents_severity ON security_incidents(severity);
+CREATE INDEX IF NOT EXISTS idx_security_incidents_guild ON security_incidents(guild_id);
+CREATE INDEX IF NOT EXISTS idx_security_incidents_type ON security_incidents(type);
+CREATE INDEX IF NOT EXISTS idx_security_incidents_status ON security_incidents(status);
+CREATE INDEX IF NOT EXISTS idx_security_incidents_severity ON security_incidents(severity);
 
 -- API keys table
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -108,8 +108,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_api_keys_user ON api_keys(user_id);
-CREATE INDEX idx_api_keys_active ON api_keys(active);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_active ON api_keys(active);
 
 -- Update timestamp trigger
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -143,14 +143,18 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_economy_balances_updated_at ON economy_balances;
 CREATE TRIGGER update_economy_balances_updated_at BEFORE UPDATE ON economy_balances 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_economy_shop_items_updated_at ON economy_shop_items;
 CREATE TRIGGER update_economy_shop_items_updated_at BEFORE UPDATE ON economy_shop_items 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_economy_settings_updated_at ON economy_settings;
 CREATE TRIGGER update_economy_settings_updated_at BEFORE UPDATE ON economy_settings 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_economy_gambling_stats_updated_at ON economy_gambling_stats;
 CREATE TRIGGER update_economy_gambling_stats_updated_at BEFORE UPDATE ON economy_gambling_stats 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -34,10 +34,10 @@ CREATE TABLE IF NOT EXISTS warning_automations (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_warnings_guild_user ON warnings(guild_id, user_id) WHERE active = true;
-CREATE INDEX idx_warnings_warn_id ON warnings(warn_id);
-CREATE INDEX idx_warning_automations_guild ON warning_automations(guild_id) WHERE enabled = true;
-CREATE INDEX idx_warning_automations_automation_id ON warning_automations(automation_id);
+CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id) WHERE active = true;
+CREATE INDEX IF NOT EXISTS idx_warnings_warn_id ON warnings(warn_id);
+CREATE INDEX IF NOT EXISTS idx_warning_automations_guild ON warning_automations(guild_id) WHERE enabled = true;
+CREATE INDEX IF NOT EXISTS idx_warning_automations_automation_id ON warning_automations(automation_id);
 
 -- Create audit logs table if it doesn't exist
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -57,18 +57,30 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs(guild_id, target_
 
 -- Add constraint for valid actions
 ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_action_check;
-ALTER TABLE audit_logs 
-ADD CONSTRAINT audit_logs_action_check 
-CHECK (action IN (
-    'GUILD_CREATE', 'GUILD_UPDATE', 'GUILD_DELETE',
-    'MEMBER_JOIN', 'MEMBER_LEAVE', 'MEMBER_UPDATE',
-    'ROLE_CREATE', 'ROLE_UPDATE', 'ROLE_DELETE',
-    'CHANNEL_CREATE', 'CHANNEL_UPDATE', 'CHANNEL_DELETE',
-    'WARN_CREATE', 'WARN_EDIT', 'WARN_DELETE',
-    'WARN_AUTOMATION_CREATE', 'WARN_AUTOMATION_UPDATE', 'WARN_AUTOMATION_DELETE',
-    'BAN_CREATE', 'BAN_REMOVE',
-    'KICK_MEMBER',
-    'MUTE_CREATE', 'MUTE_REMOVE',
-    'MESSAGE_DELETE', 'MESSAGE_BULK_DELETE',
-    'SETTINGS_UPDATE'
-));
+
+WITH sanitized AS (
+    SELECT
+        id,
+        CASE
+            WHEN action IS NULL OR btrim(action) = '' THEN 'UNKNOWN'
+            ELSE REGEXP_REPLACE(UPPER(action), '[^A-Z0-9]+', '_', 'g')
+        END AS new_action
+    FROM audit_logs
+), normalized AS (
+    SELECT
+        id,
+        CASE
+            WHEN length(new_action) < 3 THEN 'UNKNOWN'
+            ELSE new_action
+        END AS final_action
+    FROM sanitized
+)
+UPDATE audit_logs AS a
+SET action = n.final_action
+FROM normalized AS n
+WHERE a.id = n.id
+  AND (a.action IS NULL OR a.action !~ '^[A-Z0-9_]{3,100}$');
+
+ALTER TABLE audit_logs
+ADD CONSTRAINT audit_logs_action_check
+CHECK (action ~ '^[A-Z0-9_]{3,100}$');

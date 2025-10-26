@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { existsSync } from 'node:fs';
 import i18next from 'i18next';
 import Backend from 'i18next-fs-backend';
 import { join } from 'path';
@@ -9,13 +10,32 @@ import { logger } from '../utils/logger';
 
 const localeContext = new AsyncLocalStorage<string>();
 
+function resolveLocalesLoadPath(): string {
+  const candidates = [
+    join(__dirname, 'locales'),
+    join(process.cwd(), 'src', 'i18n', 'locales'),
+    join(process.cwd(), 'dist', 'i18n', 'locales'),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return join(candidate, '{{lng}}.json');
+    }
+  }
+
+  const fallbackPath = join(__dirname, 'locales', '{{lng}}.json');
+  logger.warn(`Falling back to default locales path: ${fallbackPath}`);
+  return fallbackPath;
+}
+
 export async function initializeI18n(): Promise<void> {
   try {
     await i18next.use(Backend).init({
       backend: {
-        loadPath: join(__dirname, 'locales', '{{lng}}.json'),
+        loadPath: resolveLocalesLoadPath(),
       },
       fallbackLng: 'en',
+      lng: 'en',
       supportedLngs: ['en', 'es', 'fr', 'de', 'nl', 'pt', 'ru', 'ja', 'ko', 'zh'],
       preload: ['en'],
       interpolation: {
@@ -40,7 +60,13 @@ export function t(key: string, options?: Record<string, unknown>): string {
     mergedOptions.lng = contextLocale;
   }
 
-  return i18next.t(key, mergedOptions);
+  const translation = i18next.t(key, mergedOptions);
+
+  if (translation === key && mergedOptions.lng !== 'en') {
+    return i18next.t(key, { ...mergedOptions, lng: 'en' });
+  }
+
+  return translation;
 }
 
 export function setLanguage(language: string): void {
