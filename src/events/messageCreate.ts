@@ -53,7 +53,7 @@ async function processXPGain(message: Message) {
 
     // Handle level up
     if (config.announceLevelUp) {
-      const locale = getTranslation(message.guild.id, message.author.id);
+      const locale = await getTranslation(message.guild.id, message.author.id);
 
       // Prepare level up message
       const xpLocale = locale.commands?.xp as

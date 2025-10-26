@@ -10,7 +10,7 @@ import {
   RoleSelectMenuInteraction,
 } from 'discord.js';
 import { logger } from '../utils/logger';
-import { t } from '../i18n';
+import { resolveLocale, t, withLocale } from '../i18n';
 import type { Command } from '../types/command';
 import { handleWarningActionButtons } from '../interactions/buttons/warningActions';
 import { handleWarningModals } from '../interactions/modals/warningModals';
@@ -30,21 +30,25 @@ export const name = Events.InteractionCreate;
 
 export async function execute(interaction: BaseInteraction) {
   try {
-    if (interaction.isChatInputCommand()) {
-      await handleCommand(interaction);
-    } else if (interaction.isAutocomplete()) {
-      await handleAutocomplete(interaction);
-    } else if (interaction.isButton()) {
-      await handleButton(interaction);
-    } else if (interaction.isModalSubmit()) {
-      await handleModal(interaction);
-    } else if (
-      interaction.isStringSelectMenu() ||
-      interaction.isChannelSelectMenu() ||
-      interaction.isRoleSelectMenu()
-    ) {
-      await handleSelectMenu(interaction);
-    }
+    const locale = await resolveLocale(interaction.user?.id, interaction.guildId);
+
+    await withLocale(locale, async () => {
+      if (interaction.isChatInputCommand()) {
+        await handleCommand(interaction);
+      } else if (interaction.isAutocomplete()) {
+        await handleAutocomplete(interaction);
+      } else if (interaction.isButton()) {
+        await handleButton(interaction);
+      } else if (interaction.isModalSubmit()) {
+        await handleModal(interaction);
+      } else if (
+        interaction.isStringSelectMenu() ||
+        interaction.isChannelSelectMenu() ||
+        interaction.isRoleSelectMenu()
+      ) {
+        await handleSelectMenu(interaction);
+      }
+    });
   } catch (error) {
     logger.error('Error in interaction handler:', error);
   }
