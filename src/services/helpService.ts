@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { t } from '../i18n';
+import { t, withLocale } from '../i18n';
 import { readdirSync } from 'fs';
 import { join } from 'path';
 import { Command, CommandCategory } from '../types/command';
@@ -116,124 +116,126 @@ export class HelpService {
     return categoryMap[categoryPath.toLowerCase()] || CommandCategory.Utility;
   }
 
-  getHelpMenu(locale: string): EmbedBuilder {
-    const embed = new EmbedBuilder()
-      .setTitle(t('commands.help.title', { lng: locale }))
-      .setDescription(t('commands.help.description', { lng: locale }))
-      .setColor(0x7289da)
-      .setTimestamp();
+  async getHelpMenu(locale: string): Promise<EmbedBuilder> {
+    return withLocale(locale, async () => {
+      const embed = new EmbedBuilder()
+        .setTitle(t('commands.help.title'))
+        .setDescription(t('commands.help.description'))
+        .setColor(0x7289da)
+        .setTimestamp();
 
-    const categoryOrder = [
-      CommandCategory.Utility,
-      CommandCategory.Moderation,
-      CommandCategory.Economy,
-      CommandCategory.XP,
-      CommandCategory.Giveaways,
-      CommandCategory.Tickets,
-      CommandCategory.Fun,
-      CommandCategory.Admin,
-    ];
+      const categoryOrder = [
+        CommandCategory.Utility,
+        CommandCategory.Moderation,
+        CommandCategory.Economy,
+        CommandCategory.XP,
+        CommandCategory.Giveaways,
+        CommandCategory.Tickets,
+        CommandCategory.Fun,
+        CommandCategory.Admin,
+      ];
 
-    for (const category of categoryOrder) {
-      const commands = this.commandsByCategory.get(category);
+      for (const category of categoryOrder) {
+        const commands = this.commandsByCategory.get(category);
 
-      if (commands && commands.length > 0) {
-        const commandList = commands.map(cmd => `\`/${cmd.data.name}\``).join(', ');
+        if (commands && commands.length > 0) {
+          const commandList = commands.map(cmd => `\`/${cmd.data.name}\``).join(', ');
 
-        embed.addFields({
-          name: t(`commands.help.categories.${category}`, { lng: locale }),
-          value: commandList || t('common.none', { lng: locale }),
-          inline: false,
-        });
+          embed.addFields({
+            name: t(`commands.help.categories.${category}`),
+            value: commandList || t('common.none'),
+            inline: false,
+          });
+        }
       }
-    }
 
-    embed.setFooter({
-      text: t('commands.help.menuFooter', { lng: locale }),
+      embed.setFooter({
+        text: t('commands.help.menuFooter'),
+      });
+
+      return embed;
     });
-
-    return embed;
   }
 
-  getCommandHelp(commandName: string, locale: string): EmbedBuilder | null {
+  async getCommandHelp(commandName: string, locale: string): Promise<EmbedBuilder | null> {
     const command = this.commands.get(commandName);
 
     if (!command) {
       return null;
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle(t('commands.help.commandInfo', { lng: locale }))
-      .setColor(0x7289da)
-      .addFields([
-        {
-          name: t('commands.help.commandName', { lng: locale }),
-          value: `\`/${command.data.name}\``,
-          inline: true,
-        },
-        {
-          name: t('commands.help.category', { lng: locale }),
-          value: t(`commands.help.categories.${command.category}`, { lng: locale }),
-          inline: true,
-        },
-      ]);
+    return withLocale(locale, async () => {
+      const embed = new EmbedBuilder()
+        .setTitle(t('commands.help.commandInfo'))
+        .setColor(0x7289da)
+        .addFields([
+          {
+            name: t('commands.help.commandName'),
+            value: `\`/${command.data.name}\``,
+            inline: true,
+          },
+          {
+            name: t('commands.help.category'),
+            value: t(`commands.help.categories.${command.category}`),
+            inline: true,
+          },
+        ]);
 
-    // Add description
-    const description =
-      command.data.description || t('commands.help.noDescription', { lng: locale });
-    embed.addFields({
-      name: t('commands.help.description', { lng: locale }),
-      value: description,
-      inline: false,
-    });
-
-    // Add usage
-    embed.addFields({
-      name: t('commands.help.usage', { lng: locale }),
-      value: this.generateUsage(command),
-      inline: false,
-    });
-
-    // Add cooldown if exists
-    if (command.cooldown) {
+      // Add description
+      const description = command.data.description || t('commands.help.noDescription');
       embed.addFields({
-        name: t('commands.help.cooldown', { lng: locale }),
-        value: t('commands.help.cooldownValue', {
-          lng: locale,
-          seconds: command.cooldown,
-        }),
-        inline: true,
-      });
-    }
-
-    // Add permissions if required
-    if (command.permissions && command.permissions.length > 0) {
-      embed.addFields({
-        name: t('commands.help.permissions', { lng: locale }),
-        value: command.permissions.map(p => `\`${String(p)}\``).join(', '),
+        name: t('commands.help.description'),
+        value: description,
         inline: false,
       });
-    }
 
-    // Add subcommands if any
-    if ('options' in command.data && command.data.options && command.data.options.length > 0) {
-      const subcommands = this.getSubcommands(command);
-      if (subcommands.length > 0) {
+      // Add usage
+      embed.addFields({
+        name: t('commands.help.usage'),
+        value: this.generateUsage(command),
+        inline: false,
+      });
+
+      // Add cooldown if exists
+      if (command.cooldown) {
         embed.addFields({
-          name: t('commands.help.subcommands', { lng: locale }),
-          value: subcommands.join('\n'),
+          name: t('commands.help.cooldown'),
+          value: t('commands.help.cooldownValue', {
+            seconds: command.cooldown,
+          }),
+          inline: true,
+        });
+      }
+
+      // Add permissions if required
+      if (command.permissions && command.permissions.length > 0) {
+        embed.addFields({
+          name: t('commands.help.permissions'),
+          value: command.permissions.map(p => `\`${String(p)}\``).join(', '),
           inline: false,
         });
       }
-    }
 
-    embed.setFooter({
-      text: t('commands.help.commandFooter', { lng: locale }),
+      // Add subcommands if any
+      if ('options' in command.data && command.data.options && command.data.options.length > 0) {
+        const subcommands = this.getSubcommands(command);
+        if (subcommands.length > 0) {
+          embed.addFields({
+            name: t('commands.help.subcommands'),
+            value: subcommands.join('\n'),
+            inline: false,
+          });
+        }
+      }
+
+      embed.setFooter({
+        text: t('commands.help.commandFooter'),
+      });
+
+      embed.setTimestamp();
+
+      return embed;
     });
-
-    embed.setTimestamp();
-
-    return embed;
   }
 
   private generateUsage(command: Command): string {

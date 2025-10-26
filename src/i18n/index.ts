@@ -51,7 +51,7 @@ export function setLanguage(language: string): void {
 const guildLocales = new Map<string, string>();
 
 export function setGuildLocale(guildId: string, locale: string): void {
-  guildLocales.set(guildId, locale);
+  guildLocales.set(guildId, normalizeLocale(locale));
 }
 
 export function getGuildLocale(guildId: string): string {
@@ -66,7 +66,7 @@ export function clearGuildLocale(guildId: string): void {
 const userLocales = new Map<string, string>();
 
 export function setUserLocale(userId: string, locale: string): void {
-  userLocales.set(userId, locale);
+  userLocales.set(userId, normalizeLocale(locale));
 }
 
 export function getUserLocale(userId: string): string {
@@ -134,8 +134,9 @@ async function fetchUserLocale(userId: string): Promise<string | undefined> {
       .limit(1);
 
     if (result?.preferredLocale) {
-      userLocales.set(userId, result.preferredLocale);
-      return result.preferredLocale;
+      const preferred = normalizeLocale(result.preferredLocale);
+      userLocales.set(userId, preferred);
+      return preferred;
     }
   } catch (error) {
     logger.debug(`Failed to fetch user locale for ${userId}:`, error);
@@ -159,8 +160,9 @@ async function fetchGuildLocale(guildId: string): Promise<string | undefined> {
       .limit(1);
 
     if (result?.language) {
-      guildLocales.set(guildId, result.language);
-      return result.language;
+      const language = normalizeLocale(result.language);
+      guildLocales.set(guildId, language);
+      return language;
     }
   } catch (error) {
     logger.debug(`Failed to fetch guild locale for ${guildId}:`, error);
@@ -175,7 +177,7 @@ export async function resolveLocale(userId?: string, guildId?: string | null): P
     guildId ? fetchGuildLocale(guildId) : Promise.resolve(undefined),
   ]);
 
-  const locale = userLocale || guildLocale || 'en';
+  const locale = normalizeLocale(userLocale || guildLocale);
   await ensureLocaleResources(locale);
   return locale;
 }
@@ -209,4 +211,22 @@ async function ensureLocaleResources(locale: string): Promise<void> {
   } catch (error) {
     logger.debug(`Failed to load resources for locale ${locale}:`, error);
   }
+}
+
+function normalizeLocale(locale?: string): string {
+  if (!locale) {
+    return 'en';
+  }
+
+  const lower = locale.toLowerCase();
+  if (availableLocales.includes(lower)) {
+    return lower;
+  }
+
+  const base = lower.split('-')[0];
+  if (availableLocales.includes(base)) {
+    return base;
+  }
+
+  return 'en';
 }
