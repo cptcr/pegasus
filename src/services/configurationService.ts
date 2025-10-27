@@ -16,8 +16,8 @@ export interface XPConfig {
   perVoiceMinute: number;
   cooldown: number;
   announceLevelUp: boolean;
-  levelUpChannel?: string;
-  levelUpMessage?: string;
+  levelUpChannel?: string | null;
+  levelUpMessage?: string | null;
   boosterRole?: string;
   boosterMultiplier: number;
   ignoredChannels: string[];
@@ -131,8 +131,10 @@ export class ConfigurationService {
       if (config.cooldown !== undefined) updateData.xpCooldown = config.cooldown;
       if (config.announceLevelUp !== undefined)
         updateData.xpAnnounceLevelUp = config.announceLevelUp;
-      if (config.levelUpChannel !== undefined) updateData.levelUpChannel = config.levelUpChannel;
-      if (config.levelUpMessage !== undefined) updateData.levelUpMessage = config.levelUpMessage;
+      if (config.levelUpChannel !== undefined)
+        updateData.levelUpChannel = config.levelUpChannel ?? null;
+      if (config.levelUpMessage !== undefined)
+        updateData.levelUpMessage = config.levelUpMessage ?? null;
       if (config.boosterRole !== undefined) updateData.xpBoosterRole = config.boosterRole;
       if (config.boosterMultiplier !== undefined)
         updateData.xpBoosterMultiplier = config.boosterMultiplier;

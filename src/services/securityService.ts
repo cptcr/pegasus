@@ -18,6 +18,26 @@ import { logger } from '../utils/logger';
 import { auditLogger } from '../security/audit';
 import { CryptoUtils } from '../security/crypto';
 
+const DEFAULT_BLACKLIST_TIMEOUT_MS = 1500;
+const DEFAULT_BLACKLIST_BACKOFF_MS = 60000;
+const BACKOFF_LOG_INTERVAL_MS = 30000;
+
+class BlacklistTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BlacklistTimeoutError';
+  }
+}
+
+const parsePositiveInt = (value: string | undefined, fallback: number): number => {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 export interface SecurityIncident {
   type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';

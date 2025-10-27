@@ -12,6 +12,7 @@ import {
 import { configurationService } from '../../services/configurationService';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
+import { refreshXPConfigEmbed } from '../buttons/configButtons';
 
 export async function handleConfigSelectMenu(
   interaction:
@@ -29,6 +30,9 @@ export async function handleConfigSelectMenu(
     switch (menuType) {
       case 'xp_channel_type':
         await handleXPChannelType(interaction as StringSelectMenuInteraction);
+        break;
+      case 'xp_levelup_channel':
+        await handleXPLevelUpChannelSelect(interaction as ChannelSelectMenuInteraction);
         break;
       case 'xp_reward_action':
         await handleXPRewardAction(interaction as StringSelectMenuInteraction);
@@ -96,6 +100,19 @@ async function handleXPChannelType(interaction: StringSelectMenuInteraction) {
   );
 
   await interaction.showModal(modal);
+}
+
+async function handleXPLevelUpChannelSelect(interaction: ChannelSelectMenuInteraction) {
+  const channelId = interaction.values[0];
+
+  await interaction.deferUpdate();
+  await configurationService.updateXPConfig(interaction.guildId!, { levelUpChannel: channelId });
+  await refreshXPConfigEmbed(interaction);
+
+  await interaction.followUp({
+    content: t('config.xp.announcements.channelSet', { channel: `<#${channelId}>` }),
+    ephemeral: true,
+  });
 }
 
 async function handleXPRewardAction(interaction: StringSelectMenuInteraction): Promise<void> {

@@ -6,6 +6,8 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelSelectMenuBuilder,
+  ChannelType,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -123,6 +125,11 @@ async function handleXPConfig(interaction: ChatInputCommandInteraction) {
           inline: true,
         },
         {
+          name: t('commands.config.subcommands.xp.embed.fields.levelUpChannel'),
+          value: config.levelUpChannel ? `<#${config.levelUpChannel}>` : t('common.none'),
+          inline: true,
+        },
+        {
           name: t('commands.config.subcommands.xp.embed.fields.boosterRole'),
           value: config.boosterRole ? `<@&${config.boosterRole}>` : t('common.none'),
           inline: true,
@@ -166,9 +173,41 @@ async function handleXPConfig(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Primary)
     );
 
+    const levelUpChannelRow =
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId('config_xp_levelup_channel')
+          .setPlaceholder(
+            config.levelUpChannel
+              ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
+                  channel: `<#${config.levelUpChannel}>`,
+                })
+              : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
+          )
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      );
+
+    const announcementControlsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_xp_announce_toggle')
+        .setLabel(
+          config.announceLevelUp
+            ? t('commands.config.subcommands.xp.buttons.disableAnnouncements')
+            : t('commands.config.subcommands.xp.buttons.enableAnnouncements')
+        )
+        .setStyle(config.announceLevelUp ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_xp_announce_clear')
+        .setLabel(t('commands.config.subcommands.xp.buttons.clearAnnouncementChannel'))
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!config.levelUpChannel)
+    );
+
     await interaction.editReply({
       embeds: [embed],
-      components: [row1],
+      components: [row1, levelUpChannelRow, announcementControlsRow],
     });
   } catch (error) {
     logger.error('Error in XP config:', error);

@@ -408,11 +408,10 @@
       "view": "Ver advertencias"
     },
     "embed": {
-      "title": "Advertencia {{warnId}}",
+      "title": "Título",
       "user": "Usuario",
       "moderator": "Moderador",
       "level": "Nivel",
-      "title": "Título",
       "description": "Descripción",
       "edited": "Editado por {{editor}} el {{date}}"
     }
@@ -533,6 +532,16 @@
       "title": "¡Subida de Nivel!",
       "defaultMessage": "¡{{user}} ha alcanzado el nivel {{level}}!",
       "rolesEarned": "Roles Obtenidos"
+    }
+  },
+  "config": {
+    "xp": {
+      "announcements": {
+        "enabled": "Anuncios de subida de nivel habilitados",
+        "disabled": "Anuncios de subida de nivel deshabilitados",
+        "channelSet": "Los anuncios de subida de nivel se enviarán en {{channel}}",
+        "channelCleared": "Canal de anuncios de subida de nivel restablecido"
+      }
     }
   }
 }

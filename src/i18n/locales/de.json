@@ -408,11 +408,10 @@
       "view": "Verwarnungen anzeigen"
     },
     "embed": {
-      "title": "Verwarnung {{warnId}}",
+      "title": "Titel",
       "user": "Benutzer",
       "moderator": "Moderator",
       "level": "Stufe",
-      "title": "Titel",
       "description": "Beschreibung",
       "edited": "Bearbeitet von {{editor}} am {{date}}"
     }
@@ -533,6 +532,16 @@
       "title": "Level-Up!",
       "defaultMessage": "{{user}} hat Level {{level}} erreicht!",
       "rolesEarned": "Erhaltene Rollen"
+    }
+  },
+  "config": {
+    "xp": {
+      "announcements": {
+        "enabled": "Level-Up-Benachrichtigungen aktiviert",
+        "disabled": "Level-Up-Benachrichtigungen deaktiviert",
+        "channelSet": "Level-Up-Benachrichtigungen werden in {{channel}} gesendet",
+        "channelCleared": "Level-Up-Benachrichtigungskanal zurückgesetzt"
+      }
     }
   }
 }

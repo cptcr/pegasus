@@ -335,6 +335,7 @@
               "perVoiceMinute": "XP per Voice Minute",
               "cooldown": "Cooldown",
               "levelUpAnnounce": "Announce Level Up",
+              "levelUpChannel": "Level Up Channel",
               "boosterRole": "Booster Role",
               "boosterMultiplier": "Booster Multiplier",
               "roleRewards": "Role Rewards"
@@ -344,7 +345,14 @@
             "rates": "Rates",
             "channels": "Channels",
             "roles": "Roles",
-            "rewards": "Rewards"
+            "rewards": "Rewards",
+            "enableAnnouncements": "Enable Announcements",
+            "disableAnnouncements": "Disable Announcements",
+            "clearAnnouncementChannel": "Clear Channel"
+          },
+          "placeholders": {
+            "levelUpChannelSet": "Current: {{channel}}",
+            "levelUpChannelUnset": "Select a level up channel"
           }
         },
         "eco": {
@@ -920,6 +928,12 @@
           "clear": "Clear All",
           "clearDesc": "Remove all rewards"
         }
+      },
+      "announcements": {
+        "enabled": "Level up announcements enabled",
+        "disabled": "Level up announcements disabled",
+        "channelSet": "Level up announcements will post in {{channel}}",
+        "channelCleared": "Level up announcement channel cleared"
       }
     },
     "eco": {

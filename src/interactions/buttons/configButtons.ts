@@ -12,15 +12,20 @@ import {
   StringSelectMenuBuilder,
   ChannelType,
   EmbedBuilder,
+  StringSelectMenuInteraction,
+  ChannelSelectMenuInteraction,
 } from 'discord.js';
 import { configurationService } from '../../services/configurationService';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
 
 export async function handleConfigButton(interaction: ButtonInteraction) {
-  const [prefix, category, action] = interaction.customId.split('_');
+  const parts = interaction.customId.split('_');
+  const prefix = parts.shift();
+  const category = parts.shift();
+  const action = parts.join('_');
 
-  if (prefix !== 'config') return;
+  if (prefix !== 'config' || !category || !action) return;
 
   // Check permissions
   if (!interaction.memberPermissions?.has('ManageGuild')) {
@@ -264,6 +269,36 @@ async function handleXPConfigButton(interaction: ButtonInteraction, action: stri
       await interaction.editReply({
         embeds: [embed],
         components: [row],
+      });
+      break;
+    }
+
+    case 'announce_toggle': {
+      await interaction.deferUpdate();
+      const config = await configurationService.getXPConfig(interaction.guildId!);
+      const newStatus = !config.announceLevelUp;
+      await configurationService.updateXPConfig(interaction.guildId!, {
+        announceLevelUp: newStatus,
+      });
+
+      await refreshXPConfigEmbed(interaction);
+      await interaction.followUp({
+        content: newStatus
+          ? t('config.xp.announcements.enabled')
+          : t('config.xp.announcements.disabled'),
+        ephemeral: true,
+      });
+      break;
+    }
+
+    case 'announce_clear': {
+      await interaction.deferUpdate();
+      await configurationService.updateXPConfig(interaction.guildId!, { levelUpChannel: null });
+
+      await refreshXPConfigEmbed(interaction);
+      await interaction.followUp({
+        content: t('config.xp.announcements.channelCleared'),
+        ephemeral: true,
       });
       break;
     }
@@ -814,7 +849,9 @@ async function handleGoodbyeConfigButton(interaction: ButtonInteraction, action:
 }
 
 // Refresh functions for updating embeds after changes
-async function refreshXPConfigEmbed(interaction: ButtonInteraction) {
+export async function refreshXPConfigEmbed(
+  interaction: ButtonInteraction | StringSelectMenuInteraction | ChannelSelectMenuInteraction
+) {
   try {
     const config = await configurationService.getXPConfig(interaction.guild!.id);
     const roleRewards = await configurationService.getXPRoleRewards(interaction.guild!.id);
@@ -847,6 +884,11 @@ async function refreshXPConfigEmbed(interaction: ButtonInteraction) {
         {
           name: t('commands.config.subcommands.xp.embed.fields.levelUpAnnounce'),
           value: config.announceLevelUp ? t('common.yes') : t('common.no'),
+          inline: true,
+        },
+        {
+          name: t('commands.config.subcommands.xp.embed.fields.levelUpChannel'),
+          value: config.levelUpChannel ? `<#${config.levelUpChannel}>` : t('common.none'),
           inline: true,
         },
         {
@@ -893,9 +935,41 @@ async function refreshXPConfigEmbed(interaction: ButtonInteraction) {
         .setStyle(ButtonStyle.Primary)
     );
 
+    const levelUpChannelRow =
+      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+        new ChannelSelectMenuBuilder()
+          .setCustomId('config_xp_levelup_channel')
+          .setPlaceholder(
+            config.levelUpChannel
+              ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
+                  channel: `<#${config.levelUpChannel}>`,
+                })
+              : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
+          )
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      );
+
+    const announcementControlsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('config_xp_announce_toggle')
+        .setLabel(
+          config.announceLevelUp
+            ? t('commands.config.subcommands.xp.buttons.disableAnnouncements')
+            : t('commands.config.subcommands.xp.buttons.enableAnnouncements')
+        )
+        .setStyle(config.announceLevelUp ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('config_xp_announce_clear')
+        .setLabel(t('commands.config.subcommands.xp.buttons.clearAnnouncementChannel'))
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!config.levelUpChannel)
+    );
+
     await interaction.editReply({
       embeds: [embed],
-      components: [row1],
+      components: [row1, levelUpChannelRow, announcementControlsRow],
     });
   } catch (error) {
     logger.error('Error refreshing XP config embed:', error);
