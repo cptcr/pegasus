@@ -11,6 +11,7 @@ import { giveawaysRouter } from './routes/giveaways';
 import { settingsRouter } from './routes/settings';
 import { batchRouter } from './routes/batch';
 import { monitoringRouter } from './routes/monitoring';
+import { dashboardRouter } from './routes/dashboard';
 import { logger } from '../utils/logger';
 import { config } from '../config/env';
 import { cacheMiddleware, cacheStatsMiddleware, CacheTTL, invalidateCache, cacheManager } from './middleware/cache';
@@ -86,6 +87,12 @@ app.use('/stats',
   createRateLimiter(RateLimitPresets.stats), // Match dashboard refresh rate
   cacheMiddleware(CacheTTL.STATS),
   statsRouter
+);
+
+app.use('/dashboard',
+  authenticateToken,
+  cacheMiddleware(CacheTTL.STATS),
+  dashboardRouter
 );
 
 // Batch API for optimized multi-guild fetching
