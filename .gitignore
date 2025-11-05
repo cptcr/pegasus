@@ -75,3 +75,5 @@ pnpm-lock.yaml
 process.log
 test-api.js
 AGENTS.md
+!API.md
+!CACHING_SYSTEM.md
