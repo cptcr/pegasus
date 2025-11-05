@@ -13,6 +13,8 @@ import { getDatabase } from '../database/connection';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { securityLogs, blacklist } from '../database/schema/security';
 import { guildSettings } from '../database/schema/guilds';
+import { members } from '../database/schema/members';
+import { users } from '../database/schema/users';
 import { logger } from '../utils/logger';
 // import { rateLimiter } from '../security/rateLimiter';
 import { auditLogger } from '../security/audit';
@@ -38,9 +40,28 @@ export interface SecurityConfig {
   blacklistSync: boolean;
 }
 
+const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
+  enabled: true,
+  autoModEnabled: true,
+  antiSpamEnabled: true,
+  antiRaidEnabled: true,
+  maxMentions: 5,
+  maxDuplicates: 3,
+  suspiciousThreshold: 50,
+  blacklistSync: false,
+};
+
+const DEFAULT_GLOBAL_SECURITY_CONFIG: SecurityConfig = {
+  ...DEFAULT_SECURITY_CONFIG,
+  blacklistSync: true,
+};
+
 export class SecurityService {
   private static instance: SecurityService;
   private securityChannel?: TextChannel;
+  private blacklistCache: Map<string, Set<string>> = new Map();
+  private lastBlacklistSync = 0;
+  private static readonly BLACKLIST_CACHE_TTL = 5 * 60 * 1000;
 
   private constructor() {}
 
@@ -161,7 +182,7 @@ export class SecurityService {
    * Detect and handle raid attempts
    */
   async detectRaid(guild: Guild): Promise<boolean> {
-    const recentJoins = this.getRecentJoins(guild.id, 60); // Last minute
+    const recentJoins = await this.getRecentJoins(guild.id, 60); // Last minute
 
     // Raid detection thresholds
     const thresholds = {
@@ -203,7 +224,7 @@ export class SecurityService {
     });
 
     // Auto-response actions
-    const config = this.getSecurityConfig(guild.id);
+    const config = await this.getSecurityConfig(guild.id);
     if (config.antiRaidEnabled) {
       // Enable server lockdown
       await this.enableLockdown(guild);
@@ -270,10 +291,10 @@ export class SecurityService {
       details: { type, reason },
     });
 
-    // Sync with other instances if enabled
-    const config = this.getGlobalSecurityConfig();
+    const config = await this.getGlobalSecurityConfig();
+    this.addToBlacklistCache(type, entityId);
     if (config.blacklistSync) {
-      this.syncBlacklist();
+      await this.syncBlacklist(true);
     }
   }
 
@@ -281,6 +302,13 @@ export class SecurityService {
    * Check if entity is blacklisted
    */
   async isBlacklisted(type: 'user' | 'guild', entityId: string): Promise<boolean> {
+    await this.syncBlacklist();
+
+    const cachedSet = this.blacklistCache.get(type);
+    if (cachedSet?.has(entityId)) {
+      return true;
+    }
+
     const result = await getDatabase()
       .select()
       .from(blacklist)
@@ -293,7 +321,12 @@ export class SecurityService {
       )
       .limit(1);
 
-    return result.length > 0;
+    const found = result.length > 0;
+    if (found) {
+      this.addToBlacklistCache(type, entityId);
+    }
+
+    return found;
   }
 
   /**
@@ -469,9 +502,24 @@ export class SecurityService {
   }
 
   // Placeholder methods - implement based on your database schema
-  private getRecentJoins(_guildId: string, _seconds: number): Array<{ userId: string; username: string }> {
-    // TODO: Implement based on your member tracking
-    return [];
+  private async getRecentJoins(
+    guildId: string,
+    seconds: number
+  ): Promise<Array<{ userId: string; username: string }>> {
+    const since = new Date(Date.now() - seconds * 1000);
+
+    const rows = await getDatabase()
+      .select({
+        userId: members.userId,
+        username: users.username,
+      })
+      .from(members)
+      .innerJoin(users, eq(members.userId, users.id))
+      .where(and(eq(members.guildId, guildId), gte(members.joinedAt, since)))
+      .orderBy(desc(members.joinedAt))
+      .limit(100);
+
+    return rows;
   }
 
   private async getUserIncidents(userId: string, guildId: string, days: number): Promise<Array<{ type: string; createdAt: Date }>> {
@@ -495,28 +543,88 @@ export class SecurityService {
     return incidents;
   }
 
-  private getSecurityConfig(_guildId: string): SecurityConfig {
-    // TODO: Implement based on your guild config schema
+  private async getSecurityConfig(guildId: string): Promise<SecurityConfig> {
+    const defaults =
+      guildId === 'global' ? DEFAULT_GLOBAL_SECURITY_CONFIG : DEFAULT_SECURITY_CONFIG;
+
+    try {
+      const [settings] = await getDatabase()
+        .select({
+          securityEnabled: guildSettings.securityEnabled,
+          antiSpamEnabled: guildSettings.antiSpamEnabled,
+          antiRaidEnabled: guildSettings.antiRaidEnabled,
+          maxMentions: guildSettings.maxMentions,
+          maxDuplicates: guildSettings.maxDuplicates,
+        })
+        .from(guildSettings)
+        .where(eq(guildSettings.guildId, guildId))
+        .limit(1);
+
+      if (!settings) {
+        return defaults;
+      }
+
+      const suspiciousThreshold = Math.max(20, settings.maxMentions * 10);
+
+      return {
+        enabled: settings.securityEnabled,
+        autoModEnabled: settings.securityEnabled && settings.antiSpamEnabled,
+        antiSpamEnabled: settings.antiSpamEnabled,
+        antiRaidEnabled: settings.antiRaidEnabled,
+        maxMentions: settings.maxMentions,
+        maxDuplicates: settings.maxDuplicates,
+        suspiciousThreshold,
+        blacklistSync: guildId === 'global' ? defaults.blacklistSync : settings.securityEnabled,
+      };
+    } catch (error) {
+      logger.error(`Failed to load security config for guild ${guildId}:`, error);
+      return defaults;
+    }
+  }
+
+  private async getGlobalSecurityConfig(): Promise<SecurityConfig> {
+    const config = await this.getSecurityConfig('global');
     return {
-      enabled: true,
-      autoModEnabled: true,
-      antiSpamEnabled: true,
-      antiRaidEnabled: true,
-      maxMentions: 5,
-      maxDuplicates: 3,
-      suspiciousThreshold: 50,
-      blacklistSync: false,
+      ...config,
+      blacklistSync: true,
     };
   }
 
-  private getGlobalSecurityConfig(): SecurityConfig {
-    // TODO: Implement global config
-    return this.getSecurityConfig('global');
+  private async syncBlacklist(force = false): Promise<void> {
+    if (!force) {
+      const ttlExpired =
+        Date.now() - this.lastBlacklistSync > SecurityService.BLACKLIST_CACHE_TTL;
+      if (this.blacklistCache.size > 0 && !ttlExpired) {
+        return;
+      }
+    }
+
+    const activeEntries = await getDatabase()
+      .select({
+        entityType: blacklist.entityType,
+        entityId: blacklist.entityId,
+      })
+      .from(blacklist)
+      .where(eq(blacklist.active, true));
+
+    const cache = new Map<string, Set<string>>();
+    for (const entry of activeEntries) {
+      if (!cache.has(entry.entityType)) {
+        cache.set(entry.entityType, new Set());
+      }
+      cache.get(entry.entityType)!.add(entry.entityId);
+    }
+
+    this.blacklistCache = cache;
+    this.lastBlacklistSync = Date.now();
+    logger.info('Blacklist cache synchronised', { entries: activeEntries.length });
   }
 
-  private syncBlacklist(): void {
-    // TODO: Implement blacklist synchronization with external service
-    logger.info('Blacklist sync requested');
+  private addToBlacklistCache(type: string, entityId: string): void {
+    if (!this.blacklistCache.has(type)) {
+      this.blacklistCache.set(type, new Set());
+    }
+    this.blacklistCache.get(type)!.add(entityId);
   }
 }
 
