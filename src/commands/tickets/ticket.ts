@@ -9,6 +9,14 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ModalActionRowComponentBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
+  ButtonInteraction,
+  ModalSubmitInteraction,
 } from 'discord.js';
 import { Command } from '../../types/command';
 import { TicketService } from '../../services/ticketService';
@@ -16,6 +24,118 @@ import { TicketRepository } from '../../repositories/ticketRepository';
 import { t } from '../../i18n';
 // import { GuildService } from '../../services/guildService';
 import { CommandCategory } from '../../types/command';
+
+interface PanelDraft {
+  panelId: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonStyle: ButtonStyle;
+  categoryId?: string;
+  supportRoles: string[];
+  maxTicketsPerUser: number;
+  welcomeMessage?: string;
+  imageUrl?: string;
+  footer?: string;
+  ticketNameFormat?: string;
+}
+
+function getButtonStyleLabel(style: ButtonStyle): string {
+  switch (style) {
+    case ButtonStyle.Primary:
+      return t('tickets.buttonStyles.primary');
+    case ButtonStyle.Secondary:
+      return t('tickets.buttonStyles.secondary');
+    case ButtonStyle.Success:
+      return t('tickets.buttonStyles.success');
+    case ButtonStyle.Danger:
+      return t('tickets.buttonStyles.danger');
+    case ButtonStyle.Link:
+      return t('tickets.buttonStyles.link');
+    default:
+      return style.toString();
+  }
+}
+
+function buildPanelPreviewEmbed(
+  draft: PanelDraft,
+  mode: 'create' | 'edit',
+  options?: { isActive?: boolean }
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle(
+      mode === 'create' ? t('tickets.panelCreation') : t('tickets.editingPanel')
+    )
+    .setDescription(
+      mode === 'create'
+        ? t('tickets.configuringPanel', { id: draft.panelId })
+        : t('tickets.editingPanelDesc', { id: draft.panelId })
+    )
+    .setColor(mode === 'create' ? 0x00ff00 : 0x5865f2)
+    .addFields(
+      { name: t('tickets.title'), value: draft.title, inline: true },
+      { name: t('tickets.buttonLabel'), value: draft.buttonLabel, inline: true },
+      {
+        name: t('tickets.buttonStyleField'),
+        value: getButtonStyleLabel(draft.buttonStyle),
+        inline: true,
+      },
+      {
+        name: t('tickets.maxTicketsPerUser'),
+        value: draft.maxTicketsPerUser.toString(),
+        inline: true,
+      }
+    );
+
+  if (options?.isActive !== undefined) {
+    embed.addFields({
+      name: t('tickets.panelStatus'),
+      value: options.isActive ? t('tickets.panelActive') : t('tickets.panelInactive'),
+      inline: true,
+    });
+  }
+
+  if (draft.categoryId) {
+    embed.addFields({
+      name: t('tickets.categoryField'),
+      value: `<#${draft.categoryId}>`,
+      inline: true,
+    });
+  }
+
+  embed.addFields({
+    name: t('tickets.supportRolesField'),
+    value:
+      draft.supportRoles.length > 0
+        ? draft.supportRoles.map(roleId => `<@&${roleId}>`).join(', ')
+        : t('tickets.noAdditionalRoles'),
+    inline: false,
+  });
+
+  embed.addFields({
+    name: t('tickets.imageField'),
+    value: draft.imageUrl ? draft.imageUrl : t('tickets.imageNotSet'),
+    inline: false,
+  });
+
+  embed.addFields({
+    name: t('tickets.footerField'),
+    value: draft.footer ? draft.footer : t('tickets.footerNotSet'),
+    inline: false,
+  });
+
+  if (draft.welcomeMessage) {
+    embed.addFields({
+      name: t('tickets.welcomeMessageField'),
+      value: draft.welcomeMessage.length > 256
+        ? `${draft.welcomeMessage.slice(0, 253)}...`
+        : draft.welcomeMessage,
+      inline: false,
+    });
+  }
+
+  return embed;
+}
 
 export const ticket: Command = {
   category: CommandCategory.Tickets,
@@ -214,61 +334,54 @@ async function handlePanelCreate(
   const maxTickets = interaction.options.getInteger('max_tickets') || 1;
   const welcomeMessage = interaction.options.getString('welcome_message');
 
-  // Collect additional options through components
-  const embed = new EmbedBuilder()
-    .setTitle(t('tickets.panelCreation'))
-    .setDescription(t('tickets.configuringPanel', { id: panelId }))
-    .addFields([
-      { name: t('tickets.title'), value: title, inline: true },
-      { name: t('tickets.buttonLabel'), value: buttonLabel, inline: true },
-      { name: t('tickets.maxTicketsPerUser'), value: maxTickets.toString(), inline: true },
-    ])
-    .setColor(0x00ff00);
-
-  const additionalRolesButton = new ButtonBuilder()
-    .setCustomId('panel_add_roles')
-    .setLabel(t('tickets.addMoreRoles'))
-    .setStyle(ButtonStyle.Secondary);
-
-  const setImageButton = new ButtonBuilder()
-    .setCustomId('panel_set_image')
-    .setLabel(t('tickets.setImage'))
-    .setStyle(ButtonStyle.Secondary);
-
-  const setFooterButton = new ButtonBuilder()
-    .setCustomId('panel_set_footer')
-    .setLabel(t('tickets.setFooter'))
-    .setStyle(ButtonStyle.Secondary);
-
-  const confirmButton = new ButtonBuilder()
-    .setCustomId('panel_confirm')
-    .setLabel(t('tickets.confirmCreate'))
-    .setStyle(ButtonStyle.Success);
-
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    additionalRolesButton,
-    setImageButton,
-    setFooterButton,
-    confirmButton
-  );
-
-  // Store panel data temporarily
-  const panelData = {
+  const panelDraft: PanelDraft = {
     panelId,
     title,
     description,
     buttonLabel,
-    buttonStyle,
+    buttonStyle: buttonStyle as ButtonStyle,
     categoryId: category?.id,
     supportRoles: supportRole ? [supportRole.id] : [],
     maxTicketsPerUser: maxTickets,
     welcomeMessage: welcomeMessage ?? undefined,
+    imageUrl: undefined,
+    footer: undefined,
+  };
+
+  const buildComponents = () => {
+    const baseRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('panel_add_roles')
+        .setLabel(t('tickets.addMoreRoles'))
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('panel_set_image')
+        .setLabel(t('tickets.setImage'))
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('panel_set_footer')
+        .setLabel(t('tickets.setFooter'))
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('panel_confirm')
+        .setLabel(t('tickets.confirmCreate'))
+        .setStyle(ButtonStyle.Success)
+    );
+
+    return [baseRow];
   };
 
   const message = await interaction.editReply({
-    embeds: [embed],
-    components: [row],
+    embeds: [buildPanelPreviewEmbed(panelDraft, 'create')],
+    components: buildComponents(),
   });
+
+  const updatePreview = async () => {
+    await message.edit({
+      embeds: [buildPanelPreviewEmbed(panelDraft, 'create')],
+      components: buildComponents(),
+    });
+  };
 
   // Handle button interactions
   const collector = message.createMessageComponentCollector({
@@ -289,7 +402,7 @@ async function handlePanelCreate(
       case 'panel_confirm':
         try {
           await ticketService.createPanel(interaction.guild!, {
-            ...panelData,
+            ...panelDraft,
             guildId: interaction.guildId!,
           });
 
@@ -317,7 +430,184 @@ async function handlePanelCreate(
         }
         break;
 
-      // TODO: Implement additional configuration buttons
+      case 'panel_add_roles': {
+        const modalId = `panel_add_roles_${interaction.id}`;
+        const modal = new ModalBuilder()
+          .setCustomId(modalId)
+          .setTitle(t('tickets.modals.addRolesTitle'))
+          .addComponents(
+            new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('roleIds')
+                .setLabel(t('tickets.modals.addRolesLabel'))
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('123456789012345678')
+                .setRequired(false)
+            )
+          );
+
+        await buttonInteraction.showModal(modal);
+
+        let modalInteraction: ModalSubmitInteraction | null = null;
+        try {
+          modalInteraction = await buttonInteraction.awaitModalSubmit({
+            time: 300000,
+            filter: submission =>
+              submission.customId === modalId && submission.user.id === interaction.user.id,
+          });
+        } catch (error) {
+          await buttonInteraction.followUp({
+            content: t('tickets.modals.timeout'),
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const roleIdsInput = modalInteraction.fields.getTextInputValue('roleIds').trim();
+        const roleIds = roleIdsInput
+          ? Array.from(
+              new Set(
+                roleIdsInput
+                  .split(/[\s,]+/)
+                  .map(id => id.trim())
+                  .filter(id => id.length > 0)
+              )
+            )
+          : [];
+
+        if (roleIds.length === 0) {
+          await modalInteraction.reply({
+            content: t('tickets.modals.noRolesProvided'),
+            ephemeral: true,
+          });
+          return;
+        }
+
+        panelDraft.supportRoles = Array.from(
+          new Set([...panelDraft.supportRoles, ...roleIds])
+        );
+
+        await modalInteraction.reply({
+          content: t('tickets.modals.rolesAdded', { count: roleIds.length }),
+          ephemeral: true,
+        });
+
+        await updatePreview();
+        break;
+      }
+
+      case 'panel_set_image': {
+        const modalId = `panel_set_image_${interaction.id}`;
+        const modal = new ModalBuilder()
+          .setCustomId(modalId)
+          .setTitle(t('tickets.modals.imageTitle'))
+          .addComponents(
+            new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('imageUrl')
+                .setLabel(t('tickets.modals.imageLabel'))
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('https://example.com/panel.png')
+                .setRequired(false)
+                .setMaxLength(512)
+            )
+          );
+
+        await buttonInteraction.showModal(modal);
+
+        let modalInteraction: ModalSubmitInteraction | null = null;
+        try {
+          modalInteraction = await buttonInteraction.awaitModalSubmit({
+            time: 300000,
+            filter: submission =>
+              submission.customId === modalId && submission.user.id === interaction.user.id,
+          });
+        } catch (error) {
+          await buttonInteraction.followUp({
+            content: t('tickets.modals.timeout'),
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const url = modalInteraction.fields.getTextInputValue('imageUrl').trim();
+
+        if (url.length > 0) {
+          try {
+            const parsed = new URL(url);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+              throw new Error('Invalid protocol');
+            }
+            panelDraft.imageUrl = url;
+            await modalInteraction.reply({
+              content: t('tickets.modals.imageSet'),
+              ephemeral: true,
+            });
+          } catch {
+            await modalInteraction.reply({
+              content: t('tickets.errors.invalidImageUrl'),
+              ephemeral: true,
+            });
+            return;
+          }
+        } else {
+          panelDraft.imageUrl = undefined;
+          await modalInteraction.reply({
+            content: t('tickets.modals.imageCleared'),
+            ephemeral: true,
+          });
+        }
+
+        await updatePreview();
+        break;
+      }
+
+      case 'panel_set_footer': {
+        const modalId = `panel_set_footer_${interaction.id}`;
+        const modal = new ModalBuilder()
+          .setCustomId(modalId)
+          .setTitle(t('tickets.modals.footerTitle'))
+          .addComponents(
+            new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('footerText')
+                .setLabel(t('tickets.modals.footerLabel'))
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder(t('tickets.modals.footerPlaceholder'))
+                .setRequired(false)
+                .setMaxLength(256)
+            )
+          );
+
+        await buttonInteraction.showModal(modal);
+
+        let modalInteraction: ModalSubmitInteraction | null = null;
+        try {
+          modalInteraction = await buttonInteraction.awaitModalSubmit({
+            time: 300000,
+            filter: submission =>
+              submission.customId === modalId && submission.user.id === interaction.user.id,
+          });
+        } catch (error) {
+          await buttonInteraction.followUp({
+            content: t('tickets.modals.timeout'),
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const footerText = modalInteraction.fields.getTextInputValue('footerText').trim();
+        panelDraft.footer = footerText.length > 0 ? footerText : undefined;
+
+        await modalInteraction.reply({
+          content: footerText.length > 0 ? t('tickets.modals.footerSet') : t('tickets.modals.footerCleared'),
+          ephemeral: true,
+        });
+
+        await updatePreview();
+        break;
+      }
+
       default:
         await buttonInteraction.reply({
           content: t('common.featureNotImplemented'),
@@ -419,16 +709,631 @@ async function handlePanelList(
 
 async function handlePanelEdit(
   interaction: ChatInputCommandInteraction,
-  _ticketService: TicketService,
+  ticketService: TicketService,
   _locale: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
-  // const panelId = interaction.options.getString('panel_id', true);
+  const panelId = interaction.options.getString('panel_id', true);
 
-  // TODO: Implement panel editing with select menus and modals
-  await interaction.editReply({
-    content: t('common.featureNotImplemented'),
+  const panel = await ticketService.getPanel(interaction.guild!, panelId);
+  if (!panel) {
+    await interaction.editReply({
+      content: t('tickets.panelNotFound'),
+    });
+    return;
+  }
+
+  let currentPanel = panel;
+  const supportRoles = (currentPanel.supportRoles as string[]) || [];
+  const panelDraft: PanelDraft = {
+    panelId: currentPanel.panelId,
+    title: currentPanel.title,
+    description: currentPanel.description,
+    buttonLabel: currentPanel.buttonLabel,
+    buttonStyle: (currentPanel.buttonStyle as ButtonStyle) ?? ButtonStyle.Primary,
+    categoryId: currentPanel.categoryId ?? undefined,
+    supportRoles,
+    maxTicketsPerUser: currentPanel.maxTicketsPerUser ?? 1,
+    welcomeMessage: currentPanel.welcomeMessage ?? undefined,
+    imageUrl: currentPanel.imageUrl ?? undefined,
+    footer: currentPanel.footer ?? undefined,
+    ticketNameFormat: currentPanel.ticketNameFormat ?? undefined,
+  };
+
+  const selectMenuId = `panel_edit_field_${interaction.id}`;
+
+  const buildComponents = () => {
+    const selector = new StringSelectMenuBuilder()
+      .setCustomId(selectMenuId)
+      .setPlaceholder(t('tickets.selectFieldToEdit'))
+      .addOptions(
+        {
+          label: t('tickets.fields.title'),
+          value: 'title',
+        },
+        {
+          label: t('tickets.fields.description'),
+          value: 'description',
+        },
+        {
+          label: t('tickets.fields.buttonLabel'),
+          value: 'button_label',
+        },
+        {
+          label: t('tickets.fields.buttonStyle'),
+          value: 'button_style',
+        },
+        {
+          label: t('tickets.fields.supportRoles'),
+          value: 'support_roles',
+        },
+        {
+          label: t('tickets.fields.image'),
+          value: 'image',
+        },
+        {
+          label: t('tickets.fields.footer'),
+          value: 'footer',
+        },
+        {
+          label: t('tickets.fields.category'),
+          value: 'category',
+        },
+        {
+          label: t('tickets.fields.maxTickets'),
+          value: 'max_tickets',
+        },
+        {
+          label: t('tickets.fields.welcomeMessage'),
+          value: 'welcome_message',
+        }
+      );
+
+    const selectorRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selector);
+
+    const actionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('panel_edit_toggle')
+        .setLabel(
+          currentPanel.isActive ? t('tickets.deactivatePanel') : t('tickets.activatePanel')
+        )
+        .setStyle(currentPanel.isActive ? ButtonStyle.Danger : ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('panel_edit_close')
+        .setLabel(t('tickets.closeEditor'))
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    return [selectorRow, actionsRow];
+  };
+
+  const message = await interaction.editReply({
+    embeds: [buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive })],
+    components: buildComponents(),
+  });
+
+  const refreshUI = async () => {
+    await message.edit({
+      embeds: [buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive })],
+      components: buildComponents(),
+    });
+  };
+
+  const awaitModal = async (
+    component: ButtonInteraction | StringSelectMenuInteraction,
+    modal: ModalBuilder,
+    modalId: string
+  ): Promise<ModalSubmitInteraction | null> => {
+    await component.showModal(modal);
+    try {
+      const submission = await component.awaitModalSubmit({
+        time: 300000,
+        filter: interactionFilter =>
+          interactionFilter.customId === modalId &&
+          interactionFilter.user.id === interaction.user.id,
+      });
+      return submission;
+    } catch (error) {
+      if (component.isRepliable()) {
+        await (component.deferred || component.replied
+          ? component.followUp({
+              content: t('tickets.modals.timeout'),
+              ephemeral: true,
+            })
+          : component.reply({
+              content: t('tickets.modals.timeout'),
+              ephemeral: true,
+            }));
+      }
+      return null;
+    }
+  };
+
+  const collector = message.createMessageComponentCollector({
+    time: 300000,
+  });
+
+  collector.on('collect', async componentInteraction => {
+    if (componentInteraction.user.id !== interaction.user.id) {
+      if (componentInteraction.isRepliable()) {
+        await componentInteraction.reply({
+          content: t('common.notYourButton'),
+          ephemeral: true,
+        });
+      }
+      return;
+    }
+
+    if (componentInteraction.customId === selectMenuId && componentInteraction.isStringSelectMenu()) {
+      const value = componentInteraction.values[0];
+
+      switch (value) {
+        case 'title': {
+          const modalId = `panel_edit_title_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.titleTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.titleLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.title)
+                  .setMaxLength(256)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const newTitle = submission.fields.getTextInputValue('value').trim();
+          if (newTitle.length === 0) {
+            await submission.reply({
+              content: t('tickets.errors.emptyField'),
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            title: newTitle,
+          });
+          currentPanel = updated;
+          panelDraft.title = updated.title;
+
+          await submission.reply({
+            content: t('tickets.messages.titleUpdated'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'description': {
+          const modalId = `panel_edit_description_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.descriptionTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.descriptionLabel'))
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setValue(panelDraft.description)
+                  .setMaxLength(4096)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const newDescription = submission.fields.getTextInputValue('value').trim();
+          if (newDescription.length === 0) {
+            await submission.reply({
+              content: t('tickets.errors.emptyField'),
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            description: newDescription,
+          });
+          currentPanel = updated;
+          panelDraft.description = updated.description;
+
+          await submission.reply({
+            content: t('tickets.messages.descriptionUpdated'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'button_label': {
+          const modalId = `panel_edit_button_label_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.buttonLabelTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.buttonLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.buttonLabel)
+                  .setMaxLength(80)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const newLabel = submission.fields.getTextInputValue('value').trim();
+          if (newLabel.length === 0) {
+            await submission.reply({
+              content: t('tickets.errors.emptyField'),
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            buttonLabel: newLabel,
+          });
+          currentPanel = updated;
+          panelDraft.buttonLabel = updated.buttonLabel;
+
+          await submission.reply({
+            content: t('tickets.messages.buttonLabelUpdated'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'button_style': {
+          const modalId = `panel_edit_button_style_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.buttonStyleTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.buttonStyleLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setPlaceholder('primary | secondary | success | danger | link')
+                  .setRequired(true)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const input = submission.fields.getTextInputValue('value').trim().toLowerCase();
+          const styleMap: Record<string, ButtonStyle> = {
+            primary: ButtonStyle.Primary,
+            secondary: ButtonStyle.Secondary,
+            success: ButtonStyle.Success,
+            danger: ButtonStyle.Danger,
+            link: ButtonStyle.Link,
+          };
+
+          const style = styleMap[input];
+          if (!style) {
+            await submission.reply({
+              content: t('tickets.errors.invalidButtonStyle'),
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            buttonStyle: style,
+          });
+          currentPanel = updated;
+          panelDraft.buttonStyle = style;
+
+          await submission.reply({
+            content: t('tickets.messages.buttonStyleUpdated'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'support_roles': {
+          const modalId = `panel_edit_support_roles_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.supportRolesTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.supportRolesLabel'))
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setValue(panelDraft.supportRoles.join('\n'))
+                  .setRequired(false)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const text = submission.fields.getTextInputValue('value').trim();
+          const roles = text
+            ? Array.from(
+                new Set(
+                  text
+                    .split(/[\s,]+/)
+                    .map(id => id.trim())
+                    .filter(id => id.length > 0)
+                )
+              )
+            : [];
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            supportRoles: roles,
+          });
+          currentPanel = updated;
+          panelDraft.supportRoles = roles;
+
+          await submission.reply({
+            content: roles.length
+              ? t('tickets.messages.supportRolesUpdated', { count: roles.length })
+              : t('tickets.messages.supportRolesCleared'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'image': {
+          const modalId = `panel_edit_image_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.imageTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.imageLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.imageUrl ?? '')
+                  .setPlaceholder('https://example.com/panel.png')
+                  .setRequired(false)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const url = submission.fields.getTextInputValue('value').trim();
+          if (url.length > 0) {
+            try {
+              const parsed = new URL(url);
+              if (!['http:', 'https:'].includes(parsed.protocol)) {
+                throw new Error('Invalid protocol');
+              }
+            } catch {
+              await submission.reply({
+                content: t('tickets.errors.invalidImageUrl'),
+                ephemeral: true,
+              });
+              return;
+            }
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            imageUrl: url.length > 0 ? url : null,
+          });
+          currentPanel = updated;
+          panelDraft.imageUrl = url.length > 0 ? url : undefined;
+
+          await submission.reply({
+            content: url.length > 0 ? t('tickets.modals.imageSet') : t('tickets.modals.imageCleared'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'footer': {
+          const modalId = `panel_edit_footer_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.footerTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.footerLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.footer ?? '')
+                  .setRequired(false)
+                  .setMaxLength(256)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const footer = submission.fields.getTextInputValue('value').trim();
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            footer: footer.length > 0 ? footer : null,
+          });
+          currentPanel = updated;
+          panelDraft.footer = footer.length > 0 ? footer : undefined;
+
+          await submission.reply({
+            content: footer.length > 0 ? t('tickets.modals.footerSet') : t('tickets.modals.footerCleared'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'category': {
+          const modalId = `panel_edit_category_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.categoryTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.categoryLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.categoryId ?? '')
+                  .setPlaceholder(t('tickets.modals.categoryPlaceholder'))
+                  .setRequired(false)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const categoryId = submission.fields.getTextInputValue('value').trim();
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            categoryId: categoryId.length > 0 ? categoryId : null,
+          });
+          currentPanel = updated;
+          panelDraft.categoryId = categoryId.length > 0 ? categoryId : undefined;
+
+          await submission.reply({
+            content:
+              categoryId.length > 0
+                ? t('tickets.messages.categoryUpdated', { channel: `<#${categoryId}>` })
+                : t('tickets.messages.categoryCleared'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'max_tickets': {
+          const modalId = `panel_edit_max_tickets_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.maxTicketsTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.maxTicketsLabel'))
+                  .setStyle(TextInputStyle.Short)
+                  .setValue(panelDraft.maxTicketsPerUser.toString())
+                  .setRequired(true)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const parsed = Number(submission.fields.getTextInputValue('value').trim());
+          if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+            await submission.reply({
+              content: t('tickets.errors.invalidMaxTickets'),
+              ephemeral: true,
+            });
+            return;
+          }
+
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            maxTicketsPerUser: parsed,
+          });
+          currentPanel = updated;
+          panelDraft.maxTicketsPerUser = parsed;
+
+          await submission.reply({
+            content: t('tickets.messages.maxTicketsUpdated', { count: parsed }),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+
+        case 'welcome_message': {
+          const modalId = `panel_edit_welcome_${interaction.id}`;
+          const modal = new ModalBuilder()
+            .setCustomId(modalId)
+            .setTitle(t('tickets.modals.welcomeTitle'))
+            .addComponents(
+              new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+                new TextInputBuilder()
+                  .setCustomId('value')
+                  .setLabel(t('tickets.modals.welcomeLabel'))
+                  .setStyle(TextInputStyle.Paragraph)
+                  .setValue(panelDraft.welcomeMessage ?? '')
+                  .setRequired(false)
+                  .setMaxLength(1024)
+              )
+            );
+
+          const submission = await awaitModal(componentInteraction, modal, modalId);
+          if (!submission) return;
+
+          const welcome = submission.fields.getTextInputValue('value').trim();
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            welcomeMessage: welcome.length > 0 ? welcome : null,
+          });
+          currentPanel = updated;
+          panelDraft.welcomeMessage = welcome.length > 0 ? welcome : undefined;
+
+          await submission.reply({
+            content:
+              welcome.length > 0
+                ? t('tickets.messages.welcomeUpdated')
+                : t('tickets.messages.welcomeCleared'),
+            ephemeral: true,
+          });
+          await refreshUI();
+          break;
+        }
+      }
+      return;
+    }
+
+    if (componentInteraction.isButton()) {
+      switch (componentInteraction.customId) {
+        case 'panel_edit_toggle': {
+          await componentInteraction.deferReply({ ephemeral: true });
+          const updated = await ticketService.updatePanel(interaction.guild!, panelDraft.panelId, {
+            isActive: !currentPanel.isActive,
+          });
+          currentPanel = updated;
+          await componentInteraction.editReply({
+            content: updated.isActive
+              ? t('tickets.messages.panelActivated')
+              : t('tickets.messages.panelDeactivated'),
+          });
+          await refreshUI();
+          break;
+        }
+        case 'panel_edit_close': {
+          collector.stop('closed');
+          await componentInteraction.update({
+            embeds: [buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive })],
+            components: [],
+          });
+          break;
+        }
+      }
+    }
+  });
+
+  collector.on('end', async (_collected, reason) => {
+    if (reason !== 'closed') {
+      await interaction.editReply({
+        embeds: [buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive })],
+        components: [],
+      });
+    }
   });
 }
 

@@ -7,15 +7,18 @@ export interface TicketPanelData {
   panelId: string;
   title: string;
   description: string;
-  imageUrl?: string;
-  footer?: string;
+  imageUrl?: string | null;
+  footer?: string | null;
   buttonLabel?: string;
   buttonStyle?: number;
   supportRoles?: string[];
-  categoryId?: string;
+  categoryId?: string | null;
   ticketNameFormat?: string;
   maxTicketsPerUser?: number;
-  welcomeMessage?: string;
+  welcomeMessage?: string | null;
+  isActive?: boolean;
+  messageId?: string;
+  channelId?: string;
 }
 
 export interface TicketData {

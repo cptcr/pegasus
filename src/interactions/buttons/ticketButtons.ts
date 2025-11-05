@@ -1,4 +1,16 @@
-import { ButtonInteraction, TextChannel, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import {
+  ButtonInteraction,
+  TextChannel,
+  PermissionFlagsBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  ActionRow,
+  MessageActionRowComponent,
+  ButtonComponent,
+} from 'discord.js';
 import { TicketService } from '../../services/ticketService';
 import { TicketRepository } from '../../repositories/ticketRepository';
 import { GuildService } from '../../services/guildService';
@@ -188,9 +200,35 @@ async function handleTicketLock(
 
     await interaction.editReply({ embeds: [embed] });
 
-    // Update button to unlock
-    // const components = interaction.message.components;
-    // TODO: Update button state
+    const originalMessage = interaction.message;
+    if (originalMessage.editable) {
+      const actionRows = originalMessage.components as ActionRow<MessageActionRowComponent>[];
+
+      const updatedRows = actionRows
+        .map(row => {
+          const newRow = new ActionRowBuilder<ButtonBuilder>();
+
+          for (const component of row.components) {
+            if (component.type !== ComponentType.Button) {
+              continue;
+            }
+
+            const buttonComponent = component as ButtonComponent;
+            const button = ButtonBuilder.from(buttonComponent);
+            if (buttonComponent.customId === `ticket_lock:${ticketId}`) {
+              button.setDisabled(true).setStyle(ButtonStyle.Secondary);
+            }
+            newRow.addComponents(button);
+          }
+
+          return newRow;
+        })
+        .filter(row => row.components.length > 0);
+
+      if (updatedRows.length > 0) {
+        await originalMessage.edit({ components: updatedRows });
+      }
+    }
   } catch (error: any) {
     await interaction.editReply({
       content: t('common.error', { error: error.message }),

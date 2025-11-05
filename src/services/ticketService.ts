@@ -39,6 +39,18 @@ export class TicketService {
     });
   }
 
+  async getPanel(guild: Guild, panelId: string) {
+    return await this.ticketRepository.getPanel(panelId, guild.id);
+  }
+
+  async updatePanel(guild: Guild, panelId: string, updates: Partial<TicketPanelData>) {
+    const updated = await this.ticketRepository.updatePanel(panelId, guild.id, updates);
+    if (!updated) {
+      throw new Error('Panel not found');
+    }
+    return updated;
+  }
+
   async loadPanel(guild: Guild, panelId: string, channel: TextChannel, _locale: string) {
     const panel = await this.ticketRepository.getPanel(panelId, guild.id);
     if (!panel) {
