@@ -1,5 +1,8 @@
--- Create blacklist table
-CREATE TABLE IF NOT EXISTS blacklist (
+-- Legacy cleanup: drop outdated blacklist table if it exists with deprecated columns
+DROP TABLE IF EXISTS blacklist CASCADE;
+
+-- Recreate blacklist table with normalized schema
+CREATE TABLE blacklist (
   id SERIAL PRIMARY KEY,
   user_id VARCHAR(20) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   guild_id VARCHAR(20) NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,

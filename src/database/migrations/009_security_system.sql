@@ -10,11 +10,11 @@ CREATE TABLE IF NOT EXISTS security_logs (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_security_logs_guild ON security_logs(guild_id);
-CREATE INDEX idx_security_logs_user ON security_logs(user_id);
-CREATE INDEX idx_security_logs_action ON security_logs(action);
-CREATE INDEX idx_security_logs_severity ON security_logs(severity);
-CREATE INDEX idx_security_logs_created_at ON security_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_security_logs_guild ON security_logs(guild_id);
+CREATE INDEX IF NOT EXISTS idx_security_logs_user ON security_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_logs_action ON security_logs(action);
+CREATE INDEX IF NOT EXISTS idx_security_logs_severity ON security_logs(severity);
+CREATE INDEX IF NOT EXISTS idx_security_logs_created_at ON security_logs(created_at);
 
 -- Blacklist table
 CREATE TABLE IF NOT EXISTS blacklist (
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS blacklist (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idx_blacklist_entity ON blacklist(entity_type, entity_id);
-CREATE INDEX idx_blacklist_active ON blacklist(active);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_blacklist_entity ON blacklist(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_blacklist_active ON blacklist(active);
 
 -- Enhanced audit logs table
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -120,14 +120,34 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_blacklist_updated_at BEFORE UPDATE ON blacklist
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_blacklist_updated_at'
+    ) THEN
+        CREATE TRIGGER update_blacklist_updated_at BEFORE UPDATE ON blacklist
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-CREATE TRIGGER update_rate_limit_violations_updated_at BEFORE UPDATE ON rate_limit_violations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_rate_limit_violations_updated_at'
+    ) THEN
+        CREATE TRIGGER update_rate_limit_violations_updated_at BEFORE UPDATE ON rate_limit_violations
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-CREATE TRIGGER update_security_incidents_updated_at BEFORE UPDATE ON security_incidents
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_security_incidents_updated_at'
+    ) THEN
+        CREATE TRIGGER update_security_incidents_updated_at BEFORE UPDATE ON security_incidents
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-CREATE TRIGGER update_api_keys_updated_at BEFORE UPDATE ON api_keys
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_api_keys_updated_at'
+    ) THEN
+        CREATE TRIGGER update_api_keys_updated_at BEFORE UPDATE ON api_keys
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
