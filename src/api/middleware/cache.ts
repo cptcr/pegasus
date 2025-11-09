@@ -129,7 +129,19 @@ class CacheManager {
    */
   invalidatePattern(pattern: string): number {
     let deletedCount = 0;
-    const regex = new RegExp(pattern);
+    const safePattern = this.buildSafePattern(pattern);
+
+    if (!safePattern) {
+      return 0;
+    }
+
+    let regex: RegExp;
+    try {
+      regex = new RegExp(safePattern);
+    } catch (error) {
+      logger.warn(`Failed to compile cache invalidation pattern "${pattern}": ${error}`);
+      return 0;
+    }
 
     for (const key of this.cache.keys()) {
       if (regex.test(key)) {
@@ -144,6 +156,30 @@ class CacheManager {
     }
 
     return deletedCount;
+  }
+
+  /**
+   * Build a safe regular expression from user-supplied patterns.
+   * Supports "*" wildcard while escaping all other special characters.
+   */
+  private buildSafePattern(pattern: string): string | null {
+    if (!pattern) {
+      return null;
+    }
+
+    const trimmed = pattern.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    // Limit length to prevent runaway expressions
+    const limited = trimmed.slice(0, 256);
+
+    const placeholder = '__WILDCARD__';
+    const withPlaceholder = limited.replace(/\*/g, placeholder);
+    const escaped = withPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    return escaped.replace(new RegExp(placeholder, 'g'), '.*');
   }
 
   /**

@@ -178,6 +178,27 @@ const EnvSchema = z.object({
   API_PORT: z.coerce.number().min(1024).max(65535).default(2000),
   BOT_API_TOKEN: z.string().min(20, 'API token must be at least 20 characters'),
   API_TOKEN: z.string().min(20, 'API token must be at least 20 characters'),
+  API_ALLOWED_ORIGINS: z
+    .string()
+    .optional()
+    .transform(value => {
+      if (!value) {
+        return [] as string[];
+      }
+
+      const normalize = (origin: string) => origin.trim();
+
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        const origins = z.array(z.string()).parse(parsed);
+        return origins.map(normalize).filter(Boolean);
+      } catch {
+        return value
+          .split(',')
+          .map(normalize)
+          .filter(Boolean);
+      }
+    }),
 });
 
 type EnvConfig = z.infer<typeof EnvSchema>;

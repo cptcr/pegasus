@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -7,11 +7,11 @@ export function generateId(length: number): string {
     throw new Error('Length must be greater than zero');
   }
 
-  const bytes = randomBytes(length);
   let id = '';
+  const alphabetLength = ALPHABET.length;
 
   for (let i = 0; i < length; i++) {
-    const index = bytes[i] % ALPHABET.length;
+    const index = randomInt(alphabetLength);
     id += ALPHABET[index];
   }
 

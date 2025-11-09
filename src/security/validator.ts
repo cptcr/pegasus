@@ -291,19 +291,105 @@ export class Validator {
    * Validates regex pattern safety (prevents ReDoS)
    */
   static isRegexSafe(pattern: string, maxLength: number = 100): boolean {
-    if (pattern.length > maxLength) {
+    if (!pattern || pattern.length > maxLength) {
       return false;
     }
 
-    // Check for dangerous patterns
-    const dangerousPatterns = [
-      /(\w+\+)+/, // Nested quantifiers
-      /(\S+\*)+/, // Nested quantifiers
-      /(a+)+b/, // Catastrophic backtracking
-      /(\d+)+\w/, // Nested quantifiers with digits
-    ];
+    if (this.containsNestedQuantifiers(pattern)) {
+      return false;
+    }
 
-    return !dangerousPatterns.some(dangerous => pattern.match(dangerous));
+    if (this.hasExcessiveWildcards(pattern)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private static containsNestedQuantifiers(pattern: string): boolean {
+    const quantifierStack: boolean[] = [];
+
+    for (let i = 0; i < pattern.length; i++) {
+      const char = pattern[i];
+
+      if (char === '\\') {
+        i++;
+        continue;
+      }
+
+      if (char === '(' && pattern[i + 1] !== '?') {
+        quantifierStack.push(false);
+        continue;
+      }
+
+      if (char === ')') {
+        const hadInnerQuantifier = quantifierStack.pop() ?? false;
+        if (hadInnerQuantifier) {
+          const nextChar = pattern[i + 1];
+          if (nextChar && this.isQuantifier(nextChar)) {
+            return true;
+          }
+        }
+        continue;
+      }
+
+      if (this.isQuantifier(char) && quantifierStack.length > 0) {
+        if (quantifierStack[quantifierStack.length - 1]) {
+          return true;
+        }
+        quantifierStack[quantifierStack.length - 1] = true;
+        continue;
+      }
+
+      if (char === '{') {
+        const closing = pattern.indexOf('}', i);
+        if (closing === -1 || closing - i > 6) {
+          return true;
+        }
+
+        const quantifier = pattern.slice(i + 1, closing);
+        const parts = quantifier.split(',').map(part => part.trim());
+        if (
+          parts.length === 0 ||
+          parts.length > 2 ||
+          parts.some(part => part === '' || Number.isNaN(Number(part)))
+        ) {
+          return true;
+        }
+
+        if (quantifierStack.length > 0) {
+          if (quantifierStack[quantifierStack.length - 1]) {
+            return true;
+          }
+          quantifierStack[quantifierStack.length - 1] = true;
+        }
+
+        i = closing;
+      }
+    }
+
+    return false;
+  }
+
+  private static hasExcessiveWildcards(pattern: string): boolean {
+    let wildcardsInRow = 0;
+
+    for (let i = 0; i < pattern.length - 1; i++) {
+      if (pattern[i] === '.' && pattern[i + 1] === '*') {
+        wildcardsInRow++;
+        if (wildcardsInRow >= 3) {
+          return true;
+        }
+      } else if (pattern[i] !== '*') {
+        wildcardsInRow = 0;
+      }
+    }
+
+    return false;
+  }
+
+  private static isQuantifier(char: string): boolean {
+    return char === '+' || char === '*' || char === '?';
   }
 }
 

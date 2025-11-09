@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EnhancedSanitizer } from '../utils/sanitizer';
 
 // ===========================
 // COMMON VALIDATION SCHEMAS
@@ -608,26 +609,15 @@ export class SchemaValidator {
    * Sanitizes and validates user input
    */
   static sanitizeInput(input: string, maxLength = 2000): string {
-    // Remove zero-width characters
-    let sanitized = input.replace(/[\u200B-\u200D\uFEFF]/g, '');
-
-    // Remove potential script tags
-    sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gi, '');
-
-    // Escape HTML entities
-    sanitized = sanitized
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
-
-    // Truncate if needed
-    if (sanitized.length > maxLength) {
-      sanitized = `${sanitized.substring(0, maxLength - 3)}...`;
-    }
-
-    return sanitized;
+    return EnhancedSanitizer.sanitize(input, {
+      maxLength,
+      removeUnicode: true,
+      escapeMentions: true,
+      escapeMarkdown: true,
+      normalizeWhitespace: true,
+      filterUrls: true,
+      escapeHtml: true,
+    });
   }
 
   /**

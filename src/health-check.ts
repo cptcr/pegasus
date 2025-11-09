@@ -27,6 +27,20 @@ interface HealthStatus {
   errors: string[];
 }
 
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return 'Unknown error';
+  }
+}
+
 async function performHealthCheck(): Promise<HealthStatus> {
   const errors: string[] = [];
   const checks = {
@@ -44,7 +58,7 @@ async function performHealthCheck(): Promise<HealthStatus> {
       .limit(1);
     checks.database = true;
   } catch (error) {
-    errors.push(`Database check failed: ${error}`);
+    errors.push(`Database check failed: ${formatErrorMessage(error)}`);
   }
 
   // Check Discord connectivity
@@ -76,7 +90,7 @@ async function performHealthCheck(): Promise<HealthStatus> {
 
     checks.discord = true;
   } catch (error) {
-    errors.push(`Discord check failed: ${error}`);
+    errors.push(`Discord check failed: ${formatErrorMessage(error)}`);
   }
 
   // Check memory usage
@@ -151,7 +165,7 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({
           status: 'unhealthy',
-          error: String(error),
+          error: formatErrorMessage(error),
           timestamp: new Date(),
         })
       );

@@ -49,7 +49,6 @@ export class EnhancedSanitizer {
     rtlOverride: /[\u202A-\u202E\u2066-\u2069]/g,
 
     // XSS patterns
-    scriptTag: /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
     onEvent: /\bon\w+\s*=\s*["'][^"']*["']/gi,
     javascript: /javascript:/gi,
     dataUri: /data:(?!image\/(?:png|jpg|jpeg|gif|webp|svg\+xml))/gi,

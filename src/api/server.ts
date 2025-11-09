@@ -21,9 +21,53 @@ import { statsAggregator } from './services/statsAggregator';
 const app = express();
 const PORT = config.API_PORT || 2000;
 
+const normalizeOrigin = (origin: string): string | null => {
+  try {
+    const parsed = new URL(origin);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+};
+
+const allowedOriginsSet = new Set<string>(
+  (config.API_ALLOWED_ORIGINS ?? [])
+    .map(origin => normalizeOrigin(origin))
+    .filter((origin): origin is string => Boolean(origin))
+);
+
+if (config.DASHBOARD_BASE_URL) {
+  const normalizedDashboardOrigin = normalizeOrigin(config.DASHBOARD_BASE_URL);
+  if (normalizedDashboardOrigin) {
+    allowedOriginsSet.add(normalizedDashboardOrigin);
+  }
+}
+
+if (config.NODE_ENV === 'development') {
+  allowedOriginsSet.add('http://localhost:3000');
+  allowedOriginsSet.add('http://127.0.0.1:3000');
+}
+
+if (allowedOriginsSet.size === 0) {
+  logger.warn('No API_ALLOWED_ORIGINS configured; browser-based requests will be blocked by CORS.');
+}
+
 // CORS configuration
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const normalized = normalizeOrigin(origin);
+    if (normalized && allowedOriginsSet.has(normalized)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Origin not allowed by CORS policy'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -125,37 +169,37 @@ app.use('/guilds',
 // Management API routes (mutations - invalidate cache)
 app.use('/economy',
   authenticateToken,
-  invalidateCache(() => `.*economy.*`),
+  invalidateCache(() => `*economy*`),
   economyRouter
 );
 
 app.use('/moderation',
   authenticateToken,
-  invalidateCache(() => `.*moderation.*`),
+  invalidateCache(() => `*moderation*`),
   moderationRouter
 );
 
 app.use('/xp',
   authenticateToken,
-  invalidateCache(() => `.*xp.*`),
+  invalidateCache(() => `*xp*`),
   xpRouter
 );
 
 app.use('/tickets',
   authenticateToken,
-  invalidateCache(() => `.*tickets.*`),
+  invalidateCache(() => `*tickets*`),
   ticketsRouter
 );
 
 app.use('/giveaways',
   authenticateToken,
-  invalidateCache(() => `.*giveaways.*`),
+  invalidateCache(() => `*giveaways*`),
   giveawaysRouter
 );
 
 app.use('/settings',
   authenticateToken,
-  invalidateCache(() => `.*settings.*`),
+  invalidateCache(() => `*settings*`),
   settingsRouter
 );
 
