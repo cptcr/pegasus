@@ -12,6 +12,7 @@ import {
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { warningService } from '../../services/warningService';
+import type { WarningAction } from '../../services/warningService';
 import { warningRepository } from '../../repositories/warningRepository';
 import {
   createLocalizationMap,
@@ -125,6 +126,26 @@ export const data = new SlashCommandBuilder()
           .setDescription('Create a warning automation')
           .setDescriptionLocalizations(
             createLocalizationMap(subcommandDescriptions.warn.automation.create)
+          )
+          .addStringOption(option =>
+            option
+              .setName('trigger_type')
+              .setDescription('When this automation should trigger')
+              .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.triggerType))
+              .setRequired(true)
+              .addChoices(
+                { name: 'Warn Count', value: 'warn_count' },
+                { name: 'Warn Level', value: 'warn_level' }
+              )
+          )
+          .addIntegerOption(option =>
+            option
+              .setName('trigger_value')
+              .setDescription('Threshold that triggers the automation')
+              .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.triggerValue))
+              .setRequired(true)
+              .setMinValue(1)
+              .setMaxValue(100)
           )
       )
       .addSubcommand(subcommand =>
@@ -441,8 +462,13 @@ async function handleWarnView(interaction: ChatInputCommandInteraction): Promise
 }
 
 async function handleAutomationCreate(interaction: ChatInputCommandInteraction): Promise<any> {
+  const triggerType = interaction.options.getString('trigger_type', true) as
+    | 'warn_count'
+    | 'warn_level';
+  const triggerValue = interaction.options.getInteger('trigger_value', true);
+
   const modal = new ModalBuilder()
-    .setCustomId('warn_automation_create')
+    .setCustomId(`warn_automation_create:${triggerType}:${triggerValue}`)
     .setTitle(t('commands.warn.subcommands.automation.create.modal.title'));
 
   const nameInput = new TextInputBuilder()
@@ -459,33 +485,26 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
     .setRequired(false)
     .setMaxLength(1000);
 
-  const triggerTypeInput = new TextInputBuilder()
-    .setCustomId('triggerType')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.triggerType'))
+  const actionInput = new TextInputBuilder()
+    .setCustomId('action')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.action'))
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
-    .setPlaceholder('warn_count or warn_level');
+    .setPlaceholder('1d Timeout, 1w Timeout, kick, ban, sendMessageOnly');
 
-  const triggerValueInput = new TextInputBuilder()
-    .setCustomId('triggerValue')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.triggerValue'))
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setPlaceholder('5');
-
-  const actionsInput = new TextInputBuilder()
-    .setCustomId('actions')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.actions'))
+  const messageInput = new TextInputBuilder()
+    .setCustomId('message')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.message'))
     .setStyle(TextInputStyle.Paragraph)
-    .setRequired(true)
-    .setPlaceholder('[{"type":"ban"},{"type":"message","message":"You have been banned"}]');
+    .setRequired(false)
+    .setMaxLength(1000)
+    .setPlaceholder('Optional message sent to the user when this triggers');
 
   const rows = [
     new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(nameInput),
     new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(triggerTypeInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(triggerValueInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(actionsInput),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(actionInput),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(messageInput),
   ];
 
   modal.addComponents(...rows);
@@ -510,7 +529,9 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
 
   for (const automation of automations) {
     const triggerText = `${automation.triggerType === 'warn_count' ? 'Count' : 'Level'} >= ${automation.triggerValue}`;
-    const actionsText = (automation.actions as any[]).map(a => a.type).join(', ');
+    const actionsText = (automation.actions as WarningAction[])
+      .map(action => formatAutomationAction(action))
+      .join(', ');
     const statusText = automation.enabled ? t('common.enabled') : t('common.disabled');
     const lastTriggered = automation.lastTriggeredAt
       ? `<t:${Math.floor(automation.lastTriggeredAt.getTime() / 1000)}:R>`
@@ -550,4 +571,45 @@ async function handleAutomationDelete(interaction: ChatInputCommandInteraction):
   await interaction.editReply({
     content: t('commands.warn.subcommands.automation.delete.success', { automationId }),
   });
+}
+
+function formatAutomationAction(action: WarningAction): string {
+  switch (action.type) {
+    case 'ban':
+      return 'Ban';
+    case 'kick':
+      return 'Kick';
+    case 'timeout':
+      return action.duration ? `Timeout (${formatAutomationDuration(action.duration)})` : 'Timeout';
+    case 'mute':
+      return action.duration ? `Mute (${formatAutomationDuration(action.duration)})` : 'Mute';
+    case 'message':
+      return 'Send Message';
+    case 'role':
+      return 'Role Action';
+    default:
+      return action.type;
+  }
+}
+
+function formatAutomationDuration(minutes?: number): string {
+  if (!minutes || Number.isNaN(minutes)) {
+    return 'N/A';
+  }
+
+  if (minutes % (60 * 24 * 7) === 0) {
+    const weeks = minutes / (60 * 24 * 7);
+    return `${weeks}w`;
+  }
+
+  if (minutes % (60 * 24) === 0) {
+    const days = minutes / (60 * 24);
+    return `${days}d`;
+  }
+
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`;
+  }
+
+  return `${minutes}m`;
 }

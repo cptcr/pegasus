@@ -17,6 +17,7 @@
     "enabled": "Activé",
     "disabled": "Désactivé",
     "none": "Aucun",
+    "unknown": "Inconnu",
     "noReasonProvided": "Aucune raison fournie",
     "seconds": "secondes",
     "hours": "heures",
@@ -368,10 +369,14 @@
               "description": "Description de l'automatisation",
               "triggerType": "Type de déclencheur (warn_count ou warn_level)",
               "triggerValue": "Valeur du déclencheur",
-              "actions": "Actions (format JSON)"
+              "action": "Action d'automatisation (1d Timeout, 1w Timeout, kick, ban, sendMessageOnly)",
+              "message": "Message à envoyer (optionnel)"
             },
             "success": "Automatisation {{name}} créée avec succès",
-            "invalidJson": "Format JSON invalide pour les actions"
+            "invalidJson": "Format JSON invalide pour les actions",
+            "invalidAction": "Action invalide. Choisissez : 1d Timeout, 1w Timeout, kick, ban, sendMessageOnly",
+            "messageRequired": "Un message est requis avec l'action sendMessageOnly",
+            "missingTrigger": "Configuration du déclencheur manquante. Veuillez relancer /warn automation create."
           },
           "view": {
             "description": "Voir toutes les automatisations d'avertissements",
@@ -405,6 +410,7 @@
       "ban": "Bannir l'utilisateur",
       "kick": "Expulser l'utilisateur",
       "mute": "Rendre muet ({{duration}}m)",
+      "timeout": "Timeout ({{duration}})",
       "view": "Voir les avertissements"
     },
     "embed": {

@@ -75,6 +75,25 @@ async function handleWarningAction(
         });
         break;
 
+      case 'timeout': {
+        const durationMinutes = parseInt(params[1]) || 60;
+        const durationMs = durationMinutes * 60 * 1000;
+
+        if (!member.moderatable) {
+          await interaction.editReply({
+            content: 'I cannot timeout this member.',
+          });
+          return;
+        }
+
+        await member.timeout(durationMs, 'Warning threshold reached');
+
+        await interaction.editReply({
+          content: `Timed out ${member.user.tag} for ${formatActionDuration(durationMinutes)}`,
+        });
+        break;
+      }
+
       case 'mute':
         const duration = parseInt(params[1]) || 60; // Default 60 minutes
         const muteRole = interaction.guild!.roles.cache.find(r => r.name.toLowerCase() === 'muted');
@@ -132,6 +151,28 @@ async function handleWarningAction(
     });
   }
 }
+
+const formatActionDuration = (minutes: number) => {
+  if (!minutes || Number.isNaN(minutes)) {
+    return 'unknown duration';
+  }
+
+  if (minutes % (60 * 24 * 7) === 0) {
+    const weeks = minutes / (60 * 24 * 7);
+    return `${weeks}w`;
+  }
+
+  if (minutes % (60 * 24) === 0) {
+    const days = minutes / (60 * 24);
+    return `${days}d`;
+  }
+
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`;
+  }
+
+  return `${minutes}m`;
+};
 
 async function handleWarningView(interaction: ButtonInteraction, userId: string) {
   await interaction.deferReply({ ephemeral: true });

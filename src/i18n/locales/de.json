@@ -17,6 +17,7 @@
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
     "none": "Keine",
+    "unknown": "Unbekannt",
     "noReasonProvided": "Kein Grund angegeben",
     "seconds": "Sekunden",
     "hours": "Stunden",
@@ -368,10 +369,14 @@
               "description": "Automatisierungsbeschreibung",
               "triggerType": "Auslösertyp (warn_count oder warn_level)",
               "triggerValue": "Auslöserwert",
-              "actions": "Aktionen (JSON-Format)"
+              "action": "Automatisierungsaktion (1d Timeout, 1w Timeout, Kick, Ban, sendMessageOnly)",
+              "message": "Zu sendende Nachricht (optional)"
             },
             "success": "Automatisierung {{name}} erfolgreich erstellt",
-            "invalidJson": "Ungültiges JSON-Format für Aktionen"
+            "invalidJson": "Ungültiges JSON-Format für Aktionen",
+            "invalidAction": "Ungültige Aktion. Wähle: 1d Timeout, 1w Timeout, Kick, Ban, sendMessageOnly",
+            "messageRequired": "Für sendMessageOnly ist eine Nachricht erforderlich",
+            "missingTrigger": "Trigger-Konfiguration fehlt. Bitte /warn automation create erneut ausführen."
           },
           "view": {
             "description": "Alle Verwarnungsautomatisierungen anzeigen",
@@ -405,6 +410,7 @@
       "ban": "Benutzer bannen",
       "kick": "Benutzer kicken",
       "mute": "Stummschalten ({{duration}}m)",
+      "timeout": "Timeout ({{duration}})",
       "view": "Verwarnungen anzeigen"
     },
     "embed": {

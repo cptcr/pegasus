@@ -23,6 +23,7 @@ import { handleXPButtons } from '../interactions/buttons/xpButtons';
 import { handleXPModals } from '../interactions/modals/xpModals';
 import { handleGiveawayModals } from '../interactions/modals/giveawayModals';
 import { handleGiveawayButtons } from '../interactions/buttons/giveawayButtons';
+import { handleWordFilterActionButtons } from '../interactions/buttons/wordFilterActions';
 import { securityMiddleware } from '../security/middleware';
 import { SecurityErrorHandler } from '../security/errors';
 
@@ -152,6 +153,11 @@ async function handleButton(interaction: ButtonInteraction) {
     // Handle config buttons
     if (interaction.customId.startsWith('config_')) {
       await handleConfigButton(interaction);
+      return;
+    }
+
+    if (interaction.customId.startsWith('filter_action|')) {
+      await handleWordFilterActionButtons(interaction);
       return;
     }
 

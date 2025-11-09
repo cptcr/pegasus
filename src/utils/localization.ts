@@ -283,4 +283,16 @@ export const optionDescriptions = {
     es: 'Duración de la acción',
     fr: "Durée de l'action",
   },
+  triggerType: {
+    en: 'Trigger type for this automation',
+    de: 'Auslöser-Typ für diese Automatisierung',
+    es: 'Tipo de disparador para esta automatización',
+    fr: "Type de déclencheur pour cette automatisation",
+  },
+  triggerValue: {
+    en: 'Value at which the automation triggers',
+    de: 'Wert, bei dem die Automatisierung auslöst',
+    es: 'Valor en el que se activa la automatización',
+    fr: 'Valeur à laquelle l’automatisation se déclenche',
+  },
 };

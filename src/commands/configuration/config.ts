@@ -12,7 +12,36 @@ import {
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
 import { configurationService } from '../../services/configurationService';
+import { modLogService } from '../../services/modLogService';
+import type { ModLogCategory } from '../../types';
 import { logger } from '../../utils/logger';
+
+const MOD_LOG_CATEGORIES: Array<{
+  key: ModLogCategory;
+  nameKey: string;
+  descriptionKey: string;
+}> = [
+  {
+    key: 'message',
+    nameKey: 'config.modlogs.categories.message.name',
+    descriptionKey: 'config.modlogs.categories.message.description',
+  },
+  {
+    key: 'member',
+    nameKey: 'config.modlogs.categories.member.name',
+    descriptionKey: 'config.modlogs.categories.member.description',
+  },
+  {
+    key: 'moderation',
+    nameKey: 'config.modlogs.categories.moderation.name',
+    descriptionKey: 'config.modlogs.categories.moderation.description',
+  },
+  {
+    key: 'wordFilter',
+    nameKey: 'config.modlogs.categories.wordFilter.name',
+    descriptionKey: 'config.modlogs.categories.wordFilter.description',
+  },
+];
 
 export const data = new SlashCommandBuilder()
   .setName('config')
@@ -55,6 +84,11 @@ export const data = new SlashCommandBuilder()
     subcommand
       .setName('goodbye')
       .setDescription(t('commands.config.subcommands.goodbye.description'))
+  )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('modlogs')
+      .setDescription(t('commands.config.subcommands.modlogs.description'))
   );
 
 export const category = CommandCategory.Admin;
@@ -79,12 +113,96 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     case 'lang':
       return handleLangConfig(interaction);
     case 'welcome':
-      return handleWelcomeConfig(interaction);
-    case 'autorole':
-      return handleAutoroleConfig(interaction);
-    case 'goodbye':
-      return handleGoodbyeConfig(interaction);
+    return handleWelcomeConfig(interaction);
+  case 'autorole':
+    return handleAutoroleConfig(interaction);
+  case 'goodbye':
+    return handleGoodbyeConfig(interaction);
+  case 'modlogs':
+    return handleModLogsConfig(interaction);
   }
+}
+
+async function handleModLogsConfig(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    const response = await buildModLogsConfigResponse(interaction.guild!.id);
+    await interaction.editReply(response);
+  } catch (error) {
+    logger.error('Error in mod logs config:', error);
+    await interaction.editReply({
+      content: t('common.error'),
+    });
+  }
+}
+
+export async function buildModLogsConfigResponse(guildId: string) {
+  const settings = await modLogService.getSettings(guildId);
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(t('config.modlogs.embed.title'))
+    .setDescription(t('config.modlogs.embed.description'))
+    .setTimestamp();
+
+  for (const category of MOD_LOG_CATEGORIES) {
+    const setting = settings.get(category.key);
+    const status = setting?.enabled ? t('common.enabled') : t('common.disabled');
+    const channelMention = setting?.channelId ? `<#${setting.channelId}>` : t('common.none');
+    const description = t(category.descriptionKey);
+    const statusLine = t('config.modlogs.embed.status', { status });
+    const channelLine = t('config.modlogs.embed.channel', { channel: channelMention });
+
+    embed.addFields({
+      name: t(category.nameKey),
+      value: `${description}\n${statusLine}\n${channelLine}`,
+      inline: false,
+    });
+  }
+
+  const components: Array<
+    ActionRowBuilder<ChannelSelectMenuBuilder> | ActionRowBuilder<ButtonBuilder>
+  > = [];
+
+  for (const category of MOD_LOG_CATEGORIES) {
+    const select = new ChannelSelectMenuBuilder()
+      .setCustomId(`config_modlogs_select_${category.key}`)
+      .setPlaceholder(
+        t('config.modlogs.select.placeholder', { category: t(category.nameKey) })
+      )
+      .setMinValues(1)
+      .setMaxValues(1);
+
+    components.push(new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select));
+  }
+
+  const toggleRow = new ActionRowBuilder<ButtonBuilder>();
+
+  for (const category of MOD_LOG_CATEGORIES) {
+    const setting = settings.get(category.key);
+    const labelKey = setting?.enabled
+      ? 'config.modlogs.buttons.disable'
+      : 'config.modlogs.buttons.enable';
+    const label = t(labelKey, { category: t(category.nameKey) });
+
+    toggleRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`config_modlogs_toggle_${category.key}`)
+        .setLabel(label)
+        .setStyle(setting?.enabled ? ButtonStyle.Danger : ButtonStyle.Success)
+        .setDisabled(!setting)
+    );
+  }
+
+  if (toggleRow.components.length > 0) {
+    components.push(toggleRow);
+  }
+
+  return {
+    embeds: [embed],
+    components,
+  };
 }
 
 async function handleXPConfig(interaction: ChatInputCommandInteraction) {

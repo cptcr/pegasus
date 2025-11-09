@@ -51,6 +51,44 @@ export interface GuildSettings {
   updatedAt: Date;
 }
 
+export type ModLogCategory = 'message' | 'member' | 'moderation' | 'wordFilter';
+
+export interface ModLogSetting {
+  id: number;
+  guildId: string;
+  category: ModLogCategory;
+  channelId: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type WordFilterMatchType = 'literal' | 'regex';
+export type WordFilterSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type WordFilterActionType = 'warn' | 'timeout' | 'kick' | 'ban' | 'delete' | 'note';
+
+export interface WordFilterActionConfig {
+  type: WordFilterActionType;
+  durationSeconds?: number;
+  reason?: string;
+}
+
+export interface WordFilterRule {
+  id: number;
+  guildId: string;
+  pattern: string;
+  matchType: WordFilterMatchType;
+  caseSensitive: boolean;
+  wholeWord: boolean;
+  severity: WordFilterSeverity;
+  autoDelete: boolean;
+  notifyChannelId?: string;
+  actions: WordFilterActionConfig[];
+  createdBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ModCase {
   id: number;
   guildId: string;

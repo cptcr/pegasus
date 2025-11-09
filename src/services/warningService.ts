@@ -14,11 +14,33 @@ import { t } from '../i18n';
 import { ensureUserAndGuildExist } from '../utils/userUtils';
 
 export interface WarningAction {
-  type: 'ban' | 'kick' | 'mute' | 'role' | 'message';
+  type: 'ban' | 'kick' | 'mute' | 'timeout' | 'role' | 'message';
   duration?: number;
   roleId?: string;
   message?: string;
 }
+
+const formatAutomationDuration = (minutes: number) => {
+  if (!minutes || Number.isNaN(minutes)) {
+    return 'N/A';
+  }
+
+  if (minutes % (60 * 24 * 7) === 0) {
+    const weeks = minutes / (60 * 24 * 7);
+    return `${weeks}w`;
+  }
+
+  if (minutes % (60 * 24) === 0) {
+    const days = minutes / (60 * 24);
+    return `${days}d`;
+  }
+
+  if (minutes % 60 === 0) {
+    return `${minutes / 60}h`;
+  }
+
+  return `${minutes}m`;
+};
 
 export class WarningService {
   async createWarning(
@@ -185,6 +207,14 @@ export class WarningService {
             new ButtonBuilder()
               .setCustomId(`warn_action:mute:${user.id}:${action.duration}`)
               .setLabel(t('warnings.actions.mute', { duration: action.duration }))
+              .setStyle(ButtonStyle.Secondary)
+          );
+        } else if (action.type === 'timeout' && action.duration) {
+          const formattedDuration = formatAutomationDuration(action.duration);
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`warn_action:timeout:${user.id}:${action.duration}`)
+              .setLabel(t('warnings.actions.timeout', { duration: formattedDuration }))
               .setStyle(ButtonStyle.Secondary)
           );
         }

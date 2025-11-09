@@ -17,6 +17,7 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "none": "None",
+    "unknown": "Unknown",
     "noReasonProvided": "No reason provided",
     "seconds": "seconds",
     "hours": "hours",
@@ -440,6 +441,9 @@
             "message": "Edit Message",
             "embed": "Embed Settings"
           }
+        },
+        "modlogs": {
+          "description": "Configure moderation log routing"
         }
       }
     },
@@ -525,6 +529,48 @@
           },
           "error": "Failed to reset XP"
         }
+      }
+    },
+    "filter": {
+      "description": "Manage custom word filters",
+      "add": {
+        "description": "Create a new filter rule",
+        "options": {
+          "pattern": "Text or regex pattern to match",
+          "matchType": "Match literal text or a regular expression",
+          "caseSensitive": "Match using case sensitivity",
+          "wholeWord": "Only match on whole words",
+          "severity": "Severity level for this rule",
+          "autoDelete": "Automatically delete matching messages",
+          "notifyChannel": "Override channel for filter reports"
+        },
+        "successTitle": "Filter Rule Added",
+        "successMessage": "The filter rule has been saved."
+      },
+      "remove": {
+        "description": "Delete an existing filter rule",
+        "options": {
+          "ruleId": "The numeric ID of the rule to remove"
+        },
+        "notFound": "No filter rule found with that ID.",
+        "success": "Removed filter rule #{{id}}."
+      },
+      "list": {
+        "description": "These rules are evaluated against every message.",
+        "title": "Filter Rules ({{count}})",
+        "entry": "**Severity:** {{severity}}\n**Match Type:** {{matchType}}\n**Case Sensitive:** {{caseSensitive}}\n**Whole Word:** {{wholeWord}}\n**Auto Delete:** {{autoDelete}}\n**Channel:** {{channel}}",
+        "more": "{{remaining}} more rules not shown.",
+        "empty": "No filter rules have been configured yet."
+      },
+      "fields": {
+        "pattern": "Pattern",
+        "matchType": "Match Type",
+        "severity": "Severity",
+        "caseSensitive": "Case Sensitive",
+        "wholeWord": "Whole Word",
+        "autoDelete": "Auto Delete",
+        "notifyChannel": "Notify Channel",
+        "ruleId": "Rule ID #{{id}}"
       }
     },
     "giveaway": {
@@ -763,10 +809,14 @@
               "description": "Automation Description",
               "triggerType": "Trigger Type (warn_count or warn_level)",
               "triggerValue": "Trigger Value",
-              "actions": "Actions (JSON format)"
+              "action": "Automation Action (1d Timeout, 1w Timeout, kick, ban, sendMessageOnly)",
+              "message": "Message to send (optional)"
             },
             "success": "Successfully created automation {{name}}",
-            "invalidJson": "Invalid JSON format for actions"
+            "invalidJson": "Invalid JSON format for actions",
+            "invalidAction": "Invalid action. Choose one of: 1d Timeout, 1w Timeout, kick, ban, sendMessageOnly",
+            "messageRequired": "A message is required when using the sendMessageOnly action",
+            "missingTrigger": "Trigger configuration missing. Please rerun /warn automation create."
           },
           "view": {
             "description": "View all warning automations",
@@ -1109,6 +1159,174 @@
       "invalidColor": "Invalid color format. Use hex format like #0099FF",
       "invalidImageUrl": "Invalid image URL",
       "invalidThumbnailUrl": "Invalid thumbnail URL"
+    },
+    "modlogs": {
+      "embed": {
+        "title": "Moderation Log Configuration",
+        "description": "Select channels for each moderation log category.",
+        "status": "Status: {{status}}",
+        "channel": "Channel: {{channel}}"
+      },
+      "select": {
+        "placeholder": "Choose channel for {{category}}"
+      },
+      "buttons": {
+        "enable": "Enable {{category}}",
+        "disable": "Disable {{category}}"
+      },
+      "feedback": {
+        "missingChannel": "Set a channel before enabling {{category}} logs.",
+        "error": "Failed to update log settings. Please try again.",
+        "enabled": "{{category}} logs will now send to {{channel}}.",
+        "disabled": "{{category}} logs have been disabled.",
+        "channelSet": "{{category}} logs will send to {{channel}}."
+      },
+      "categories": {
+        "message": {
+          "name": "Message Events",
+          "description": "Edits, deletions, and word filter violations."
+        },
+        "member": {
+          "name": "Member Events",
+          "description": "Joins, leaves, and profile changes."
+        },
+        "moderation": {
+          "name": "Moderation Actions",
+          "description": "Bans and unbans."
+        },
+        "wordFilter": {
+          "name": "Word Filter",
+          "description": "Reports for custom filter matches."
+        }
+      }
+    }
+  },
+  "modLogs": {
+    "fields": {
+      "user": "User",
+      "channel": "Channel",
+      "messageId": "Message ID",
+      "content": "Content",
+      "attachments": "Attachments",
+      "oldContent": "Old Content",
+      "newContent": "New Content",
+      "messageLink": "Message Link",
+      "reason": "Reason",
+      "bannedAt": "Banned At",
+      "unbannedAt": "Unbanned At",
+      "accountCreated": "Account Created",
+      "joinedAt": "Joined At",
+      "leftAt": "Left At"
+    },
+    "message": {
+      "unknownAuthor": "Unknown author",
+      "empty": "No message content",
+      "delete": {
+        "title": "Message Deleted",
+        "description": "A message was deleted in {{channel}}."
+      },
+      "update": {
+        "title": "Message Updated",
+        "description": "A message was edited in {{channel}}."
+      }
+    },
+    "member": {
+      "join": {
+        "title": "Member Joined",
+        "description": "{{user}} joined the server."
+      },
+      "leave": {
+        "title": "Member Left",
+        "description": "{{user}} left the server."
+      },
+      "update": {
+        "title": "Member Updated",
+        "description": "Profile updated for {{user}}.",
+        "changes": "Changes",
+        "nickname": "Nickname: {{old}} → {{current}}",
+        "noNickname": "None",
+        "rolesAdded": "Roles added: {{roles}}",
+        "rolesRemoved": "Roles removed: {{roles}}"
+      }
+    },
+    "moderation": {
+      "ban": {
+        "title": "Member Banned",
+        "description": "{{user}} was banned."
+      },
+      "unban": {
+        "title": "Member Unbanned",
+        "description": "{{user}} was unbanned."
+      }
+    },
+    "filter": {
+      "triggered": {
+        "title": "Word Filter Triggered",
+        "description": "{{user}} triggered a word filter rule."
+      },
+      "fields": {
+        "status": "Status",
+        "matches": "Matched Terms",
+        "rules": "Triggered Rules",
+        "ruleEntry": "#{{id}} • {{severity}} • `{{pattern}}` ({{matchType}})",
+        "noMatches": "No matches captured.",
+        "moreMatches": " +{{count}} more"
+      },
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "matchType": {
+        "literal": "Literal",
+        "regex": "Regex"
+      },
+      "status": {
+        "deleted": "Message deleted",
+        "failed": "Failed to delete ({{error}})",
+        "kept": "Message kept"
+      },
+      "footer": "Message ID: {{messageId}} • Channel ID: {{channelId}}",
+      "notifyUser": "Your message in **{{guild}}** was flagged by the content filter.\nStatus: {{status}}\nRules:\n{{rules}}",
+      "actions": {
+        "label": {
+          "warn": "Warn User",
+          "timeout": "Timeout {{duration}}",
+          "kick": "Kick User",
+          "ban": "Ban User",
+          "dismiss": "Mark Resolved"
+        },
+        "defaultDuration": "10 minutes",
+        "durationSeconds": "{{count}} seconds",
+        "durationMinutes": "{{count}} minutes",
+        "durationHours": "{{count}} hours",
+        "invalidTarget": "Unable to determine target for this action.",
+        "ruleMissing": "This filter rule no longer exists.",
+        "unsupported": "This action is not supported.",
+        "failed": "Failed to complete the action.",
+        "userNotFound": "User could not be found.",
+        "memberNotFound": "Member is no longer in the server.",
+        "missingPermission": "You do not have permission to do that.",
+        "hierarchy": "You cannot moderate this member because their highest role is higher or equal to yours.",
+        "botHierarchy": "I cannot moderate this member because their highest role is higher or equal to mine.",
+        "warnReason": "Filtered content matched pattern \"{{pattern}}\" ({{severity}}).",
+        "warnTitle": "Filtered Content Warning",
+        "warnSuccess": "Issued a warning to {{user}}.",
+        "timeoutReason": "Filtered content matched pattern \"{{pattern}}\".",
+        "timeoutSuccess": "Timed out {{user}} for {{duration}}.",
+        "kickReason": "Filtered content matched pattern \"{{pattern}}\".",
+        "kickSuccess": "Kicked {{user}}.",
+        "banReason": "Filtered content matched pattern \"{{pattern}}\".",
+        "banSuccess": "Banned {{user}}.",
+        "resolvedDismiss": "Marked as resolved by {{moderator}}.",
+        "resolved": {
+          "warn": "Warned by {{moderator}}.",
+          "timeout": "Timed out by {{moderator}} ({{duration}}).",
+          "kick": "Kicked by {{moderator}}.",
+          "ban": "Banned by {{moderator}}."
+        }
+      }
     }
   },
   "warnings": {
@@ -1120,6 +1338,7 @@
       "ban": "Ban User",
       "kick": "Kick User",
       "mute": "Mute ({{duration}}m)",
+      "timeout": "Timeout ({{duration}})",
       "view": "View Warnings"
     },
     "embed": {

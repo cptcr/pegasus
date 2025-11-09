@@ -16,8 +16,18 @@ import {
   ChannelSelectMenuInteraction,
 } from 'discord.js';
 import { configurationService } from '../../services/configurationService';
+import { modLogService } from '../../services/modLogService';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
+import { buildModLogsConfigResponse } from '../../commands/configuration/config';
+import type { ModLogCategory } from '../../types';
+
+const MOD_LOG_CATEGORY_NAME_KEYS: Record<ModLogCategory, string> = {
+  message: 'config.modlogs.categories.message.name',
+  member: 'config.modlogs.categories.member.name',
+  moderation: 'config.modlogs.categories.moderation.name',
+  wordFilter: 'config.modlogs.categories.wordFilter.name',
+};
 
 export async function handleConfigButton(interaction: ButtonInteraction) {
   const parts = interaction.customId.split('_');
@@ -46,6 +56,8 @@ export async function handleConfigButton(interaction: ButtonInteraction) {
       return handleAutoroleConfigButton(interaction, action);
     case 'goodbye':
       return handleGoodbyeConfigButton(interaction, action);
+    case 'modlogs':
+      return handleModLogButton(interaction, action);
   }
 }
 
@@ -1163,4 +1175,58 @@ async function refreshGoodbyeConfigEmbed(interaction: ButtonInteraction) {
   } catch (error) {
     logger.error('Error refreshing goodbye config embed:', error);
   }
+}
+
+async function handleModLogButton(interaction: ButtonInteraction, action: string) {
+  const [actionType, categoryKey] = action.split('_');
+
+  if (actionType !== 'toggle' || !categoryKey) {
+    return;
+  }
+
+  const category = categoryKey as ModLogCategory;
+  const guildId = interaction.guildId;
+
+  if (!guildId) {
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  const setting = await modLogService.getSetting(guildId, category);
+
+  if (!setting) {
+    await interaction.followUp({
+      content: t('config.modlogs.feedback.missingChannel', {
+        category: t(MOD_LOG_CATEGORY_NAME_KEYS[category]),
+      }),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const updated = await modLogService.setEnabled(guildId, category, !setting.enabled);
+  const response = await buildModLogsConfigResponse(guildId);
+
+  await interaction.editReply(response);
+
+  if (!updated) {
+    await interaction.followUp({
+      content: t('config.modlogs.feedback.error'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const feedbackKey = updated.enabled
+    ? 'config.modlogs.feedback.enabled'
+    : 'config.modlogs.feedback.disabled';
+
+  await interaction.followUp({
+    content: t(feedbackKey, {
+      category: t(MOD_LOG_CATEGORY_NAME_KEYS[category]),
+      channel: updated.channelId ? `<#${updated.channelId}>` : t('common.none'),
+    }),
+    ephemeral: true,
+  });
 }

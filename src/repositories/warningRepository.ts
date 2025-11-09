@@ -26,7 +26,7 @@ export interface CreateAutomationData {
   triggerType: 'warn_count' | 'warn_level';
   triggerValue: number;
   actions: Array<{
-    type: 'ban' | 'kick' | 'mute' | 'role' | 'message';
+    type: 'ban' | 'kick' | 'mute' | 'timeout' | 'role' | 'message';
     duration?: number;
     roleId?: string;
     message?: string;

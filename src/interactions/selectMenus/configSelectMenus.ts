@@ -10,9 +10,19 @@ import {
   EmbedBuilder,
 } from 'discord.js';
 import { configurationService } from '../../services/configurationService';
+import { modLogService } from '../../services/modLogService';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
 import { refreshXPConfigEmbed } from '../buttons/configButtons';
+import { buildModLogsConfigResponse } from '../../commands/configuration/config';
+import type { ModLogCategory } from '../../types';
+
+const MOD_LOG_CATEGORY_NAME_KEYS: Record<ModLogCategory, string> = {
+  message: 'config.modlogs.categories.message.name',
+  member: 'config.modlogs.categories.member.name',
+  moderation: 'config.modlogs.categories.moderation.name',
+  wordFilter: 'config.modlogs.categories.wordFilter.name',
+};
 
 export async function handleConfigSelectMenu(
   interaction:
@@ -27,6 +37,14 @@ export async function handleConfigSelectMenu(
   const menuType = parts.join('_');
 
   try {
+    if (menuType.startsWith('modlogs_select_')) {
+      await handleModLogsChannelSelect(
+        interaction as ChannelSelectMenuInteraction,
+        menuType.replace('modlogs_select_', '')
+      );
+      return;
+    }
+
     switch (menuType) {
       case 'xp_channel_type':
         await handleXPChannelType(interaction as StringSelectMenuInteraction);
@@ -319,6 +337,47 @@ async function handleWelcomeChannelSelect(
   await interaction.editReply({
     embeds: [embed],
     components: [],
+  });
+}
+
+async function handleModLogsChannelSelect(
+  interaction: ChannelSelectMenuInteraction,
+  categoryKey: string
+): Promise<void> {
+  const guildId = interaction.guildId;
+  const channel = interaction.channels.first();
+
+  if (!guildId || !channel) {
+    await interaction.reply({
+      content: t('common.error'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const category = categoryKey as ModLogCategory;
+
+  if (!MOD_LOG_CATEGORY_NAME_KEYS[category]) {
+    await interaction.reply({
+      content: t('config.modlogs.feedback.error'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  await modLogService.setChannel(guildId, category, channel.id, true);
+
+  const response = await buildModLogsConfigResponse(guildId);
+  await interaction.editReply(response);
+
+  await interaction.followUp({
+    content: t('config.modlogs.feedback.channelSet', {
+      category: t(MOD_LOG_CATEGORY_NAME_KEYS[category]),
+      channel: `<#${channel.id}>`,
+    }),
+    ephemeral: true,
   });
 }
 
