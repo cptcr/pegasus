@@ -127,7 +127,7 @@ function getOptionalField(interaction: ModalSubmitInteraction, fieldId: string) 
   }
 }
 
-const parseTriggerType = (value?: string) => {
+const parseTriggerType = (value?: string): 'warn_count' | 'warn_level' | undefined => {
   if (!value) {
     return undefined;
   }

@@ -98,12 +98,13 @@ export const category = CommandCategory.Moderation;
 export const cooldown = 3;
 export const permissions = [PermissionFlagsBits.ManageMessages];
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild) {
-    return interaction.reply({
+    await interaction.reply({
       content: t('common.guildOnly'),
       ephemeral: true,
     });
+    return;
   }
 
   const subcommand = interaction.options.getSubcommand();
