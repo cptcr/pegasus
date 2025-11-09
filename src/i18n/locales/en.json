@@ -809,7 +809,7 @@
               "description": "Automation Description",
               "triggerType": "Trigger Type (warn_count or warn_level)",
               "triggerValue": "Trigger Value",
-              "action": "Automation Action (1d Timeout, 1w Timeout, kick, ban, sendMessageOnly)",
+              "action": "Automation Action Preset",
               "message": "Message to send (optional)"
             },
             "success": "Successfully created automation {{name}}",

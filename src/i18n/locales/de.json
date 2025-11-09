@@ -369,8 +369,8 @@
               "description": "Automatisierungsbeschreibung",
               "triggerType": "Auslösertyp (warn_count oder warn_level)",
               "triggerValue": "Auslöserwert",
-              "action": "Automatisierungsaktion (1d Timeout, 1w Timeout, Kick, Ban, sendMessageOnly)",
-              "message": "Zu sendende Nachricht (optional)"
+              "action": "Automatisierungsaktion (Vorgabe)",
+              "message": "Nachricht senden (optional)"
             },
             "success": "Automatisierung {{name}} erfolgreich erstellt",
             "invalidJson": "Ungültiges JSON-Format für Aktionen",

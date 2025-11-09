@@ -369,7 +369,7 @@
               "description": "Descripción de automatización",
               "triggerType": "Tipo de activador (warn_count o warn_level)",
               "triggerValue": "Valor del activador",
-              "action": "Acción de automatización (1d Timeout, 1w Timeout, kick, ban, sendMessageOnly)",
+              "action": "Acción de automatización (preajuste)",
               "message": "Mensaje a enviar (opcional)"
             },
             "success": "Automatización {{name}} creada exitosamente",

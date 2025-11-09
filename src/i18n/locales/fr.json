@@ -369,7 +369,7 @@
               "description": "Description de l'automatisation",
               "triggerType": "Type de déclencheur (warn_count ou warn_level)",
               "triggerValue": "Valeur du déclencheur",
-              "action": "Action d'automatisation (1d Timeout, 1w Timeout, kick, ban, sendMessageOnly)",
+              "action": "Action d'automatisation (préréglage)",
               "message": "Message à envoyer (optionnel)"
             },
             "success": "Automatisation {{name}} créée avec succès",
