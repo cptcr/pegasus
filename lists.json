@@ -1,69 +1,80 @@
 {
-    "mic-setup-prefix": "h.mics",
-    "mic-setups": {
-        "Mic Setup 60 Euro": "https://gh.at/g/dvr",
-        "Mic Setup 100 Euro": "https://gh.at/g/dvs",
-        "Mic Setup 150 Euro": "https://gh.at/g/dvj",
-        "Mic Setup 200 Euro": "https://gh.at/g/dvh",
-        "Mic Setup 250 Euro": "https://gh.at/g/dvB"
-    },
-    "pc-configs-prefix": "h.pc",
-    "pc-configs": {
-        "AM5 Upgrade Bundle 7500f": "https://gh.at/g/dVN",
-        "AM5 Upgrade Bundle 7800X3D": "https://gh.at/g/dVl",
-        "600 Euro Gaming PC": "https://gh.at/g/dVz",
-        "700 Euro Gaming PC": "https://gh.at/g/dVr",
-        "800 Euro Gaming PC": "https://gh.at/g/dVs",
-        "900 Euro Gaming PC": "https://gh.at/g/dVj",
-        "1000 Euro Gaming PC": "https://gh.at/g/dVh",
-        "1100 Euro Gaming PC Black": "https://gh.at/g/dVB",
-        "1100 Euro Gaming PC White": "https://gh.at/g/dV4",
-        "1200 Euro Gaming PC Black": "https://gh.at/g/dVb",
-        "1200 Euro Gaming PC White": "https://gh.at/g/dVf",
-        "1300 Euro Gaming PC Black": "https://gh.at/g/dVV",
-        "1300 Euro Gaming PC White": "https://gh.at/g/dVY",
-        "1400 Euro Gaming PC": "https://gh.at/g/dVQ",
-        "1500 Euro Gaming PC Black": "https://gh.at/g/dVg",
-        "1500 Euro Gaming PC White": "https://gh.at/g/dVn",
-        "1600 Euro Gaming PC": "https://gh.at/g/dVS",
-        "1700 Euro Gaming PC": "https://gh.at/g/dV2",
-        "1800 Euro Gaming PC Black": "https://gh.at/g/tKZ",
-        "1800 Euro Gaming PC White": "https://gh.at/g/dVm",
-        "1900 Euro Gaming PC": "https://gh.at/g/dVk",
-        "2000 Euro Gaming PC Black": "https://gh.at/g/dVp",
-        "2000 Euro Gaming PC White": "https://gh.at/g/dVv",
-        "2100 Euro Gaming PC": "https://gh.at/g/dVR",
-        "2200 Euro Gaming PC Black": "https://gh.at/g/dYG",
-        "2200 Euro Gaming PC White": "https://gh.at/g/tK5"
-    },
-    "hinko-list-prefix": "h.hinko",
-    "hinko-list": {
-        "Website": "https://hinkowicz.com",
-        "TikTok:": "https://tiktok.com/@hinkowicz",
-        "YouTube": "https://youtube.com/@Hinkowicz",
-        "Twitch": "https://twitch.tv/hinkowicz",
-        "Instagram": "https://instagram.com/hinkowicz",
-        "Mad-Gaming Configs": "https://mad-gaming.shop/hinkowicz",
-        "Rocket-Games": "https://rocket-games.ch/?aff=14",
-        "Mauspad": "https://www.dornfinger.com/products/rawpad-v2-hinkowicz-v1",
-        "Merchandise": "https://copperandbrass.de/hinkowicz-merch/"
-    },
-    "help-prefix": "h.help",
-    "help-content": [
-        {
-            "commandName": "h.mics",
-            "commandDescription": "Lists for mic setups.",
-            "commandOptions": null
+    "commands": {
+        "mic-setups": {
+            "prefix": "h.mics",
+            "description": "Lists for mic setups.",
+            "items": {
+                "Mic Setup 60 Euro": "https://gh.at/g/dvr",
+                "Mic Setup 100 Euro": "https://gh.at/g/dvs",
+                "Mic Setup 150 Euro": "https://gh.at/g/dvj",
+                "Mic Setup 200 Euro": "https://gh.at/g/dvh",
+                "Mic Setup 250 Euro": "https://gh.at/g/dvB"
+            }
         },
-        {
-            "commandName": "h.pc",
-            "commandDescription": "Lists for gaming pcs.",
-            "commandOptions": null
+        "pc-configs": {
+            "prefix": "h.pc",
+            "description": "Lists for gaming PC builds.",
+            "items": {
+                "AM5 Upgrade Bundle 7500f": "https://gh.at/g/dVN",
+                "AM5 Upgrade Bundle 7800X3D": "https://gh.at/g/dVl",
+                "600 Euro Gaming PC": "https://gh.at/g/dVz",
+                "700 Euro Gaming PC": "https://gh.at/g/dVr",
+                "800 Euro Gaming PC": "https://gh.at/g/dVs",
+                "900 Euro Gaming PC": "https://gh.at/g/dVj",
+                "1000 Euro Gaming PC": "https://gh.at/g/dVh",
+                "1100 Euro Gaming PC Black": "https://gh.at/g/dVB",
+                "1100 Euro Gaming PC White": "https://gh.at/g/dV4",
+                "1200 Euro Gaming PC Black": "https://gh.at/g/dVb",
+                "1200 Euro Gaming PC White": "https://gh.at/g/dVf",
+                "1300 Euro Gaming PC Black": "https://gh.at/g/dVV",
+                "1300 Euro Gaming PC White": "https://gh.at/g/dVY",
+                "1400 Euro Gaming PC": "https://gh.at/g/dVQ",
+                "1500 Euro Gaming PC Black": "https://gh.at/g/dVg",
+                "1500 Euro Gaming PC White": "https://gh.at/g/dVn",
+                "1600 Euro Gaming PC": "https://gh.at/g/dVS",
+                "1700 Euro Gaming PC": "https://gh.at/g/dV2",
+                "1800 Euro Gaming PC Black": "https://gh.at/g/tKZ",
+                "1800 Euro Gaming PC White": "https://gh.at/g/dVm",
+                "1900 Euro Gaming PC": "https://gh.at/g/dVk",
+                "2000 Euro Gaming PC Black": "https://gh.at/g/dVp",
+                "2000 Euro Gaming PC White": "https://gh.at/g/dVv",
+                "2100 Euro Gaming PC": "https://gh.at/g/dVR",
+                "2200 Euro Gaming PC Black": "https://gh.at/g/dYG",
+                "2200 Euro Gaming PC White": "https://gh.at/g/tK5"
+            }
         },
-        {
-            "commandName": "h.hinko",
-            "commandDescription": "Hinkowicz Link URLs.",
-            "commandOptions": null
+        "hinkowicz": {
+            "prefix": "h.hinko",
+            "description": "Hinkowicz related links and partners.",
+            "items": {
+                "Website": "https://hinkowicz.com",
+                "TikTok": "https://tiktok.com/@hinkowicz",
+                "YouTube": "https://youtube.com/@Hinkowicz",
+                "Twitch": "https://twitch.tv/hinkowicz",
+                "Instagram": "https://instagram.com/hinkowicz",
+                "Mad-Gaming Configs": "https://mad-gaming.shop/hinkowicz",
+                "Rocket-Games": "https://rocket-games.ch/?aff=14",
+                "Hinko's Gaming PC": "https://gh.at/g/dQQ",
+                "Hinko's Streaming PC": "https://gh.at/g/d44"
+            }
         }
-    ]
+    },
+    "help": {
+        "prefix": "h.help",
+        "description": "Displays help for all available commands.",
+        "commands": [
+            {
+                "name": "h.mics",
+                "description": "Lists for mic setups."
+            },
+            {
+                "name": "h.pc",
+                "description": "Lists for gaming PCs."
+            },
+            {
+                "name": "h.hinko",
+                "description": "Hinkowicz link URLs."
+            }
+        ]
+    }
 }

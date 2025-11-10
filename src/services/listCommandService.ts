@@ -3,14 +3,25 @@ import { readFileSync, watch } from 'node:fs';
 import path from 'node:path';
 import { logger } from '../utils/logger';
 
-interface ListCommandDefinition {
+interface BaseCommandDefinition {
   trigger: string;
-  listKey: string;
-  entries: Array<{ name: string; url: string }>;
   title: string;
+  description?: string;
 }
 
-type ListCommandMap = Map<string, ListCommandDefinition>;
+interface ListCommandDefinition extends BaseCommandDefinition {
+  kind: 'list';
+  entries: Array<{ name: string; url: string }>;
+}
+
+interface HelpCommandDefinition extends BaseCommandDefinition {
+  kind: 'help';
+  commands: Array<{ name: string; description?: string }>;
+}
+
+type CommandDefinition = ListCommandDefinition | HelpCommandDefinition;
+
+type ListCommandMap = Map<string, CommandDefinition>;
 
 function formatTitleFromKey(key: string): string {
   const words = key.split('-').map(word => {
@@ -22,51 +33,102 @@ function formatTitleFromKey(key: string): string {
   return words.join(' ');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function loadListDefinitions(configPath: string): ListCommandMap {
   try {
     const raw = readFileSync(configPath, 'utf-8');
     const data = JSON.parse(raw) as Record<string, unknown>;
     const commands: ListCommandMap = new Map();
 
-    Object.entries(data)
-      .filter(([, value]) => typeof value === 'string')
-      .forEach(([key, value]) => {
-        if (!key.endsWith('-prefix')) return;
-        const trigger = (value as string).trim();
-        if (!trigger) return;
+    const commandGroups = isRecord(data.commands) ? data.commands : {};
 
-        const baseKey = key.slice(0, -'-prefix'.length);
-        const listKey = Object.keys(data).find(candidate => {
-          if (candidate === key) return false;
-          if (!candidate.startsWith(baseKey)) return false;
-          return typeof data[candidate] === 'object' && data[candidate] !== null;
-        });
+    Object.entries(commandGroups).forEach(([key, value]) => {
+      if (!isRecord(value)) return;
 
-        if (!listKey) {
-          logger.warn(`No matching list found in lists.json for prefix key "${key}"`);
-          return;
-        }
+      const prefix = typeof value.prefix === 'string' ? value.prefix.trim() : '';
+      if (!prefix) {
+        logger.warn(`Command "${key}" in lists.json is missing a valid prefix`);
+        return;
+      }
 
-        const rawEntries = data[listKey] as Record<string, unknown>;
-        const entries = Object.entries(rawEntries)
-          .filter(([, url]) => typeof url === 'string' && url.trim().length > 0)
-          .map(([name, url]) => ({
-            name,
-            url: url as string,
-          }));
+      if (!isRecord(value.items)) {
+        logger.warn(`Command "${key}" in lists.json is missing item definitions`);
+        return;
+      }
 
-        if (entries.length === 0) {
-          logger.warn(`List "${listKey}" in lists.json has no valid entries`);
-          return;
-        }
+      const entries = Object.entries(value.items)
+        .filter(
+          ([name, url]) => typeof name === 'string' && typeof url === 'string' && url.trim().length > 0
+        )
+        .map(([name, url]) => ({
+          name,
+          url: url as string,
+        }));
 
-        commands.set(trigger.toLowerCase(), {
-          trigger,
-          listKey,
-          entries,
-          title: formatTitleFromKey(listKey),
-        });
+      if (entries.length === 0) {
+        logger.warn(`Command "${key}" in lists.json has no valid entries`);
+        return;
+      }
+
+      const title =
+        typeof value.title === 'string' && value.title.trim().length > 0
+          ? value.title.trim()
+          : formatTitleFromKey(key);
+      const description =
+        typeof value.description === 'string' && value.description.trim().length > 0
+          ? value.description.trim()
+          : undefined;
+
+      commands.set(prefix.toLowerCase(), {
+        kind: 'list',
+        trigger: prefix,
+        title,
+        description,
+        entries,
       });
+    });
+
+    if (isRecord(data.help)) {
+      const helpPrefix =
+        typeof data.help.prefix === 'string' ? data.help.prefix.trim().toLowerCase() : '';
+      const trigger = typeof data.help.prefix === 'string' ? data.help.prefix.trim() : '';
+
+      if (helpPrefix && trigger) {
+        const helpDescription =
+          typeof data.help.description === 'string' && data.help.description.trim().length > 0
+            ? data.help.description.trim()
+            : undefined;
+
+        const helpCommands = Array.isArray(data.help.commands)
+          ? data.help.commands
+              .map(command => {
+                if (!isRecord(command)) return null;
+                const name = typeof command.name === 'string' ? command.name.trim() : '';
+                if (!name) return null;
+                const cmdDescription =
+                  typeof command.description === 'string' && command.description.trim().length > 0
+                    ? command.description.trim()
+                    : undefined;
+                return {
+                  name,
+                  description: cmdDescription,
+                };
+              })
+              .filter((command): command is { name: string; description?: string } => command !== null)
+          : [];
+
+        commands.set(helpPrefix, {
+          kind: 'help',
+          trigger,
+          title: formatTitleFromKey('help'),
+          description: helpDescription,
+          commands: helpCommands,
+        });
+      }
+    }
 
     return commands;
   } catch (error) {
@@ -96,15 +158,30 @@ export class ListCommandService {
       return false;
     }
 
-    const description = definition.entries
-      .map(entry => `• [${entry.name}](${entry.url})`)
-      .join('\n');
+    const embed = new EmbedBuilder().setColor(0x5865f2).setTimestamp();
 
-    const embed = new EmbedBuilder()
-      .setTitle(definition.title)
-      .setColor(0x5865f2)
-      .setDescription(description)
-      .setTimestamp();
+    if (definition.kind === 'list') {
+      const entriesDescription = definition.entries
+        .map(entry => `• [${entry.name}](${entry.url})`)
+        .join('\n');
+
+      const description = definition.description
+        ? `${definition.description}\n\n${entriesDescription}`
+        : entriesDescription;
+
+      embed.setTitle(definition.title).setDescription(description);
+    } else {
+      const description = definition.description ?? 'Available list commands:';
+
+      embed.setTitle(definition.title).setDescription(description);
+
+      definition.commands.slice(0, 25).forEach(command => {
+        embed.addFields({
+          name: command.name,
+          value: command.description ?? 'No description provided.',
+        });
+      });
+    }
 
     if (!message.channel || !message.channel.isTextBased() || !('send' in message.channel)) {
       logger.warn(`Cannot send list embed for trigger "${definition.trigger}" in non-text channel`);
