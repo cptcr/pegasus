@@ -193,6 +193,22 @@ export class WarningRepository {
         )
       );
   }
+
+  async purgeWarnings(guildId: string, userId: string, moderatorId: string) {
+    const updated = await this.db
+      .update(warnings)
+      .set({
+        active: false,
+        editedAt: new Date(),
+        editedBy: moderatorId,
+      })
+      .where(and(eq(warnings.guildId, guildId), eq(warnings.userId, userId), eq(warnings.active, true)))
+      .returning({ warnId: warnings.warnId });
+
+    return {
+      count: updated.length,
+    };
+  }
 }
 
 export const warningRepository = new WarningRepository();

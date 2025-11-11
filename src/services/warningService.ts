@@ -499,6 +499,22 @@ export class WarningService {
 
     return automation;
   }
+
+  async purgeWarnings(guild: Guild, target: User, moderator: User) {
+    const result = await warningRepository.purgeWarnings(guild.id, target.id, moderator.id);
+
+    await auditLogger.logAction({
+      action: 'WARN_PURGE',
+      userId: moderator.id,
+      guildId: guild.id,
+      targetId: target.id,
+      details: {
+        count: result.count,
+      },
+    });
+
+    return result;
+  }
 }
 
 export const warningService = new WarningService();
