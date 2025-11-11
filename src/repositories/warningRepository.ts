@@ -32,6 +32,8 @@ export interface CreateAutomationData {
     message?: string;
   }>;
   createdBy: string;
+  notifyChannelId?: string;
+  notifyMessage?: string;
 }
 
 export class WarningRepository {
@@ -137,6 +139,8 @@ export class WarningRepository {
         triggerValue: data.triggerValue,
         actions: data.actions,
         createdBy: data.createdBy,
+        notifyChannelId: data.notifyChannelId,
+        notifyMessage: data.notifyMessage,
       })
       .returning();
 

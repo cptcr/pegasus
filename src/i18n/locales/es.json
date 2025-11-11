@@ -388,6 +388,9 @@
         "automation": {
           "create": {
             "description": "Crear una automatización de advertencias",
+            "options": {
+              "notifyChannel": "Canal que recibirá las alertas de la automatización"
+            },
             "modal": {
               "title": "Crear automatización de advertencias",
               "name": "Nombre de automatización",
@@ -413,7 +416,8 @@
               "trigger": "Activador",
               "actions": "Acciones",
               "status": "Estado",
-              "lastTriggered": "Última activación"
+              "lastTriggered": "Última activación",
+              "channel": "Canal"
             }
           },
           "delete": {

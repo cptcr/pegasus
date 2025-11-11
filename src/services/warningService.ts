@@ -176,21 +176,15 @@ export class WarningService {
       automationId: string;
       name: string;
       actions: unknown;
+      notifyChannelId?: string | null;
+      notifyMessage?: string | null;
     },
     stats: { count: number; totalLevel: number }
   ) {
     const actions = automation.actions as WarningAction[];
 
     // Send notification with action buttons if configured
-    const notificationChannel =
-      guild.systemChannel ||
-      guild.channels.cache.find(
-        (ch): ch is TextChannel =>
-          ch.type === ChannelType.GuildText &&
-          (guild.members.me
-            ? ch.permissionsFor(guild.members.me)?.has('SendMessages') === true
-            : false)
-      );
+    const notificationChannel = await this.resolveNotificationChannel(guild, automation);
 
     if (notificationChannel) {
       const embed = new EmbedBuilder()
@@ -352,6 +346,35 @@ export class WarningService {
     return muteRole;
   }
 
+  private async resolveNotificationChannel(
+    guild: Guild,
+    automation: { notifyChannelId?: string | null }
+  ): Promise<TextChannel | null> {
+    const botMember = guild.members.me;
+
+    if (automation.notifyChannelId) {
+      const fetched = await guild.channels.fetch(automation.notifyChannelId).catch(() => null);
+      if (
+        fetched &&
+        fetched.type === ChannelType.GuildText &&
+        botMember &&
+        fetched.permissionsFor(botMember)?.has('SendMessages')
+      ) {
+        return fetched;
+      }
+    }
+
+    const fallback =
+      guild.systemChannel ||
+      guild.channels.cache.find(
+        (ch): ch is TextChannel =>
+          ch.type === ChannelType.GuildText &&
+          (botMember ? ch.permissionsFor(botMember)?.has('SendMessages') === true : false)
+      );
+
+    return fallback || null;
+  }
+
   async getWarningEmbed(
     warning: {
       warnId: string;
@@ -429,7 +452,8 @@ export class WarningService {
     triggerType: 'warn_count' | 'warn_level',
     triggerValue: number,
     actions: WarningAction[],
-    createdBy: User
+    createdBy: User,
+    notifyChannelId?: string
   ) {
     const automation = await warningRepository.createAutomation({
       guildId: guild.id,
@@ -439,6 +463,7 @@ export class WarningService {
       triggerValue,
       actions,
       createdBy: createdBy.id,
+      notifyChannelId,
     });
 
     await auditLogger.logAction({
@@ -450,6 +475,7 @@ export class WarningService {
         name,
         triggerType,
         triggerValue,
+        notifyChannelId,
       },
     });
 

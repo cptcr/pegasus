@@ -995,6 +995,9 @@
         "automation": {
           "create": {
             "description": "Create a warning automation",
+            "options": {
+              "notifyChannel": "Channel that receives automation alerts"
+            },
             "modal": {
               "title": "Create Warning Automation",
               "name": "Automation Name",
@@ -1020,7 +1023,8 @@
               "trigger": "Trigger",
               "actions": "Actions",
               "status": "Status",
-              "lastTriggered": "Last Triggered"
+              "lastTriggered": "Last Triggered",
+              "channel": "Channel"
             }
           },
           "delete": {

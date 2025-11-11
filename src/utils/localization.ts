@@ -295,4 +295,10 @@ export const optionDescriptions = {
     es: 'Valor en el que se activa la automatización',
     fr: 'Valeur à laquelle l’automatisation se déclenche',
   },
+  notifyChannel: {
+    en: 'Channel that receives automation notifications',
+    de: 'Kanal für Automatisierungsbenachrichtigungen',
+    es: 'Canal que recibe las notificaciones de la automatización',
+    fr: 'Salon recevant les notifications de l’automatisation',
+  },
 };

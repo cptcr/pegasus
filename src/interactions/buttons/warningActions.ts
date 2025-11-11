@@ -242,7 +242,7 @@ async function handleAutomationModalButton(
     return;
   }
 
-  const [triggerType, triggerValue] = params;
+  const [triggerType, triggerValue, notifyChannelParam] = params;
   if (!triggerType || !triggerValue) {
     await interaction.reply({
       content: t('commands.warn.subcommands.automation.create.missingTrigger'),
@@ -251,8 +251,13 @@ async function handleAutomationModalButton(
     return;
   }
 
+  const notifyChannelId =
+    notifyChannelParam && notifyChannelParam !== 'none' ? notifyChannelParam : undefined;
+
   const modal = new ModalBuilder()
-    .setCustomId(`warn_automation_create:${triggerType}:${triggerValue}`)
+    .setCustomId(
+      `warn_automation_create:${triggerType}:${triggerValue}:${notifyChannelId ?? 'none'}`
+    )
     .setTitle(truncateLabel(t('commands.warn.subcommands.automation.create.modal.title'), 45));
 
   const nameInput = new TextInputBuilder()

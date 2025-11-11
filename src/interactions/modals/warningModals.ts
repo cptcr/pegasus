@@ -9,8 +9,13 @@ export async function handleWarningModals(interaction: ModalSubmitInteraction) {
   if (action === 'warn_edit') {
     return handleWarnEdit(interaction, params[0]);
   } else if (action === 'warn_automation_create') {
-    const [triggerTypeParam, triggerValueParam] = params;
-    return handleAutomationCreate(interaction, triggerTypeParam, triggerValueParam);
+    const [triggerTypeParam, triggerValueParam, notifyChannelParam] = params;
+    return handleAutomationCreate(
+      interaction,
+      triggerTypeParam,
+      triggerValueParam,
+      notifyChannelParam
+    );
   }
 }
 
@@ -37,7 +42,8 @@ async function handleWarnEdit(interaction: ModalSubmitInteraction, warnId: strin
 async function handleAutomationCreate(
   interaction: ModalSubmitInteraction,
   triggerTypeParam?: string,
-  triggerValueParam?: string
+  triggerValueParam?: string,
+  notifyChannelParam?: string
 ) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -101,6 +107,7 @@ async function handleAutomationCreate(
     });
     return;
   }
+  const notifyChannelId = parseChannelIdParam(notifyChannelParam);
 
   try {
     const automation = await warningService.createAutomation(
@@ -110,7 +117,8 @@ async function handleAutomationCreate(
       triggerType,
       triggerValue,
       actions,
-      interaction.user
+      interaction.user,
+      notifyChannelId || undefined
     );
 
     await interaction.editReply({
@@ -147,6 +155,13 @@ const parseTriggerValue = (value?: string) => {
 
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? undefined : parsed;
+};
+
+const parseChannelIdParam = (value?: string) => {
+  if (!value || value === 'none') {
+    return null;
+  }
+  return value;
 };
 
 const ACTION_CONFIG: Record<

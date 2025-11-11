@@ -388,6 +388,9 @@
         "automation": {
           "create": {
             "description": "Créer une automatisation d'avertissements",
+            "options": {
+              "notifyChannel": "Salon où envoyer les alertes d’automatisation"
+            },
             "modal": {
               "title": "Créer une automatisation d'avertissements",
               "name": "Nom de l'automatisation",
@@ -413,7 +416,8 @@
               "trigger": "Déclencheur",
               "actions": "Actions",
               "status": "Statut",
-              "lastTriggered": "Dernier déclenchement"
+              "lastTriggered": "Dernier déclenchement",
+              "channel": "Salon"
             }
           },
           "delete": {

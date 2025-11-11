@@ -72,6 +72,8 @@ export const warningAutomations = pgTable('warning_automations', {
     .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   lastTriggeredAt: timestamp('last_triggered_at'),
+  notifyChannelId: varchar('notify_channel_id', { length: 20 }),
+  notifyMessage: text('notify_message'),
 });
 
 // Note: auditLogs and blacklist tables have been moved to security.ts for better organization

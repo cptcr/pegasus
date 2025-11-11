@@ -388,6 +388,9 @@
         "automation": {
           "create": {
             "description": "Eine Verwarnungsautomatisierung erstellen",
+            "options": {
+              "notifyChannel": "Kanal für Automatisierungsbenachrichtigungen"
+            },
             "modal": {
               "title": "Verwarnungsautomatisierung erstellen",
               "name": "Automatisierungsname",
@@ -413,7 +416,8 @@
               "trigger": "Auslöser",
               "actions": "Aktionen",
               "status": "Status",
-              "lastTriggered": "Zuletzt ausgelöst"
+              "lastTriggered": "Zuletzt ausgelöst",
+              "channel": "Kanal"
             }
           },
           "delete": {

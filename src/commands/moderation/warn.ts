@@ -12,6 +12,8 @@ import {
   ButtonStyle,
   InteractionReplyOptions,
   InteractionDeferReplyOptions,
+  ChannelType,
+  GuildBasedChannel,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -167,6 +169,16 @@ export const data = new SlashCommandBuilder()
               .setRequired(true)
               .setMinValue(1)
               .setMaxValue(100)
+          )
+          .addChannelOption(option =>
+            option
+              .setName('notify_channel')
+              .setDescription('Channel that receives automation alerts')
+              .setDescriptionLocalizations(
+                createLocalizationMap(optionDescriptions.notifyChannel)
+              )
+              .addChannelTypes(ChannelType.GuildText)
+              .setRequired(false)
           )
       )
       .addSubcommand(subcommand =>
@@ -539,9 +551,13 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
     | 'warn_count'
     | 'warn_level';
   const triggerValue = interaction.options.getInteger('trigger_value', true);
+  const notifyChannel = interaction.options.getChannel('notify_channel');
+  const notifyChannelId = resolveNotifyChannelId(notifyChannel);
 
   const button = new ButtonBuilder()
-    .setCustomId(`warn_automation_modal:${interaction.user.id}:${triggerType}:${triggerValue}`)
+    .setCustomId(
+      `warn_automation_modal:${interaction.user.id}:${triggerType}:${triggerValue}:${notifyChannelId ?? 'none'}`
+    )
     .setLabel(t('commands.warn.subcommands.automation.create.button'))
     .setStyle(ButtonStyle.Primary);
 
@@ -578,6 +594,9 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
     const lastTriggered = automation.lastTriggeredAt
       ? `<t:${Math.floor(automation.lastTriggeredAt.getTime() / 1000)}:R>`
       : t('common.none');
+    const channelText = automation.notifyChannelId
+      ? `<#${automation.notifyChannelId}>`
+      : t('common.none');
 
     embed.addFields({
       name: `${automation.name} (${automation.automationId})`,
@@ -586,6 +605,7 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
         `**${t('commands.warn.subcommands.automation.view.fields.actions')}:** ${actionsText}`,
         `**${t('commands.warn.subcommands.automation.view.fields.status')}:** ${statusText}`,
         `**${t('commands.warn.subcommands.automation.view.fields.lastTriggered')}:** ${lastTriggered}`,
+        `**${t('commands.warn.subcommands.automation.view.fields.channel')}:** ${channelText}`,
         automation.description ? `\n${automation.description}` : '',
       ]
         .filter(Boolean)
@@ -693,4 +713,16 @@ async function deleteInitialReply(interaction: ChatInputCommandInteraction) {
   } catch {
     // If the original reply is already gone, ignore the error
   }
+}
+
+function resolveNotifyChannelId(channel: GuildBasedChannel | null): string | undefined {
+  if (!channel) {
+    return undefined;
+  }
+
+  if (channel.type === ChannelType.GuildText || (channel.isTextBased?.() ?? false)) {
+    return channel.id;
+  }
+
+  return undefined;
 }
