@@ -116,14 +116,18 @@ export class TicketService {
   }
 
   // Ticket creation
-  async createTicket(interaction: ModalSubmitInteraction, panel: {
-    id: string;
-    maxTicketsPerUser: number;
-    ticketNameFormat: string;
-    categoryId?: string | null;
-    welcomeMessage?: string | null;
-    supportRoles: string[];
-  }, reason: string) {
+  async createTicket(
+    interaction: ModalSubmitInteraction,
+    panel: {
+      id: string;
+      maxTicketsPerUser: number;
+      ticketNameFormat: string;
+      categoryId?: string | null;
+      welcomeMessage?: string | null;
+      supportRoles: string[];
+    },
+    reason: string
+  ) {
     const guild = interaction.guild;
     if (!guild) {
       throw new Error('Guild not found');
@@ -138,7 +142,10 @@ export class TicketService {
 
     // Get next ticket number
     const ticketNumber = await this.ticketRepository.getNextTicketNumber(guild.id);
-    const ticketName = (panel.ticketNameFormat ?? 'ticket-{number}').replace('{number}', ticketNumber.toString());
+    const ticketName = (panel.ticketNameFormat ?? 'ticket-{number}').replace(
+      '{number}',
+      ticketNumber.toString()
+    );
 
     // Get or create category
     let category: CategoryChannel | null = null;
@@ -247,7 +254,9 @@ export class TicketService {
     );
 
     // Send ticket panel and ping support roles
-    const supportPings = (panel.supportRoles ?? []).map((roleId: string) => `<@&${roleId}>`).join(' ');
+    const supportPings = (panel.supportRoles ?? [])
+      .map((roleId: string) => `<@&${roleId}>`)
+      .join(' ');
     await ticketChannel.send({
       content: supportPings,
       embeds: [ticketEmbed],
@@ -383,17 +392,20 @@ export class TicketService {
   }
 
   // Helper methods
-  private generateTranscript(messages: Array<{
-    createdAt: Date | string;
-    userId: string;
-    content: string;
-    attachments?: unknown;
-  }>, ticket: {
-    ticketNumber: number;
-    createdAt: Date | string;
-    userId: string;
-    reason?: string | null;
-  }): string {
+  private generateTranscript(
+    messages: Array<{
+      createdAt: Date | string;
+      userId: string;
+      content: string;
+      attachments?: unknown;
+    }>,
+    ticket: {
+      ticketNumber: number;
+      createdAt: Date | string;
+      userId: string;
+      reason?: string | null;
+    }
+  ): string {
     let transcript = `Ticket #${ticket.ticketNumber} Transcript\n`;
     transcript += `Created: ${ticket.createdAt instanceof Date ? ticket.createdAt.toISOString() : ticket.createdAt}\n`;
     transcript += `Closed: ${new Date().toISOString()}\n`;

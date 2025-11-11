@@ -216,8 +216,18 @@
       },
       "gamble": {
         "description": "Play various gambling games",
+        "rateLimited": "You have been gambling too frequently. Please take a short break and try again later.",
         "invalidBet": "Bet must be between {{symbol}}{{min}} and {{symbol}}{{max}}",
         "insufficientFunds": "Insufficient funds or invalid bet amount",
+        "common": {
+          "result": "Result",
+          "wonLabel": "Won",
+          "lostLabel": "Lost",
+          "returnedLabel": "Returned",
+          "newBalance": "New Balance",
+          "multiplier": "Multiplier",
+          "yourChoice": "Your Choice"
+        },
         "dice": {
           "description": "Roll dice against the dealer",
           "title": "🎲 Dice Game",
@@ -233,7 +243,8 @@
           "description": "Flip a coin",
           "title": "🪙 Coinflip",
           "landed": "The coin landed on **{{result}}**!",
-          "yourChoice": "Your Choice"
+          "yourChoice": "Your Choice",
+          "resultField": "Flip Result"
         },
         "slots": {
           "description": "Play the slot machine",
@@ -515,6 +526,162 @@
           },
           "error": "Failed to timeout the member"
         },
+        "mute": {
+          "description": "Mute a user using the server mute role",
+          "options": {
+            "user": "The user to mute",
+            "duration": "Duration of the mute in minutes",
+            "reason": "Reason for the mute"
+          },
+          "memberNotFound": "Member not found in this server",
+          "cannotMuteSelf": "You cannot mute yourself!",
+          "cannotMuteBot": "I cannot mute myself!",
+          "higherRole": "You cannot mute a member with a higher or equal role",
+          "botHierarchy": "I cannot mute this member due to role hierarchy",
+          "alreadyMuted": "That member is already muted.",
+          "dmTitle": "You have been muted",
+          "dmDescription": "You have been muted in **{{guild}}**\n\n**Duration:** {{duration}}\n**Reason:** {{reason}}",
+          "success": {
+            "title": "Member Muted",
+            "description": "**{{user}}** has been muted by **{{moderator}}**",
+            "reason": "Reason",
+            "duration": "Duration"
+          },
+          "error": "Failed to mute the member"
+        },
+        "unmute": {
+          "description": "Remove the mute role from a user",
+          "options": {
+            "user": "The user to unmute",
+            "reason": "Reason for the unmute"
+          },
+          "memberNotFound": "Member not found in this server",
+          "notMuted": "That member is not currently muted.",
+          "success": {
+            "title": "Member Unmuted",
+            "description": "**{{user}}** has been unmuted by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to unmute the member"
+        },
+        "unban": {
+          "description": "Unban a user by ID",
+          "options": {
+            "userId": "The ID of the user to unban",
+            "reason": "Reason for the unban"
+          },
+          "invalidUserId": "Please provide a valid user ID.",
+          "notBanned": "No ban was found for that user.",
+          "success": {
+            "title": "Member Unbanned",
+            "description": "**{{user}}** has been unbanned by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to unban the member"
+        },
+        "purge": {
+          "description": "Bulk delete a number of messages",
+          "options": {
+            "amount": "Number of messages to delete (2-100)",
+            "user": "Optional user to limit deletions to",
+            "channel": "Channel to purge (defaults to current channel)"
+          },
+          "invalidChannel": "Please select a text channel to purge.",
+          "noMessages": "No recent messages from {{user}} were found.",
+          "success": {
+            "title": "Messages Purged",
+            "description": "Deleted **{{amount}}** messages in {{channel}} • Requested by **{{moderator}}**"
+          },
+          "error": "Failed to purge messages"
+        },
+        "lock": {
+          "description": "Lock a channel for @everyone",
+          "options": {
+            "channel": "Channel to lock",
+            "reason": "Reason for the lock"
+          },
+          "invalidChannel": "Please select a text channel to lock.",
+          "alreadyLocked": "That channel is already locked.",
+          "success": {
+            "title": "Channel Locked",
+            "description": "{{channel}} has been locked by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to lock the channel"
+        },
+        "unlock": {
+          "description": "Unlock a previously locked channel",
+          "options": {
+            "channel": "Channel to unlock",
+            "reason": "Reason for unlocking"
+          },
+          "invalidChannel": "Please select a text channel to unlock.",
+          "notLocked": "That channel is not currently locked.",
+          "success": {
+            "title": "Channel Unlocked",
+            "description": "{{channel}} has been unlocked by **{{moderator}}**",
+            "reason": "Reason"
+          },
+          "error": "Failed to unlock the channel"
+        },
+        "slowmode": {
+          "description": "Set slowmode for a channel",
+          "options": {
+            "duration": "Slowmode duration in seconds",
+            "channel": "Channel to update",
+            "reason": "Reason for the change"
+          },
+          "invalidChannel": "Please select a text channel to update.",
+          "success": {
+            "title": "Slowmode Updated",
+            "description": "{{channel}} slowmode is now **{{duration}}** • Updated by **{{moderator}}**",
+            "durationValue": "{{seconds}} seconds",
+            "disabled": "Disabled",
+            "reason": "Reason"
+          },
+          "error": "Failed to update slowmode"
+        },
+        "modlog": {
+          "description": "View moderation cases for a user or recent actions",
+          "options": {
+            "user": "Optional user to filter by",
+            "limit": "Number of cases to show"
+          },
+          "noUserCases": "No cases were found for {{user}}.",
+          "noCases": "No moderation cases have been recorded in this server yet.",
+          "titleUser": "Moderation History • {{user}}",
+          "titleRecent": "Recent Moderation Cases • {{guild}}",
+          "entry": "`#{{id}}` • **{{type}}** • {{user}} • {{moderator}} • {{reason}} • {{time}}",
+          "footer": "{{count}} case(s) shown"
+        },
+        "case": {
+          "description": "Moderation case utilities",
+          "view": {
+            "description": "View details for a specific moderation case",
+            "options": {
+              "id": "The numeric case ID"
+            },
+            "notFound": "No moderation case found with ID #{{id}}.",
+            "title": "Moderation Case #{{id}}",
+            "fields": {
+              "user": "Target User",
+              "moderator": "Moderator",
+              "action": "Action",
+              "reason": "Reason",
+              "duration": "Duration",
+              "expires": "Expires"
+            }
+          },
+          "delete": {
+            "description": "Delete a moderation case",
+            "options": {
+              "id": "The numeric case ID"
+            },
+            "notFound": "No moderation case found with ID #{{id}}.",
+            "success": "Deleted moderation case #{{id}}.",
+            "error": "Failed to delete moderation case"
+          }
+        },
         "resetxp": {
           "description": "Reset a user's XP",
           "options": {
@@ -529,6 +696,17 @@
           },
           "error": "Failed to reset XP"
         }
+      },
+      "errors": {
+        "missingManageRoles": "You need the Manage Roles permission to do that.",
+        "botMissingManageRoles": "I need the Manage Roles permission to do that.",
+        "missingBanMembers": "You need the Ban Members permission to do that.",
+        "botMissingBanMembers": "I need the Ban Members permission to do that.",
+        "missingManageMessages": "You need the Manage Messages permission to do that.",
+        "botMissingManageMessages": "I need the Manage Messages permission to do that.",
+        "missingManageChannels": "You need the Manage Channels permission to do that.",
+        "botMissingManageChannels": "I need the Manage Channels permission to do that.",
+        "missingManageGuild": "You need the Manage Server permission to do that."
       }
     },
     "filter": {
@@ -790,6 +968,20 @@
             "warnid": "The warning ID to lookup"
           },
           "notFound": "Warning {{warnId}} not found"
+        },
+        "delete": {
+          "description": "Delete a warning by ID",
+          "options": {
+            "warnid": "The warning ID to delete"
+          },
+          "success": {
+            "title": "Warning Deleted",
+            "description": "Warning {{warnId}} has been deleted.",
+            "target": "Target",
+            "moderator": "Moderator"
+          },
+          "notFound": "Warning {{warnId}} not found",
+          "error": "Failed to delete warning"
         },
         "view": {
           "description": "View all warnings for a user",

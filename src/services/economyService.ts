@@ -520,7 +520,8 @@ export class EconomyService {
     // Update gambling stats
     await economyRepository.addToBalance(userId, guildId, 0); // Ensure balance exists
     await economyRepository.updateBalance(userId, guildId, {
-      totalGambled: ((await economyRepository.getBalance(userId, guildId))?.totalGambled ?? 0) + wagered,
+      totalGambled:
+        ((await economyRepository.getBalance(userId, guildId))?.totalGambled ?? 0) + wagered,
     });
 
     const stats = await economyRepository.updateGamblingStats(

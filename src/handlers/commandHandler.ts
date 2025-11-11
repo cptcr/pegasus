@@ -25,7 +25,7 @@ export async function loadCommands(client: Client): Promise<void> {
         const filePath = join(categoryPath, file);
         // Use require for CommonJS compatibility in compiled code
         const commandModule = require(filePath);
-        
+
         const module = commandModule as {
           data?: { name: string; toJSON: () => unknown };
           execute?: unknown;

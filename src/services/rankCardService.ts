@@ -38,7 +38,14 @@ interface CanvasRenderingContext2D {
   closePath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
-  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, anticlockwise?: boolean): void;
+  arc(
+    x: number,
+    y: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    anticlockwise?: boolean
+  ): void;
   arcTo(x1: number, y1: number, x2: number, y2: number, radius: number): void;
   quadraticCurveTo(cpx: number, cpy: number, x: number, y: number): void;
   fill(): void;
@@ -48,7 +55,17 @@ interface CanvasRenderingContext2D {
   restore(): void;
   drawImage(image: Image, dx: number, dy: number): void;
   drawImage(image: Image, dx: number, dy: number, dWidth: number, dHeight: number): void;
-  drawImage(image: Image, sx: number, sy: number, sWidth: number, sHeight: number, dx: number, dy: number, dWidth: number, dHeight: number): void;
+  drawImage(
+    image: Image,
+    sx: number,
+    sy: number,
+    sWidth: number,
+    sHeight: number,
+    dx: number,
+    dy: number,
+    dWidth: number,
+    dHeight: number
+  ): void;
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradient;
 }
 
@@ -240,7 +257,12 @@ export class RankCardService {
     ctx.closePath();
   }
 
-  private drawPlaceholderAvatar(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
+  private drawPlaceholderAvatar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    color: string
+  ): void {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x + this.avatarSize / 2, y + this.avatarSize / 2, this.avatarSize / 2, 0, Math.PI * 2);

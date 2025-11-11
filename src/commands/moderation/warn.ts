@@ -100,6 +100,24 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(subcommand =>
     subcommand
+      .setName('delete')
+      .setDescription('Delete a warning by ID')
+      .setDescriptionLocalizations({
+        en: 'Delete a warning by ID',
+        de: 'Eine Warnung anhand der ID löschen',
+        es: 'Eliminar una advertencia por ID',
+        fr: 'Supprimer un avertissement par identifiant',
+      })
+      .addStringOption(option =>
+        option
+          .setName('warnid')
+          .setDescription('The warning ID to delete')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.warnid))
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(subcommand =>
+    subcommand
       .setName('view')
       .setDescription('View all warnings for a user')
       .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.view))
@@ -213,6 +231,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return handleWarnEdit(interaction);
     case 'lookup':
       return handleWarnLookup(interaction);
+    case 'delete':
+      return handleWarnDelete(interaction);
     case 'view':
       return handleWarnView(interaction);
     default:
@@ -240,6 +260,11 @@ async function handleWarnHelp(interaction: ChatInputCommandInteraction) {
       {
         name: '/warn lookup',
         value: 'Lookup a specific warning by ID',
+        inline: false,
+      },
+      {
+        name: '/warn delete',
+        value: 'Delete a warning by ID',
         inline: false,
       },
       {
@@ -416,6 +441,48 @@ async function handleWarnLookup(interaction: ChatInputCommandInteraction): Promi
 
   const embed = await warningService.getWarningEmbed(warning, interaction.guild!);
   await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleWarnDelete(interaction: ChatInputCommandInteraction): Promise<any> {
+  await interaction.deferReply({ ephemeral: true });
+
+  const warnId = interaction.options.getString('warnid', true);
+
+  try {
+    const deleted = await warningService.deleteWarning(warnId, interaction.user);
+
+    if (!deleted) {
+      await interaction.editReply({
+        content: t('commands.warn.subcommands.delete.notFound', { warnId }),
+      });
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle(t('commands.warn.subcommands.delete.success.title'))
+      .setDescription(t('commands.warn.subcommands.delete.success.description', { warnId }))
+      .addFields(
+        {
+          name: t('commands.warn.subcommands.delete.success.target'),
+          value: `<@${deleted.userId}>`,
+          inline: true,
+        },
+        {
+          name: t('commands.warn.subcommands.delete.success.moderator'),
+          value: interaction.user.tag,
+          inline: true,
+        }
+      )
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    logger.error('Error deleting warning:', error);
+    await interaction.editReply({
+      content: t('commands.warn.subcommands.delete.error'),
+    });
+  }
 }
 
 async function handleWarnView(interaction: ChatInputCommandInteraction): Promise<any> {

@@ -260,6 +260,16 @@ The bot automatically creates all required tables on first startup:
 | `/moderation ban` | Ban user with optional reason | Ban Members |
 | `/moderation kick` | Kick user with optional reason | Kick Members |
 | `/moderation timeout` | Timeout user for duration | Moderate Members |
+| `/moderation mute` | Apply the server mute role (optional duration) | Moderate Members |
+| `/moderation unmute` | Remove the mute role from a user | Moderate Members |
+| `/moderation unban <user_id>` | Unban a user by ID | Ban Members |
+| `/moderation purge <amount>` | Bulk delete recent messages | Manage Messages |
+| `/moderation lock [channel]` | Lock a text channel for @everyone | Manage Channels |
+| `/moderation unlock [channel]` | Unlock a previously locked channel | Manage Channels |
+| `/moderation slowmode <seconds>` | Set channel slowmode (0 disables) | Manage Channels |
+| `/moderation modlog [user]` | Display recent moderation cases | Moderate Members |
+| `/moderation case view <id>` | View a specific moderation case | Moderate Members |
+| `/moderation case delete <id>` | Delete a moderation case | Manage Guild |
 | `/moderation reset-xp` | Reset user's XP to 0 | Manage Guild |
 
 ### 💰 Economy Commands

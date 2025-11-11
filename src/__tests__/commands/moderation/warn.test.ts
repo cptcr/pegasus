@@ -47,7 +47,7 @@ jest.mock('../../../i18n', () => ({
 }));
 
 describe('Warn command', () => {
-let interaction: ReturnType<typeof createMockCommandInteraction>;
+  let interaction: ReturnType<typeof createMockCommandInteraction>;
   let execute: typeof import('../../../commands/moderation/warn').execute;
 
   beforeEach(async () => {
@@ -82,7 +82,9 @@ let interaction: ReturnType<typeof createMockCommandInteraction>;
       .mockImplementationOnce(() => 'Test Title')
       .mockImplementationOnce(() => 'Description');
     interaction.options.getInteger.mockReturnValue(2);
-    interaction.options.getAttachment.mockReturnValue({ url: 'https://example.com/proof.png' } as any);
+    interaction.options.getAttachment.mockReturnValue({
+      url: 'https://example.com/proof.png',
+    } as any);
 
     serviceMock.createWarning.mockResolvedValueOnce({ warnId: 'W123' });
     await execute(interaction);

@@ -68,7 +68,11 @@ export class RateLimitError extends SecurityError {
 export class PermissionError extends SecurityError {
   public readonly missingPermissions: string[];
 
-  constructor(message: string, missingPermissions: string[] = [], context?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    missingPermissions: string[] = [],
+    context?: Record<string, unknown>
+  ) {
     super(message, 'PERMISSION_DENIED', 'medium', context);
     this.missingPermissions = missingPermissions;
   }

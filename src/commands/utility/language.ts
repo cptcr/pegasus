@@ -132,12 +132,12 @@ async function handleSet(interaction: ChatInputCommandInteraction) {
 
     // Ensure user exists in database first
     await ensureUserExists(interaction.user);
-    
+
     // Update user locale in database
     const db = getDatabase();
     await db
       .update(users)
-      .set({ 
+      .set({
         preferredLocale: newLocale,
         updatedAt: new Date(),
       })

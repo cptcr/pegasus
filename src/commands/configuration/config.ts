@@ -113,13 +113,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     case 'lang':
       return handleLangConfig(interaction);
     case 'welcome':
-    return handleWelcomeConfig(interaction);
-  case 'autorole':
-    return handleAutoroleConfig(interaction);
-  case 'goodbye':
-    return handleGoodbyeConfig(interaction);
-  case 'modlogs':
-    return handleModLogsConfig(interaction);
+      return handleWelcomeConfig(interaction);
+    case 'autorole':
+      return handleAutoroleConfig(interaction);
+    case 'goodbye':
+      return handleGoodbyeConfig(interaction);
+    case 'modlogs':
+      return handleModLogsConfig(interaction);
   }
 }
 
@@ -168,9 +168,7 @@ export async function buildModLogsConfigResponse(guildId: string) {
   for (const category of MOD_LOG_CATEGORIES) {
     const select = new ChannelSelectMenuBuilder()
       .setCustomId(`config_modlogs_select_${category.key}`)
-      .setPlaceholder(
-        t('config.modlogs.select.placeholder', { category: t(category.nameKey) })
-      )
+      .setPlaceholder(t('config.modlogs.select.placeholder', { category: t(category.nameKey) }))
       .setMinValues(1)
       .setMaxValues(1);
 
@@ -291,21 +289,20 @@ async function handleXPConfig(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Primary)
     );
 
-    const levelUpChannelRow =
-      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-        new ChannelSelectMenuBuilder()
-          .setCustomId('config_xp_levelup_channel')
-          .setPlaceholder(
-            config.levelUpChannel
-              ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
-                  channel: `<#${config.levelUpChannel}>`,
-                })
-              : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
-          )
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-      );
+    const levelUpChannelRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('config_xp_levelup_channel')
+        .setPlaceholder(
+          config.levelUpChannel
+            ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
+                channel: `<#${config.levelUpChannel}>`,
+              })
+            : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
+        )
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    );
 
     const announcementControlsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()

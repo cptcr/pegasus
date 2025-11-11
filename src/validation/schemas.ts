@@ -147,6 +147,10 @@ export const WarnSchemas = {
     warnId: z.string().regex(/^W[a-zA-Z0-9]{10}$/, 'Invalid warning ID format'),
   }),
 
+  delete: z.object({
+    warnId: z.string().regex(/^W[a-zA-Z0-9]{10}$/, 'Invalid warning ID format'),
+  }),
+
   view: z.object({
     user: CommonSchemas.snowflake,
     page: z.number().int().min(1).max(100).default(1),
@@ -202,7 +206,50 @@ export const ModerationSchemas = {
     reason: z.string().min(1, 'Reason is required').max(512, 'Reason too long'),
   }),
 
-  resetXp: z.object({
+  mute: z.object({
+    user: CommonSchemas.snowflake,
+    duration: z.number().int().min(1).max(10080).optional(),
+    reason: z.string().max(512).optional(),
+  }),
+
+  unmute: z.object({
+    user: CommonSchemas.snowflake,
+    reason: z.string().max(512).optional(),
+  }),
+
+  unban: z.object({
+    user_id: CommonSchemas.snowflake,
+    reason: z.string().max(512).optional(),
+  }),
+
+  purge: z.object({
+    amount: z.number().int().min(2).max(100),
+    user: CommonSchemas.snowflake.optional(),
+    channel: CommonSchemas.snowflake.optional(),
+  }),
+
+  lock: z.object({
+    channel: CommonSchemas.snowflake.optional(),
+    reason: z.string().max(512).optional(),
+  }),
+
+  unlock: z.object({
+    channel: CommonSchemas.snowflake.optional(),
+    reason: z.string().max(512).optional(),
+  }),
+
+  slowmode: z.object({
+    duration: z.number().int().min(0).max(21600),
+    channel: CommonSchemas.snowflake.optional(),
+    reason: z.string().max(512).optional(),
+  }),
+
+  modlog: z.object({
+    user: CommonSchemas.snowflake.optional(),
+    limit: z.number().int().min(1).max(25).optional(),
+  }),
+
+  'reset-xp': z.object({
     user: CommonSchemas.snowflake,
     confirm: z.boolean(),
   }),
@@ -587,14 +634,22 @@ export class SchemaValidator {
         return { success: true }; // No schema for this subcommand
       }
 
-      const result = (schema as { safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: { errors: Array<{ path: string[]; message: string }> } } }).safeParse(data);
+      const result = (
+        schema as {
+          safeParse: (data: unknown) => {
+            success: boolean;
+            data?: unknown;
+            error?: { errors: Array<{ path: string[]; message: string }> };
+          };
+        }
+      ).safeParse(data);
 
       if (result.success) {
         return { success: true, data: result.data };
       } else {
-        const errors = result.error?.errors
-          ?.map((e) => `${e.path.join('.')}: ${e.message}`)
-          .join(', ') || 'Validation error';
+        const errors =
+          result.error?.errors?.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') ||
+          'Validation error';
         return { success: false, error: errors };
       }
     } catch (error) {

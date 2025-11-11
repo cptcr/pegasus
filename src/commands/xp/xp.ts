@@ -117,7 +117,10 @@ async function handleRankCommand(interaction: ChatInputCommandInteraction, local
   }
 }
 
-async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction, locale: LocaleObject) {
+async function handleLeaderboardCommand(
+  interaction: ChatInputCommandInteraction,
+  locale: LocaleObject
+) {
   try {
     await interaction.deferReply();
 
@@ -197,7 +200,10 @@ async function handleLeaderboardCommand(interaction: ChatInputCommandInteraction
   }
 }
 
-async function handleConfigurationCommand(interaction: ChatInputCommandInteraction, locale: LocaleObject) {
+async function handleConfigurationCommand(
+  interaction: ChatInputCommandInteraction,
+  locale: LocaleObject
+) {
   try {
     await interaction.deferReply({ ephemeral: true });
 

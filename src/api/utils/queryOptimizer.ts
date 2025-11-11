@@ -27,18 +27,15 @@ class QueryOptimizer {
   } = {
     maxConnections: 20,
     currentConnections: 0,
-    waitQueue: []
+    waitQueue: [],
   };
 
   /**
    * Execute query with timing and metrics
    */
-  async executeQuery<T>(
-    queryName: string,
-    queryFn: () => Promise<T>
-  ): Promise<T> {
+  async executeQuery<T>(queryName: string, queryFn: () => Promise<T>): Promise<T> {
     const startTime = Date.now();
-    
+
     try {
       // Wait if connection pool is full
       if (this.connectionPool.currentConnections >= this.connectionPool.maxConnections) {
@@ -46,16 +43,16 @@ class QueryOptimizer {
       }
 
       this.connectionPool.currentConnections++;
-      
+
       const result = await queryFn();
-      
+
       const executionTime = Date.now() - startTime;
       this.recordMetrics(queryName, executionTime);
-      
+
       if (executionTime > this.slowQueryThreshold) {
         logger.warn(`Slow query detected: ${queryName} took ${executionTime}ms`);
       }
-      
+
       return result;
     } catch (error) {
       logger.error(`Query failed: ${queryName}`, error);
@@ -76,15 +73,15 @@ class QueryOptimizer {
     }>
   ): Promise<T[]> {
     const startTime = Date.now();
-    
+
     // Limit concurrent queries based on available connections
     const batchSize = Math.min(
       queries.length,
       this.connectionPool.maxConnections - this.connectionPool.currentConnections
     );
-    
+
     const results: T[] = [];
-    
+
     for (let i = 0; i < queries.length; i += batchSize) {
       const batch = queries.slice(i, i + batchSize);
       const batchResults = await Promise.all(
@@ -92,21 +89,17 @@ class QueryOptimizer {
       );
       results.push(...batchResults);
     }
-    
+
     const totalTime = Date.now() - startTime;
     logger.debug(`Batch query completed: ${queries.length} queries in ${totalTime}ms`);
-    
+
     return results;
   }
 
   /**
    * Create optimized pagination query
    */
-  createPaginatedQuery(
-    limit: number = 20,
-    offset: number = 0,
-    orderBy?: string
-  ) {
+  createPaginatedQuery(limit: number = 20, offset: number = 0, orderBy?: string) {
     // Use cursor-based pagination for better performance
     if (offset > 1000) {
       logger.warn(`Large offset detected (${offset}). Consider using cursor-based pagination.`);
@@ -115,36 +108,32 @@ class QueryOptimizer {
     return {
       limit,
       offset,
-      orderBy: orderBy || 'created_at DESC'
+      orderBy: orderBy || 'created_at DESC',
     };
   }
 
   /**
    * Batch insert optimization
    */
-  async batchInsert<T>(
-    table: any,
-    data: T[],
-    chunkSize: number = 100
-  ): Promise<void> {
+  async batchInsert<T>(table: any, data: T[], chunkSize: number = 100): Promise<void> {
     const db = getDatabase();
     const chunks: T[][] = [];
-    
+
     // Split data into chunks
     for (let i = 0; i < data.length; i += chunkSize) {
       chunks.push(data.slice(i, i + chunkSize));
     }
-    
+
     // Insert chunks in parallel (limited by connection pool)
     await this.executeBatch(
       chunks.map((chunk, index) => ({
         name: `batch_insert_${index}`,
         fn: async () => {
           await db.insert(table).values(chunk).execute();
-        }
+        },
       }))
     );
-    
+
     logger.info(`Batch insert completed: ${data.length} records in ${chunks.length} chunks`);
   }
 
@@ -162,9 +151,9 @@ class QueryOptimizer {
    * Wait for available connection
    */
   private async waitForConnection(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.connectionPool.waitQueue.push(Date.now());
-      
+
       const checkInterval = setInterval(() => {
         if (this.connectionPool.currentConnections < this.connectionPool.maxConnections) {
           clearInterval(checkInterval);
@@ -172,7 +161,7 @@ class QueryOptimizer {
           resolve();
         }
       }, 10);
-      
+
       // Timeout after 5 seconds
       setTimeout(() => {
         clearInterval(checkInterval);
@@ -194,7 +183,7 @@ class QueryOptimizer {
    */
   private recordMetrics(queryName: string, executionTime: number): void {
     const existing = this.metrics.get(queryName);
-    
+
     if (existing) {
       existing.count++;
       existing.totalTime += executionTime;
@@ -206,7 +195,7 @@ class QueryOptimizer {
         count: 1,
         totalTime: executionTime,
         avgTime: executionTime,
-        lastExecuted: new Date()
+        lastExecuted: new Date(),
       });
     }
   }
@@ -215,8 +204,7 @@ class QueryOptimizer {
    * Get query metrics
    */
   getMetrics(): QueryMetrics[] {
-    return Array.from(this.metrics.values())
-      .sort((a, b) => b.avgTime - a.avgTime);
+    return Array.from(this.metrics.values()).sort((a, b) => b.avgTime - a.avgTime);
   }
 
   /**
@@ -235,7 +223,7 @@ class QueryOptimizer {
       active: this.connectionPool.currentConnections,
       idle: this.connectionPool.maxConnections - this.connectionPool.currentConnections,
       total: this.connectionPool.maxConnections,
-      waitingRequests: this.connectionPool.waitQueue.length
+      waitingRequests: this.connectionPool.waitQueue.length,
     };
   }
 
@@ -257,22 +245,20 @@ class QueryOptimizer {
   ): Promise<Map<any, R[]>> {
     // Execute parent query
     const parents = await this.executeQuery('parent_query', parentQuery);
-    
+
     if (!Array.isArray(parents) || parents.length === 0) {
       return new Map();
     }
-    
+
     // Extract parent IDs
     const parentIds = parents.map((p: any) => p[parentKey]);
-    
+
     // Execute single child query with all parent IDs
-    const children = await this.executeQuery('child_query', () => 
-      childQuery(parentIds)
-    );
-    
+    const children = await this.executeQuery('child_query', () => childQuery(parentIds));
+
     // Group children by parent ID
     const childMap = new Map<any, R[]>();
-    
+
     for (const child of children) {
       const parentId = (child as any)[childKey];
       if (!childMap.has(parentId)) {
@@ -280,7 +266,7 @@ class QueryOptimizer {
       }
       childMap.get(parentId)!.push(child);
     }
-    
+
     return childMap;
   }
 
@@ -290,14 +276,12 @@ class QueryOptimizer {
   async explainQuery(): Promise<string> {
     try {
       const db = getDatabase();
-      
+
       // For PostgreSQL, we can use EXPLAIN ANALYZE
       // This is a simplified version - actual implementation would need
       // to extract the SQL from the query builder
-      const explanation = await db.execute(
-        sql`EXPLAIN (ANALYZE, BUFFERS) SELECT 1`
-      );
-      
+      const explanation = await db.execute(sql`EXPLAIN (ANALYZE, BUFFERS) SELECT 1`);
+
       return JSON.stringify(explanation, null, 2);
     } catch (error) {
       logger.error('Failed to explain query:', error);
@@ -318,9 +302,12 @@ export const QueryUtils = {
     return queryOptimizer.executeQuery('count_query', async () => {
       const db = getDatabase();
       const query = whereClause
-        ? db.select({ count: sql<number>`COUNT(*)` }).from(table).where(whereClause)
+        ? db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(table)
+            .where(whereClause)
         : db.select({ count: sql<number>`COUNT(*)` }).from(table);
-      
+
       const result = await query.execute();
       return Number(result[0]?.count) || 0;
     });
@@ -338,7 +325,7 @@ export const QueryUtils = {
         .from(table)
         .where(whereClause)
         .execute();
-      
+
       return (result[0]?.count || 0) > 0;
     });
   },
@@ -349,18 +336,18 @@ export const QueryUtils = {
   async upsert(table: any, data: any[], conflictColumns: string[]): Promise<void> {
     return queryOptimizer.executeQuery('upsert_query', async () => {
       const db = getDatabase();
-      
+
       // PostgreSQL ON CONFLICT syntax
       await db
         .insert(table)
         .values(data)
         .onConflictDoUpdate({
           target: conflictColumns as any,
-          set: data[0] // Update with new values
+          set: data[0], // Update with new values
         })
         .execute();
     });
-  }
+  },
 };
 
 /**
@@ -376,6 +363,6 @@ export function monitorQueryPerformance() {
       if (duration > 100) {
         logger.warn(`Slow query: ${queryName} took ${duration}ms`);
       }
-    }
+    },
   };
 }

@@ -8,31 +8,34 @@ import { eq } from 'drizzle-orm';
  */
 export async function ensureUserExists(user: User): Promise<void> {
   const db = getDatabase();
-  
+
   try {
-    await db.insert(users).values({
-      id: user.id,
-      username: user.username,
-      discriminator: user.discriminator,
-      globalName: user.globalName,
-      avatar: user.avatar,
-      avatarUrl: user.displayAvatarURL(),
-      bot: user.bot,
-    }).onConflictDoUpdate({
-      target: users.id,
-      set: {
+    await db
+      .insert(users)
+      .values({
+        id: user.id,
         username: user.username,
         discriminator: user.discriminator,
         globalName: user.globalName,
         avatar: user.avatar,
         avatarUrl: user.displayAvatarURL(),
-        updatedAt: new Date(),
-      },
-    });
+        bot: user.bot,
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          username: user.username,
+          discriminator: user.discriminator,
+          globalName: user.globalName,
+          avatar: user.avatar,
+          avatarUrl: user.displayAvatarURL(),
+          updatedAt: new Date(),
+        },
+      });
   } catch (error) {
     // Fallback to manual check and insert
     const existingUser = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
-    
+
     if (existingUser.length === 0) {
       await db.insert(users).values({
         id: user.id,
@@ -44,7 +47,8 @@ export async function ensureUserExists(user: User): Promise<void> {
         bot: user.bot,
       });
     } else {
-      await db.update(users)
+      await db
+        .update(users)
         .set({
           username: user.username,
           discriminator: user.discriminator,
@@ -63,20 +67,23 @@ export async function ensureUserExists(user: User): Promise<void> {
  */
 export async function ensureGuildExists(guild: Guild): Promise<void> {
   const db = getDatabase();
-  
+
   try {
-    await db.insert(guilds).values({
-      id: guild.id,
-    }).onConflictDoUpdate({
-      target: guilds.id,
-      set: {
-        updatedAt: new Date(),
-      },
-    });
+    await db
+      .insert(guilds)
+      .values({
+        id: guild.id,
+      })
+      .onConflictDoUpdate({
+        target: guilds.id,
+        set: {
+          updatedAt: new Date(),
+        },
+      });
   } catch (error) {
     // Fallback to manual check and insert
     const existingGuild = await db.select().from(guilds).where(eq(guilds.id, guild.id)).limit(1);
-    
+
     if (existingGuild.length === 0) {
       await db.insert(guilds).values({
         id: guild.id,
@@ -89,8 +96,5 @@ export async function ensureGuildExists(guild: Guild): Promise<void> {
  * Ensures both user and guild exist in database
  */
 export async function ensureUserAndGuildExist(user: User, guild: Guild): Promise<void> {
-  await Promise.all([
-    ensureUserExists(user),
-    ensureGuildExists(guild),
-  ]);
+  await Promise.all([ensureUserExists(user), ensureGuildExists(guild)]);
 }

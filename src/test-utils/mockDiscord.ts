@@ -1,7 +1,7 @@
-import { 
-  Guild, 
-  GuildMember, 
-  User, 
+import {
+  Guild,
+  GuildMember,
+  User,
   Message,
   ChatInputCommandInteraction,
   ButtonInteraction,
@@ -9,7 +9,7 @@ import {
   SelectMenuInteraction,
   Collection,
   PermissionsBitField,
-  ChannelType
+  ChannelType,
 } from 'discord.js';
 // Using jest mocking - no import needed since jest is global
 
@@ -155,7 +155,9 @@ export const createMockTextChannel = (overrides: Record<string, unknown> = {}): 
     bulkDelete: jest.fn(),
     createMessageCollector: jest.fn(),
     awaitMessages: jest.fn(),
-    permissionsFor: jest.fn().mockReturnValue(new PermissionsBitField(['SendMessages', 'ViewChannel'])),
+    permissionsFor: jest
+      .fn()
+      .mockReturnValue(new PermissionsBitField(['SendMessages', 'ViewChannel'])),
     ...overrides,
   } as any;
 
@@ -195,7 +197,9 @@ export const createMockMessage = (overrides: Partial<Message> = {}): any => {
   return mockMessage;
 };
 
-export const createMockCommandInteraction = (overrides: Partial<ChatInputCommandInteraction> = {}): any => {
+export const createMockCommandInteraction = (
+  overrides: Partial<ChatInputCommandInteraction> = {}
+): any => {
   const mockInteraction = {
     id: '555555555555555555',
     commandName: 'test',
@@ -268,7 +272,9 @@ export const createMockButtonInteraction = (overrides: Partial<ButtonInteraction
   return mockInteraction;
 };
 
-export const createMockModalSubmitInteraction = (overrides: Partial<ModalSubmitInteraction> = {}): any => {
+export const createMockModalSubmitInteraction = (
+  overrides: Partial<ModalSubmitInteraction> = {}
+): any => {
   const mockInteraction = {
     id: '888888888888888888',
     customId: 'test_modal',
@@ -300,7 +306,9 @@ export const createMockModalSubmitInteraction = (overrides: Partial<ModalSubmitI
   return mockInteraction;
 };
 
-export const createMockSelectMenuInteraction = (overrides: Partial<SelectMenuInteraction> = {}): any => {
+export const createMockSelectMenuInteraction = (
+  overrides: Partial<SelectMenuInteraction> = {}
+): any => {
   const mockInteraction = {
     id: '999999999999999999',
     customId: 'test_select',

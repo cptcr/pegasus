@@ -19,9 +19,13 @@ jest.mock('../../utils/logger', () => ({
 }));
 
 jest.mock('../../api/middleware/cache', () => ({
-  cacheMiddleware: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+  cacheMiddleware:
+    () => (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
+      next(),
   cacheStatsMiddleware: (_req: express.Request, res: express.Response) => res.json({ cache: true }),
-  invalidateCache: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+  invalidateCache:
+    () => (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
+      next(),
   CacheTTL: { STATS: 1000, GUILD_DATA: 1000, MEMBER_LIST: 1000 },
   cacheManager: {
     getStats: () => ({ hits: 0, misses: 0, size: 0 }),
@@ -32,9 +36,15 @@ jest.mock('../../api/middleware/cache', () => ({
 }));
 
 jest.mock('../../api/middleware/rateLimiter', () => ({
-  ipRateLimiter: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
-  guildRateLimiter: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
-  createRateLimiter: () => (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
+  ipRateLimiter:
+    () => (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
+      next(),
+  guildRateLimiter:
+    () => (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
+      next(),
+  createRateLimiter:
+    () => (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
+      next(),
   RateLimitPresets: { stats: { windowMs: 1000, maxRequests: 10 } },
 }));
 

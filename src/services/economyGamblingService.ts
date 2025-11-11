@@ -195,11 +195,11 @@ export class EconomyGamblingService {
     const playerCard2 = deck.pop();
     const dealerCard1 = deck.pop();
     const dealerCard2 = deck.pop();
-    
+
     if (!playerCard1 || !playerCard2 || !dealerCard1 || !dealerCard2) {
       throw new Error('Failed to deal cards');
     }
-    
+
     const playerHand: Card[] = [playerCard1, playerCard2];
     const dealerHand: Card[] = [dealerCard1, dealerCard2];
 

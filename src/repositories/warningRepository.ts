@@ -72,6 +72,20 @@ export class WarningRepository {
     return updated;
   }
 
+  async deactivateWarning(warnId: string, editedBy: string) {
+    const [updated] = await this.db
+      .update(warnings)
+      .set({
+        active: false,
+        editedAt: new Date(),
+        editedBy,
+      })
+      .where(eq(warnings.warnId, warnId))
+      .returning();
+
+    return updated;
+  }
+
   async getWarningById(warnId: string) {
     const [warning] = await this.db
       .select()

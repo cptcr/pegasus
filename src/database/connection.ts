@@ -394,9 +394,22 @@ async function createAllTables() {
         embed_color INTEGER DEFAULT 39423 NOT NULL,
         winners JSON,
         ended_at TIMESTAMP,
+        announcement_sent BOOLEAN DEFAULT FALSE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       )
+    `;
+
+    await connection`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'giveaways' AND column_name = 'announcement_sent'
+        ) THEN
+          ALTER TABLE giveaways ADD COLUMN announcement_sent BOOLEAN DEFAULT FALSE NOT NULL;
+        END IF;
+      END $$;
     `;
 
     // Create giveaway_entries table if it doesn't exist

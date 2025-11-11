@@ -211,7 +211,10 @@ export class SecurityService {
   /**
    * Handle detected raid
    */
-  private async handleRaid(guild: Guild, raiders: Array<{ userId: string; username: string }>): Promise<void> {
+  private async handleRaid(
+    guild: Guild,
+    raiders: Array<{ userId: string; username: string }>
+  ): Promise<void> {
     await this.logIncident({
       type: 'RAID_DETECTED',
       severity: 'critical',
@@ -522,7 +525,11 @@ export class SecurityService {
     return rows;
   }
 
-  private async getUserIncidents(userId: string, guildId: string, days: number): Promise<Array<{ type: string; createdAt: Date }>> {
+  private async getUserIncidents(
+    userId: string,
+    guildId: string,
+    days: number
+  ): Promise<Array<{ type: string; createdAt: Date }>> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const incidents = await getDatabase()
@@ -539,7 +546,7 @@ export class SecurityService {
         )
       )
       .orderBy(desc(securityLogs.createdAt));
-    
+
     return incidents;
   }
 
@@ -592,8 +599,7 @@ export class SecurityService {
 
   private async syncBlacklist(force = false): Promise<void> {
     if (!force) {
-      const ttlExpired =
-        Date.now() - this.lastBlacklistSync > SecurityService.BLACKLIST_CACHE_TTL;
+      const ttlExpired = Date.now() - this.lastBlacklistSync > SecurityService.BLACKLIST_CACHE_TTL;
       if (this.blacklistCache.size > 0 && !ttlExpired) {
         return;
       }

@@ -59,7 +59,12 @@ async function handleAutomationCreate(
     triggerValue = parseTriggerValue(fallbackTriggerValue);
   }
 
-  if (!triggerType || triggerValue === undefined || Number.isNaN(triggerValue) || triggerValue < 1) {
+  if (
+    !triggerType ||
+    triggerValue === undefined ||
+    Number.isNaN(triggerValue) ||
+    triggerValue < 1
+  ) {
     await interaction.editReply({
       content: t('commands.warn.subcommands.automation.create.missingTrigger'),
     });
@@ -144,7 +149,10 @@ const parseTriggerValue = (value?: string) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-const ACTION_CONFIG: Record<string, { type: 'ban' | 'kick' | 'timeout' | 'message'; duration?: number }> = {
+const ACTION_CONFIG: Record<
+  string,
+  { type: 'ban' | 'kick' | 'timeout' | 'message'; duration?: number }
+> = {
   '1d timeout': { type: 'timeout', duration: 60 * 24 },
   '1d timeoute': { type: 'timeout', duration: 60 * 24 },
   '1w timeout': { type: 'timeout', duration: 60 * 24 * 7 },
@@ -156,15 +164,12 @@ const ACTION_CONFIG: Record<string, { type: 'ban' | 'kick' | 'timeout' | 'messag
   message: { type: 'message' },
 };
 
-const normalizeActionChoice = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+const normalizeActionChoice = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
 
-const mapAutomationAction = (actionRaw: string, messageRaw?: string):
-  | { success: true; actions: WarningAction[] }
-  | { success: false; error: string } => {
+const mapAutomationAction = (
+  actionRaw: string,
+  messageRaw?: string
+): { success: true; actions: WarningAction[] } | { success: false; error: string } => {
   const normalizedAction = normalizeActionChoice(actionRaw);
   const config = ACTION_CONFIG[normalizedAction];
 

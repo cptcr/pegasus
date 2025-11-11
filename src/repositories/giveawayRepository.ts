@@ -1,4 +1,4 @@
-import { eq, and, sql, lt } from 'drizzle-orm';
+import { eq, and, sql, lt, isNotNull } from 'drizzle-orm';
 import { getDatabase } from '../database/connection';
 import { giveaways, giveawayEntries } from '../database/schema/giveaways';
 
@@ -152,6 +152,19 @@ export class GiveawayRepository {
       .select()
       .from(giveaways)
       .where(and(eq(giveaways.status, 'active'), lt(giveaways.endTime, new Date())));
+  }
+
+  async getEndedGiveawaysPendingAnnouncement() {
+    return this.db
+      .select()
+      .from(giveaways)
+      .where(
+        and(
+          eq(giveaways.status, 'ended'),
+          eq(giveaways.announcementSent, false),
+          isNotNull(giveaways.winners)
+        )
+      );
   }
 
   async getUserGiveawayStats(userId: string) {

@@ -141,7 +141,7 @@ export class PermissionChecker {
   ): Promise<PermissionCheckResult> {
     const member = interaction.member as GuildMember;
     const guild = interaction.guild;
-    
+
     if (!guild) {
       return { allowed: false, reason: 'This command can only be used in a server' };
     }

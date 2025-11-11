@@ -106,11 +106,22 @@ export class ConfigurationService {
         levelUpMessage: settings.levelUpMessage || undefined,
         boosterRole: settings.xpBoosterRole || undefined,
         boosterMultiplier: settings.xpBoosterMultiplier,
-        ignoredChannels: xpConfig && xpConfig.ignoredChannels ? JSON.parse(xpConfig.ignoredChannels) as string[] : [],
-        ignoredRoles: xpConfig && xpConfig.ignoredRoles ? JSON.parse(xpConfig.ignoredRoles) as string[] : [],
-        noXpChannels: xpConfig && xpConfig.noXpChannels ? JSON.parse(xpConfig.noXpChannels) as string[] : [],
-        doubleXpChannels: xpConfig && xpConfig.doubleXpChannels ? JSON.parse(xpConfig.doubleXpChannels) as string[] : [],
-        roleMultipliers: xpConfig && xpConfig.roleMultipliers ? JSON.parse(xpConfig.roleMultipliers) as Record<string, number> : {},
+        ignoredChannels:
+          xpConfig && xpConfig.ignoredChannels
+            ? (JSON.parse(xpConfig.ignoredChannels) as string[])
+            : [],
+        ignoredRoles:
+          xpConfig && xpConfig.ignoredRoles ? (JSON.parse(xpConfig.ignoredRoles) as string[]) : [],
+        noXpChannels:
+          xpConfig && xpConfig.noXpChannels ? (JSON.parse(xpConfig.noXpChannels) as string[]) : [],
+        doubleXpChannels:
+          xpConfig && xpConfig.doubleXpChannels
+            ? (JSON.parse(xpConfig.doubleXpChannels) as string[])
+            : [],
+        roleMultipliers:
+          xpConfig && xpConfig.roleMultipliers
+            ? (JSON.parse(xpConfig.roleMultipliers) as Record<string, number>)
+            : {},
         levelUpRewardsEnabled: xpConfig?.levelUpRewardsEnabled ?? true,
         stackRoleRewards: xpConfig?.stackRoleRewards ?? false,
       };
@@ -471,7 +482,7 @@ export class ConfigurationService {
 
       return {
         enabled: settings.autoroleEnabled,
-        roles: settings.autoroleRoles ? JSON.parse(settings.autoroleRoles) as string[] : [],
+        roles: settings.autoroleRoles ? (JSON.parse(settings.autoroleRoles) as string[]) : [],
       };
     } catch (error) {
       logger.error(`Failed to get autorole config for guild ${guildId}:`, error);

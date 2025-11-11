@@ -28,7 +28,7 @@ export async function getDetailedSystemInfo() {
       networkStats,
       processes,
       dockerInfo,
-      services
+      services,
     ] = await Promise.all([
       si.osInfo(),
       si.cpu(),
@@ -40,11 +40,11 @@ export async function getDetailedSystemInfo() {
       si.networkStats(),
       si.processes(),
       si.dockerInfo().catch(() => null),
-      si.services('*').catch(() => [])
+      si.services('*').catch(() => []),
     ]);
 
     const gpuInfo = await getGPUInfo();
-    
+
     return {
       os: {
         platform: osInfo.platform,
@@ -56,7 +56,7 @@ export async function getDetailedSystemInfo() {
         hostname: osInfo.hostname,
         uptime: si.time().uptime,
         timezone: si.time().timezone,
-        loadAverage: os.loadavg()
+        loadAverage: os.loadavg(),
       },
       cpu: {
         manufacturer: cpuInfo.manufacturer,
@@ -73,13 +73,13 @@ export async function getDetailedSystemInfo() {
         speed: {
           base: cpuInfo.speed,
           min: cpuInfo.speedMin,
-          max: cpuInfo.speedMax
+          max: cpuInfo.speedMax,
         },
         cache: {
           l1d: cpuInfo.cache.l1d,
           l1i: cpuInfo.cache.l1i,
           l2: cpuInfo.cache.l2,
-          l3: cpuInfo.cache.l3
+          l3: cpuInfo.cache.l3,
         },
         temperature: cpuTemp.main || null,
         usage: {
@@ -87,8 +87,8 @@ export async function getDetailedSystemInfo() {
           user: cpuUsage.currentLoadUser,
           system: cpuUsage.currentLoadSystem,
           idle: cpuUsage.currentLoadIdle,
-          cores: cpuUsage.cpus
-        }
+          cores: cpuUsage.cpus,
+        },
       },
       memory: {
         total: memInfo.total,
@@ -103,8 +103,8 @@ export async function getDetailedSystemInfo() {
           total: memInfo.swaptotal,
           used: memInfo.swapused,
           free: memInfo.swapfree,
-          percentage: memInfo.swaptotal > 0 ? (memInfo.swapused / memInfo.swaptotal) * 100 : 0
-        }
+          percentage: memInfo.swaptotal > 0 ? (memInfo.swapused / memInfo.swaptotal) * 100 : 0,
+        },
       },
       gpu: gpuInfo,
       disk: diskInfo.map(disk => ({
@@ -114,7 +114,7 @@ export async function getDetailedSystemInfo() {
         used: disk.used,
         available: disk.available,
         percentage: disk.use,
-        mount: disk.mount
+        mount: disk.mount,
       })),
       network: {
         interfaces: networkInfo.map(iface => ({
@@ -129,23 +129,26 @@ export async function getDetailedSystemInfo() {
           speed: iface.speed,
           dhcp: iface.dhcp,
           type: iface.type,
-          state: iface.operstate
+          state: iface.operstate,
         })),
-        stats: networkStats.length > 0 ? {
-          interface: networkStats[0].iface,
-          rx: {
-            bytes: networkStats[0].rx_bytes,
-            dropped: networkStats[0].rx_dropped,
-            errors: networkStats[0].rx_errors,
-            perSecond: networkStats[0].rx_sec
-          },
-          tx: {
-            bytes: networkStats[0].tx_bytes,
-            dropped: networkStats[0].tx_dropped,
-            errors: networkStats[0].tx_errors,
-            perSecond: networkStats[0].tx_sec
-          }
-        } : null
+        stats:
+          networkStats.length > 0
+            ? {
+                interface: networkStats[0].iface,
+                rx: {
+                  bytes: networkStats[0].rx_bytes,
+                  dropped: networkStats[0].rx_dropped,
+                  errors: networkStats[0].rx_errors,
+                  perSecond: networkStats[0].rx_sec,
+                },
+                tx: {
+                  bytes: networkStats[0].tx_bytes,
+                  dropped: networkStats[0].tx_dropped,
+                  errors: networkStats[0].tx_errors,
+                  perSecond: networkStats[0].tx_sec,
+                },
+              }
+            : null,
       },
       processes: {
         total: processes.all,
@@ -158,29 +161,31 @@ export async function getDetailedSystemInfo() {
           cpu: p.cpu,
           memory: p.mem,
           state: p.state,
-          started: p.started
-        }))
+          started: p.started,
+        })),
       },
-      docker: dockerInfo ? {
-        containers: dockerInfo.containers,
-        containersRunning: dockerInfo.containersRunning,
-        containersPaused: dockerInfo.containersPaused,
-        containersStopped: dockerInfo.containersStopped,
-        images: dockerInfo.images,
-        driver: dockerInfo.driver,
-        memoryLimit: dockerInfo.memoryLimit,
-        swapLimit: dockerInfo.swapLimit,
-        kernelMemory: dockerInfo.kernelMemory,
-        cpuCfsPeriod: dockerInfo.cpuCfsPeriod,
-        cpuCfsQuota: dockerInfo.cpuCfsQuota
-      } : null,
+      docker: dockerInfo
+        ? {
+            containers: dockerInfo.containers,
+            containersRunning: dockerInfo.containersRunning,
+            containersPaused: dockerInfo.containersPaused,
+            containersStopped: dockerInfo.containersStopped,
+            images: dockerInfo.images,
+            driver: dockerInfo.driver,
+            memoryLimit: dockerInfo.memoryLimit,
+            swapLimit: dockerInfo.swapLimit,
+            kernelMemory: dockerInfo.kernelMemory,
+            cpuCfsPeriod: dockerInfo.cpuCfsPeriod,
+            cpuCfsQuota: dockerInfo.cpuCfsQuota,
+          }
+        : null,
       services: services.slice(0, 10).map((s: any) => ({
         name: s.name,
         running: s.running,
         startmode: s.startmode,
         cpu: s.cpu,
-        mem: s.mem
-      }))
+        mem: s.mem,
+      })),
     };
   } catch (error) {
     throw new Error(`Failed to get system information: ${error}`);
@@ -200,7 +205,7 @@ async function getGPUInfo(): Promise<GPUInfo[]> {
         temperature: controller.temperatureGpu || null,
         utilization: controller.utilizationGpu || null,
         memoryUtilization: controller.utilizationMemory || null,
-        driver: controller.driverVersion || undefined
+        driver: controller.driverVersion || undefined,
       };
 
       if (process.platform === 'linux' && controller.vendor.toLowerCase().includes('nvidia')) {
@@ -228,13 +233,13 @@ async function getNvidiaInfo() {
     const { stdout } = await execAsync(
       'nvidia-smi --query-gpu=temperature.gpu,utilization.gpu,utilization.memory --format=csv,noheader,nounits'
     );
-    
+
     const [temp, gpuUtil, memUtil] = stdout.trim().split(', ').map(Number);
-    
+
     return {
       temperature: temp,
       utilization: gpuUtil,
-      memoryUtilization: memUtil
+      memoryUtilization: memUtil,
     };
   } catch {
     return null;
@@ -245,9 +250,9 @@ export async function getProcessInfo(pid: number) {
   try {
     const processes = await si.processes();
     const process = processes.list.find((p: any) => p.pid === pid);
-    
+
     if (!process) return null;
-    
+
     return {
       pid: process.pid,
       parentPid: process.parentPid,
@@ -266,7 +271,7 @@ export async function getProcessInfo(pid: number) {
       user: process.user,
       command: process.command,
       params: process.params,
-      path: process.path
+      path: process.path,
     };
   } catch {
     return null;

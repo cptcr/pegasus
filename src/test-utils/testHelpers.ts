@@ -40,14 +40,10 @@ export const expectInteractionReply = (interaction: any) => ({
     expect(matcher(call.embeds[0])).toBe(true);
   },
   toHaveBeenCalledWithContent: (content: string) => {
-    expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content })
-    );
+    expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content }));
   },
   toHaveBeenCalledEphemeral: () => {
-    expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ ephemeral: true })
-    );
+    expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));
   },
   toHaveBeenDeferred: () => {
     expect(interaction.deferReply).toHaveBeenCalled();
@@ -85,15 +81,15 @@ export const mockI18n = () => {
       'commands.ticket.created': 'Ticket created',
       'commands.ticket.closed': 'Ticket closed',
     };
-    
+
     let result = translations[key] || key;
-    
+
     if (options) {
       Object.entries(options).forEach(([placeholder, value]) => {
         result = result.replace(`{${placeholder}}`, String(value));
       });
     }
-    
+
     return result;
   });
 
@@ -149,7 +145,7 @@ export const cleanupMocks = () => {
 
 export const suppressConsole = () => {
   const originalConsole = { ...console };
-  
+
   beforeAll(() => {
     console.log = jest.fn(() => undefined);
     console.error = jest.fn(() => undefined);
@@ -157,7 +153,7 @@ export const suppressConsole = () => {
     console.info = jest.fn(() => undefined);
     console.debug = jest.fn(() => undefined);
   });
-  
+
   afterAll(() => {
     console.log = originalConsole.log;
     console.error = originalConsole.error;
@@ -169,7 +165,7 @@ export const suppressConsole = () => {
 
 export const mockEnvironment = (overrides: Record<string, string> = {}) => {
   const originalEnv = process.env;
-  
+
   beforeAll(() => {
     process.env = {
       ...originalEnv,
@@ -183,7 +179,7 @@ export const mockEnvironment = (overrides: Record<string, string> = {}) => {
       ...overrides,
     };
   });
-  
+
   afterAll(() => {
     process.env = originalEnv;
   });

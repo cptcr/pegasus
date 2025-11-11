@@ -13,25 +13,25 @@ export const createMockDb = () => {
     groupBy: jest.fn().mockReturnThis(),
     having: jest.fn().mockReturnThis(),
     execute: jest.fn().mockResolvedValue([]),
-    
+
     insert: jest.fn().mockReturnThis(),
     values: jest.fn().mockReturnThis(),
     returning: jest.fn().mockReturnThis(),
     onConflictDoUpdate: jest.fn().mockReturnThis(),
     onConflictDoNothing: jest.fn().mockReturnThis(),
-    
+
     update: jest.fn().mockReturnThis(),
     set: jest.fn().mockReturnThis(),
-    
+
     delete: jest.fn().mockReturnThis(),
-    
+
     transaction: jest.fn().mockImplementation(async (callback: any) => {
       const mockTx = createMockTransaction();
       return await callback(mockTx);
     }),
-    
+
     batch: jest.fn().mockResolvedValue([]),
-    
+
     $executeRaw: jest.fn().mockResolvedValue({ rowCount: 0 }),
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
@@ -47,16 +47,16 @@ export const createMockTransaction = () => {
     orderBy: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
     execute: jest.fn().mockResolvedValue([]),
-    
+
     insert: jest.fn().mockReturnThis(),
     values: jest.fn().mockReturnThis(),
     returning: jest.fn().mockResolvedValue([]),
-    
+
     update: jest.fn().mockReturnThis(),
     set: jest.fn().mockReturnThis(),
-    
+
     delete: jest.fn().mockReturnThis(),
-    
+
     rollback: jest.fn(),
     commit: jest.fn(),
   };

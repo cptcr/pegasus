@@ -1,0 +1,99 @@
+import { and, desc, eq, gt, isNotNull } from 'drizzle-orm';
+import { getDatabase } from '../database/connection';
+import { modCases } from '../database/schema';
+import type { ModActionType, ModCase } from '../types';
+
+export interface CreateModCaseInput {
+  guildId: string;
+  userId: string;
+  moderatorId: string;
+  type: ModActionType | string;
+  reason?: string;
+  duration?: number | null;
+  expiresAt?: Date | null;
+}
+
+export class ModCaseRepository {
+  private get db() {
+    return getDatabase();
+  }
+
+  async create(data: CreateModCaseInput): Promise<ModCase> {
+    const [created] = await this.db
+      .insert(modCases)
+      .values({
+        guildId: data.guildId,
+        userId: data.userId,
+        moderatorId: data.moderatorId,
+        type: data.type,
+        reason: data.reason,
+        duration: data.duration ?? null,
+        expiresAt: data.expiresAt ?? null,
+      })
+      .returning();
+
+    return created;
+  }
+
+  async getById(guildId: string, caseId: number): Promise<ModCase | null> {
+    const [record] = await this.db
+      .select()
+      .from(modCases)
+      .where(and(eq(modCases.guildId, guildId), eq(modCases.id, caseId)))
+      .limit(1);
+
+    return record ?? null;
+  }
+
+  async delete(guildId: string, caseId: number): Promise<boolean> {
+    const [deleted] = await this.db
+      .delete(modCases)
+      .where(and(eq(modCases.guildId, guildId), eq(modCases.id, caseId)))
+      .returning();
+
+    return Boolean(deleted);
+  }
+
+  async getByUser(guildId: string, userId: string, limit = 10): Promise<ModCase[]> {
+    return this.db
+      .select()
+      .from(modCases)
+      .where(and(eq(modCases.guildId, guildId), eq(modCases.userId, userId)))
+      .orderBy(desc(modCases.createdAt))
+      .limit(limit);
+  }
+
+  async getRecent(guildId: string, limit = 10): Promise<ModCase[]> {
+    return this.db
+      .select()
+      .from(modCases)
+      .where(eq(modCases.guildId, guildId))
+      .orderBy(desc(modCases.createdAt))
+      .limit(limit);
+  }
+
+  async getActiveTempBans(): Promise<ModCase[]> {
+    return this.db
+      .select()
+      .from(modCases)
+      .where(
+        and(
+          eq(modCases.type, 'ban'),
+          isNotNull(modCases.expiresAt),
+          gt(modCases.expiresAt, new Date())
+        )
+      );
+  }
+
+  async markTempBanCompleted(caseId: number): Promise<void> {
+    await this.db
+      .update(modCases)
+      .set({
+        duration: null,
+        expiresAt: null,
+      })
+      .where(eq(modCases.id, caseId));
+  }
+}
+
+export const modCaseRepository = new ModCaseRepository();

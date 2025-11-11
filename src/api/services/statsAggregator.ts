@@ -56,7 +56,7 @@ class StatsAggregator {
     lastHourReset: Date.now(),
     lastDayReset: Date.now(),
     recentCommands: [] as number[],
-    commandCounts: new Map<string, number>()
+    commandCounts: new Map<string, number>(),
   };
   private botStartTime = Date.now();
   private lastUpdate = 0;
@@ -104,21 +104,15 @@ class StatsAggregator {
       this.resetTimeBasedCounters();
 
       // Gather all stats in parallel
-      const [
-        botStats,
-        guildStats,
-        userStats,
-        commandStats,
-        systemStats,
-        featureStats
-      ] = await Promise.all([
-        this.getBotStats(),
-        this.getGuildStats(),
-        this.getUserStats(),
-        this.getCommandStats(),
-        this.getSystemStats(),
-        this.getFeatureStats()
-      ]);
+      const [botStats, guildStats, userStats, commandStats, systemStats, featureStats] =
+        await Promise.all([
+          this.getBotStats(),
+          this.getGuildStats(),
+          this.getUserStats(),
+          this.getCommandStats(),
+          this.getSystemStats(),
+          this.getFeatureStats(),
+        ]);
 
       this.stats = {
         bot: botStats,
@@ -126,19 +120,19 @@ class StatsAggregator {
         users: userStats,
         commands: commandStats,
         system: systemStats,
-        features: featureStats
+        features: featureStats,
       };
 
       // Cache the aggregated stats
       cacheManager.set('stats:aggregated', this.stats, CacheTTL.STATS);
-      
+
       this.lastUpdate = Date.now();
       const updateTime = Date.now() - startTime;
-      
+
       // Only warn if aggregation takes more than 80% of the interval
       // or if it takes more than 2 seconds regardless of interval
       const warningThreshold = Math.min(this.intervalMs * 0.8, 2000);
-      
+
       if (updateTime > warningThreshold) {
         logger.warn(`Stats aggregation took ${updateTime}ms (interval: ${this.intervalMs}ms)`);
       } else if (updateTime > this.intervalMs * 0.5) {
@@ -159,7 +153,7 @@ class StatsAggregator {
       uptime: Date.now() - this.botStartTime,
       startedAt: new Date(this.botStartTime).toISOString(),
       latency: client.ws.ping,
-      shardCount: client.ws.shards.size
+      shardCount: client.ws.shards.size,
     };
   }
 
@@ -168,13 +162,11 @@ class StatsAggregator {
    */
   private async getGuildStats() {
     const guilds = client.guilds.cache;
-    
+
     return {
       total: guilds.size,
       large: guilds.filter(g => g.large).size,
-      voiceActive: guilds.filter(g => 
-        g.members.cache.some(m => m.voice.channel)
-      ).size
+      voiceActive: guilds.filter(g => g.members.cache.some(m => m.voice.channel)).size,
     };
   }
 
@@ -184,10 +176,10 @@ class StatsAggregator {
   private async getUserStats() {
     const guilds = client.guilds.cache;
     const totalUsers = guilds.reduce((acc, guild) => acc + guild.memberCount, 0);
-    
+
     const uniqueUsers = new Set<string>();
     let onlineUsers = 0;
-    
+
     guilds.forEach(guild => {
       guild.members.cache.forEach(member => {
         if (!member.user.bot) {
@@ -201,17 +193,17 @@ class StatsAggregator {
 
     // Get active users from database (cached query)
     let activeToday = Math.floor(totalUsers * 0.03); // Default estimate
-    
+
     try {
       const db = getDatabase();
       const twentyFourHoursAgo = new Date(Date.now() - 86400000);
-      
+
       const activeUsersResult = await db
         .select({ count: sql<number>`COUNT(DISTINCT user_id)` })
         .from(members)
         .where(gte(members.updatedAt, twentyFourHoursAgo))
         .execute();
-      
+
       if (activeUsersResult[0]) {
         activeToday = Number(activeUsersResult[0].count) || activeToday;
       }
@@ -223,7 +215,7 @@ class StatsAggregator {
       total: totalUsers,
       unique: uniqueUsers.size,
       activeToday,
-      online: onlineUsers
+      online: onlineUsers,
     };
   }
 
@@ -248,15 +240,15 @@ class StatsAggregator {
         { name: 'help', ratio: 0.18 },
         { name: 'balance', ratio: 0.15 },
         { name: 'rank', ratio: 0.12 },
-        { name: 'daily', ratio: 0.10 },
-        { name: 'work', ratio: 0.08 }
+        { name: 'daily', ratio: 0.1 },
+        { name: 'work', ratio: 0.08 },
       ];
-      
+
       defaults.forEach(({ name, ratio }) => {
         if (!topCommands.find(cmd => cmd.name === name)) {
           topCommands.push({
             name,
-            count: Math.floor(this.commandStats.total * ratio)
+            count: Math.floor(this.commandStats.total * ratio),
           });
         }
       });
@@ -267,7 +259,7 @@ class StatsAggregator {
       today: this.commandStats.today,
       thisHour: this.commandStats.thisHour,
       perMinute: recentCommands.length,
-      topCommands: topCommands.slice(0, 5)
+      topCommands: topCommands.slice(0, 5),
     };
   }
 
@@ -276,16 +268,17 @@ class StatsAggregator {
    */
   private async getSystemStats() {
     const memUsage = process.memoryUsage();
-    
+
     // Simple CPU usage approximation
-    const cpuUsage = Math.min(95, Math.max(5, 
-      20 + Math.random() * 15 + (client.guilds.cache.size * 0.1)
-    ));
+    const cpuUsage = Math.min(
+      95,
+      Math.max(5, 20 + Math.random() * 15 + client.guilds.cache.size * 0.1)
+    );
 
     return {
       memoryUsage: Math.round(memUsage.heapUsed / 1024 / 1024),
       memoryTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
-      cpuUsage: Math.round(cpuUsage)
+      cpuUsage: Math.round(cpuUsage),
     };
   }
 
@@ -298,62 +291,62 @@ class StatsAggregator {
       moderation: { cases: 0, activeWarnings: 0 },
       tickets: { open: 0, total: 0 },
       giveaways: { active: 0, participants: 0 },
-      xp: { activeUsers: 0 }
+      xp: { activeUsers: 0 },
     };
 
     try {
       const db = getDatabase();
-        const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
 
       // Run queries in parallel
-      const [
-        economyStats,
-        moderationStats,
-        ticketStats,
-        giveawayStats,
-        xpStats
-      ] = await Promise.all([
-        // Economy stats
-        db.select({
-          transactions: sql<number>`COUNT(*)`,
-          active: sql<number>`COUNT(DISTINCT user_id)`
-        })
-        .from(economyTransactions)
-        .where(gte(economyTransactions.createdAt, sevenDaysAgo))
-        .execute(),
+      const [economyStats, moderationStats, ticketStats, giveawayStats, xpStats] =
+        await Promise.all([
+          // Economy stats
+          db
+            .select({
+              transactions: sql<number>`COUNT(*)`,
+              active: sql<number>`COUNT(DISTINCT user_id)`,
+            })
+            .from(economyTransactions)
+            .where(gte(economyTransactions.createdAt, sevenDaysAgo))
+            .execute(),
 
-        // Moderation stats
-        db.select({
-          cases: sql<number>`COUNT(*)`,
-          warnings: sql<number>`COUNT(*) FILTER (WHERE type = 'warn')`
-        })
-        .from(modCases)
-        .where(gte(modCases.createdAt, sevenDaysAgo))
-        .execute(),
+          // Moderation stats
+          db
+            .select({
+              cases: sql<number>`COUNT(*)`,
+              warnings: sql<number>`COUNT(*) FILTER (WHERE type = 'warn')`,
+            })
+            .from(modCases)
+            .where(gte(modCases.createdAt, sevenDaysAgo))
+            .execute(),
 
-        // Ticket stats
-        db.select({
-          open: sql<number>`COUNT(*) FILTER (WHERE status = 'open')`,
-          total: sql<number>`COUNT(*)`
-        })
-        .from(tickets)
-        .execute(),
+          // Ticket stats
+          db
+            .select({
+              open: sql<number>`COUNT(*) FILTER (WHERE status = 'open')`,
+              total: sql<number>`COUNT(*)`,
+            })
+            .from(tickets)
+            .execute(),
 
-        // Giveaway stats
-        db.select({
-          active: sql<number>`COUNT(*) FILTER (WHERE status = 'active' AND end_time > NOW())`,
-          total: sql<number>`COUNT(*)`
-        })
-        .from(giveaways)
-        .execute(),
+          // Giveaway stats
+          db
+            .select({
+              active: sql<number>`COUNT(*) FILTER (WHERE status = 'active' AND end_time > NOW())`,
+              total: sql<number>`COUNT(*)`,
+            })
+            .from(giveaways)
+            .execute(),
 
-        // XP stats
-        db.select({
-          active: sql<number>`COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '7 days')`
-        })
-        .from(members)
-        .execute()
-      ]);
+          // XP stats
+          db
+            .select({
+              active: sql<number>`COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '7 days')`,
+            })
+            .from(members)
+            .execute(),
+        ]);
 
       // Update stats object
       if (economyStats[0]) {
@@ -390,7 +383,7 @@ class StatsAggregator {
    */
   private resetTimeBasedCounters(): void {
     const now = Date.now();
-    
+
     // Reset hourly counter
     if (now - this.commandStats.lastHourReset > 3600000) {
       this.commandStats.thisHour = 0;
@@ -421,7 +414,9 @@ class StatsAggregator {
     // Keep recent commands list under control
     if (this.commandStats.recentCommands.length > 100) {
       const oneMinuteAgo = Date.now() - 60000;
-      this.commandStats.recentCommands = this.commandStats.recentCommands.filter(t => t > oneMinuteAgo);
+      this.commandStats.recentCommands = this.commandStats.recentCommands.filter(
+        t => t > oneMinuteAgo
+      );
     }
   }
 

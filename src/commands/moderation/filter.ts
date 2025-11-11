@@ -49,9 +49,7 @@ export const data = new SlashCommandBuilder()
           .setDescription(t('commands.filter.add.options.caseSensitive'))
       )
       .addBooleanOption(option =>
-        option
-          .setName('whole_word')
-          .setDescription(t('commands.filter.add.options.wholeWord'))
+        option.setName('whole_word').setDescription(t('commands.filter.add.options.wholeWord'))
       )
       .addStringOption(option =>
         option
@@ -60,9 +58,7 @@ export const data = new SlashCommandBuilder()
           .setChoices(...SEVERITY_CHOICES)
       )
       .addBooleanOption(option =>
-        option
-          .setName('auto_delete')
-          .setDescription(t('commands.filter.add.options.autoDelete'))
+        option.setName('auto_delete').setDescription(t('commands.filter.add.options.autoDelete'))
       )
       .addChannelOption(option =>
         option

@@ -7,6 +7,7 @@ import { Validator, CommandSchemas } from '../../security/validator';
 import { RateLimitError } from '../../security/errors';
 import { auditLogger } from '../../security/audit';
 import { logger } from '../../utils/logger';
+import { t } from '../../i18n';
 import type {
   DiceResult,
   CoinflipResult,
@@ -158,6 +159,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const bet = interaction.options.getInteger('bet', true);
   const userId = interaction.user.id;
   const guildId = interaction.guildId!;
+  const locale = interaction.locale ?? interaction.guildLocale ?? 'en';
 
   try {
     // Validate gambling input
@@ -170,7 +172,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const recentGambles = await economyRepository.getRecentGambles(userId, guildId, 3600); // Last hour
     if (recentGambles >= 10) {
       throw new RateLimitError(
-        'You have been gambling too frequently. Please take a break and try again later.',
+        t('commands.economy.gamble.rateLimited', {
+          lng: locale,
+        }) || 'You have been gambling too frequently. Please take a break and try again later.',
         3600
       );
     }
@@ -183,7 +187,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await interaction.editReply({
         embeds: [
           embedBuilder.createErrorEmbed(
-            `Insufficient balance. You have ${settings.currencySymbol}${userBalance?.balance.toLocaleString() || 0}`
+            t('commands.economy.gamble.insufficientFunds', {
+              lng: locale,
+              amount: `${settings.currencySymbol}${(userBalance?.balance || 0).toLocaleString()}`,
+            })
           ),
         ],
       });
@@ -194,7 +201,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await interaction.editReply({
         embeds: [
           embedBuilder.createErrorEmbed(
-            `Bet must be between ${settings.currencySymbol}${settings.minBet} and ${settings.currencySymbol}${settings.maxBet}`
+            t('commands.economy.gamble.invalidBet', {
+              lng: locale,
+              symbol: settings.currencySymbol,
+              min: settings.minBet.toLocaleString(),
+              max: settings.maxBet.toLocaleString(),
+            })
           ),
         ],
       });
@@ -219,23 +231,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     switch (subcommand) {
       case 'dice':
         result = await economyGamblingService.playDice(userId, guildId, bet);
-        embed = createDiceEmbed(result, settings);
+        embed = createDiceEmbed(result, settings, locale);
         break;
 
       case 'coinflip':
         const choice = interaction.options.getString('choice', true) as 'heads' | 'tails';
         result = await economyGamblingService.playCoinflip(userId, guildId, bet, choice);
-        embed = createCoinflipEmbed(result, settings);
+        embed = createCoinflipEmbed(result, settings, locale);
         break;
 
       case 'slots':
         result = await economyGamblingService.playSlots(userId, guildId, bet);
-        embed = createSlotsEmbed(result, settings);
+        embed = createSlotsEmbed(result, settings, locale);
         break;
 
       case 'blackjack':
         result = await economyGamblingService.playBlackjack(userId, guildId, bet);
-        embed = createBlackjackEmbed(result, settings, interaction.user.displayAvatarURL());
+        embed = createBlackjackEmbed(result, settings, locale, interaction.user.displayAvatarURL());
         break;
 
       case 'roulette':
@@ -254,7 +266,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           const numberBet = interaction.options.getInteger('number');
           if (numberBet === null) {
             await interaction.editReply({
-              embeds: [embedBuilder.createErrorEmbed('Please specify a number to bet on (0-36)')],
+              embeds: [
+                embedBuilder.createErrorEmbed(
+                  t('commands.economy.gamble.roulette.numberRequired', { lng: locale })
+                ),
+              ],
             });
             return;
           }
@@ -270,7 +286,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           rouletteBetType,
           betValue
         );
-        embed = createRouletteEmbed(result, settings);
+        embed = createRouletteEmbed(result, settings, locale);
         break;
 
       default:
@@ -325,27 +341,32 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
-function createDiceEmbed(result: any, settings: any): EmbedBuilder {
+function createDiceEmbed(result: any, settings: any, locale: string): EmbedBuilder {
   const details = result.details as DiceResult;
   const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  const descriptionKey = details.tie
+    ? 'commands.economy.gamble.dice.tie'
+    : details.won
+      ? 'commands.economy.gamble.dice.won'
+      : 'commands.economy.gamble.dice.lost';
 
   return new EmbedBuilder()
-    .setTitle('🎲 Dice Game')
-    .setDescription(details.tie ? "It's a tie!" : details.won ? 'You won!' : 'You lost!')
+    .setTitle(t('commands.economy.gamble.dice.title', { lng: locale }))
+    .setDescription(t(descriptionKey, { lng: locale }))
     .setColor(details.won ? 0x2ecc71 : details.tie ? 0xf39c12 : 0xe74c3c)
     .addFields(
       {
-        name: 'Your Roll',
+        name: t('commands.economy.gamble.dice.yourRoll', { lng: locale }),
         value: `${diceEmojis[details.playerRoll - 1]} ${details.playerRoll}`,
         inline: true,
       },
       {
-        name: 'Dealer Roll',
+        name: t('commands.economy.gamble.dice.dealerRoll', { lng: locale }),
         value: `${diceEmojis[details.dealerRoll - 1]} ${details.dealerRoll}`,
         inline: true,
       },
       {
-        name: 'Result',
+        name: t('commands.economy.gamble.dice.result', { lng: locale }),
         value:
           result.profit > 0
             ? `Won ${settings.currencySymbol}${result.profit.toLocaleString()}`
@@ -355,92 +376,117 @@ function createDiceEmbed(result: any, settings: any): EmbedBuilder {
         inline: true,
       },
       {
-        name: 'New Balance',
+        name: t('commands.economy.gamble.common.newBalance', { lng: locale }),
         value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
         inline: true,
       }
     )
     .setFooter({
-      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}`,
+      text: t('commands.economy.gamble.stats.winRate', {
+        lng: locale,
+        rate: ((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1),
+        streak: result.stats.currentStreak,
+      }),
     })
     .setTimestamp();
 }
 
-function createCoinflipEmbed(result: any, settings: any): EmbedBuilder {
+function createCoinflipEmbed(result: any, settings: any, locale: string): EmbedBuilder {
   const details = result.details as CoinflipResult;
   const emoji = details.result === 'heads' ? '🪙' : '🪙';
 
   return new EmbedBuilder()
-    .setTitle(`${emoji} Coinflip`)
-    .setDescription(`The coin landed on **${details.result}**!`)
+    .setTitle(t('commands.economy.gamble.coinflip.title', { lng: locale }))
+    .setDescription(
+      t('commands.economy.gamble.coinflip.landed', {
+        lng: locale,
+        result: details.result,
+      })
+    )
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
       {
-        name: 'Your Choice',
+        name: t('commands.economy.gamble.common.yourChoice', { lng: locale }),
         value: details.choice.charAt(0).toUpperCase() + details.choice.slice(1),
         inline: true,
       },
       {
-        name: 'Result',
+        name: t('commands.economy.gamble.coinflip.resultField', { lng: locale }),
         value: details.result.charAt(0).toUpperCase() + details.result.slice(1),
         inline: true,
       },
       {
-        name: details.won ? 'Won' : 'Lost',
+        name: details.won
+          ? t('commands.economy.gamble.common.wonLabel', { lng: locale })
+          : t('commands.economy.gamble.common.lostLabel', { lng: locale }),
         value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
         inline: true,
       },
       {
-        name: 'New Balance',
+        name: t('commands.economy.gamble.common.newBalance', { lng: locale }),
         value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
         inline: true,
       }
     )
     .setFooter({
-      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Streak: ${result.stats.currentStreak}`,
+      text: t('commands.economy.gamble.stats.winRate', {
+        lng: locale,
+        rate: ((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1),
+        streak: result.stats.currentStreak,
+      }),
     })
     .setTimestamp();
 }
 
-function createSlotsEmbed(result: any, settings: any): EmbedBuilder {
+function createSlotsEmbed(result: any, settings: any, locale: string): EmbedBuilder {
   const details = result.details as SlotsResult;
 
   const embed = new EmbedBuilder()
-    .setTitle('🎰 Slot Machine')
+    .setTitle(t('commands.economy.gamble.slots.title', { lng: locale }))
     .setDescription(`**${details.reels.join(' | ')}**`)
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
       {
-        name: 'Result',
+        name: t('commands.economy.gamble.common.result', { lng: locale }),
         value: details.won
           ? details.winType === 'jackpot'
-            ? '💰 JACKPOT! 💰'
+            ? t('commands.economy.gamble.slots.jackpot', { lng: locale })
             : details.winType === 'triple'
-              ? '🎉 Triple Match!'
-              : '✨ Double Match!'
-          : 'No match',
+              ? t('commands.economy.gamble.slots.triple', { lng: locale })
+              : t('commands.economy.gamble.slots.double', { lng: locale })
+          : t('commands.economy.gamble.slots.noMatch', { lng: locale }),
         inline: true,
       },
       {
-        name: details.won ? 'Won' : 'Lost',
+        name: details.won
+          ? t('commands.economy.gamble.common.wonLabel', { lng: locale })
+          : t('commands.economy.gamble.common.lostLabel', { lng: locale }),
         value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
         inline: true,
       },
       {
-        name: 'New Balance',
+        name: t('commands.economy.gamble.common.newBalance', { lng: locale }),
         value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
         inline: true,
       }
     )
     .setFooter({
-      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Best Win: ${settings.currencySymbol}${result.stats.biggestWin}`,
+      text: t('commands.economy.gamble.stats.bestWin', {
+        lng: locale,
+        rate: ((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1),
+        symbol: settings.currencySymbol,
+        amount: result.stats.biggestWin,
+      }),
     })
     .setTimestamp();
 
   if (details.winType === 'jackpot') {
     embed.addFields({
-      name: '🎊 Congratulations!',
-      value: `You hit the JACKPOT with triple 7s! ${details.multiplier}x multiplier!`,
+      name: t('commands.economy.gamble.slots.jackpotWin', { lng: locale }),
+      value: t('commands.economy.gamble.slots.jackpotText', {
+        lng: locale,
+        multiplier: details.multiplier,
+      }),
       inline: false,
     });
   }
@@ -448,7 +494,12 @@ function createSlotsEmbed(result: any, settings: any): EmbedBuilder {
   return embed;
 }
 
-function createBlackjackEmbed(result: any, settings: any, avatarUrl: string): EmbedBuilder {
+function createBlackjackEmbed(
+  result: any,
+  settings: any,
+  locale: string,
+  avatarUrl: string
+): EmbedBuilder {
   const details = result.details as BlackjackResult;
 
   const formatHand = (hand: any) => {
@@ -456,85 +507,124 @@ function createBlackjackEmbed(result: any, settings: any, avatarUrl: string): Em
   };
 
   const embed = new EmbedBuilder()
-    .setTitle('🃏 Blackjack')
+    .setTitle(t('commands.economy.gamble.blackjack.title', { lng: locale }))
     .setThumbnail(avatarUrl)
     .setColor(details.won ? 0x2ecc71 : details.push ? 0xf39c12 : 0xe74c3c)
     .addFields(
       {
-        name: 'Your Hand',
-        value: `${formatHand(details.playerHand)}\nValue: ${details.playerHand.value}${details.playerHand.blackjack ? ' - Blackjack!' : ''}${details.playerHand.bust ? ' - Bust!' : ''}`,
+        name: t('commands.economy.gamble.blackjack.yourHand', { lng: locale }),
+        value: `${formatHand(details.playerHand)}\n${t('commands.economy.gamble.blackjack.value', {
+          lng: locale,
+          value: details.playerHand.value,
+        })}${details.playerHand.blackjack ? t('commands.economy.gamble.blackjack.blackjack', { lng: locale }) : ''}${
+          details.playerHand.bust
+            ? t('commands.economy.gamble.blackjack.bust', { lng: locale })
+            : ''
+        }`,
         inline: true,
       },
       {
-        name: 'Dealer Hand',
-        value: `${formatHand(details.dealerHand)}\nValue: ${details.dealerHand.value}${details.dealerHand.blackjack ? ' - Blackjack!' : ''}${details.dealerHand.bust ? ' - Bust!' : ''}`,
+        name: t('commands.economy.gamble.blackjack.dealerHand', { lng: locale }),
+        value: `${formatHand(details.dealerHand)}\n${t('commands.economy.gamble.blackjack.value', {
+          lng: locale,
+          value: details.dealerHand.value,
+        })}${details.dealerHand.blackjack ? t('commands.economy.gamble.blackjack.blackjack', { lng: locale }) : ''}${
+          details.dealerHand.bust
+            ? t('commands.economy.gamble.blackjack.bust', { lng: locale })
+            : ''
+        }`,
         inline: true,
       },
       {
-        name: 'Result',
-        value: details.push ? 'Push' : details.won ? 'You won!' : 'You lost!',
+        name: t('commands.economy.gamble.common.result', { lng: locale }),
+        value: details.push
+          ? t('commands.economy.gamble.blackjack.push', { lng: locale })
+          : details.won
+            ? t('commands.economy.gamble.blackjack.result.win', { lng: locale })
+            : t('commands.economy.gamble.blackjack.result.loss', { lng: locale }),
         inline: false,
       },
       {
-        name: details.won ? 'Won' : details.push ? 'Returned' : 'Lost',
+        name: details.won
+          ? t('commands.economy.gamble.common.wonLabel', { lng: locale })
+          : details.push
+            ? t('commands.economy.gamble.blackjack.returned', { lng: locale })
+            : t('commands.economy.gamble.common.lostLabel', { lng: locale }),
         value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
         inline: true,
       },
       {
-        name: 'New Balance',
+        name: t('commands.economy.gamble.common.newBalance', { lng: locale }),
         value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
         inline: true,
       }
     )
     .setFooter({
-      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Games Played: ${result.stats.gamesPlayed}`,
+      text: t('commands.economy.gamble.stats.gamesPlayed', {
+        lng: locale,
+        rate: ((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1),
+        games: result.stats.gamesPlayed,
+      }),
     })
     .setTimestamp();
 
   if (details.blackjack && details.won) {
-    embed.setDescription('🎊 **BLACKJACK!** You got 21 with your first two cards!');
+    embed.setDescription(t('commands.economy.gamble.blackjack.blackjackWin', { lng: locale }));
   }
 
   return embed;
 }
 
-function createRouletteEmbed(result: any, settings: any): EmbedBuilder {
+function createRouletteEmbed(result: any, settings: any, locale: string): EmbedBuilder {
   const details = result.details as RouletteResult;
   const colorEmoji = details.color === 'red' ? '🔴' : details.color === 'black' ? '⚫' : '🟢';
 
   const embed = new EmbedBuilder()
-    .setTitle('🎰 Roulette')
-    .setDescription(`The ball landed on **${colorEmoji} ${details.number}**`)
+    .setTitle(t('commands.economy.gamble.roulette.title', { lng: locale }))
+    .setDescription(
+      t('commands.economy.gamble.roulette.landed', {
+        lng: locale,
+        emoji: colorEmoji,
+        number: details.number,
+      })
+    )
     .setColor(details.won ? 0x2ecc71 : 0xe74c3c)
     .addFields(
       {
-        name: 'Your Bet',
+        name: t('commands.economy.gamble.roulette.yourBet', { lng: locale }),
         value: `${details.betType.charAt(0).toUpperCase() + details.betType.slice(1)}`,
         inline: true,
       },
       {
-        name: 'Result',
+        name: t('commands.economy.gamble.common.result', { lng: locale }),
         value: `${details.number} (${details.color})`,
         inline: true,
       },
       {
-        name: details.won ? 'Won' : 'Lost',
+        name: details.won
+          ? t('commands.economy.gamble.common.wonLabel', { lng: locale })
+          : t('commands.economy.gamble.common.lostLabel', { lng: locale }),
         value: `${settings.currencySymbol}${Math.abs(result.profit).toLocaleString()}`,
         inline: true,
       },
       {
-        name: 'Multiplier',
+        name: t('commands.economy.gamble.common.multiplier', { lng: locale }),
         value: `${details.multiplier}x`,
         inline: true,
       },
       {
-        name: 'New Balance',
+        name: t('commands.economy.gamble.common.newBalance', { lng: locale }),
         value: `${settings.currencySymbol}${result.balance.balance.toLocaleString()}`,
         inline: true,
       }
     )
     .setFooter({
-      text: `Win Rate: ${((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1)}% | Total Wagered: ${settings.currencySymbol}${result.stats.totalWagered}`,
+      text: t('commands.economy.gamble.stats.totalWagered', {
+        lng: locale,
+        rate: ((result.stats.gamesWon / result.stats.gamesPlayed) * 100).toFixed(1),
+        symbol: settings.currencySymbol,
+        amount: result.stats.totalWagered,
+      }),
     })
     .setTimestamp();
 

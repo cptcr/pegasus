@@ -135,7 +135,12 @@ describe('WarningService', () => {
       mockRepo.getWarningById.mockResolvedValueOnce(warning);
       mockRepo.updateWarning.mockResolvedValueOnce(updated as any);
 
-      const result = await service.editWarning('W123', 'Updated title', 'New description', moderator);
+      const result = await service.editWarning(
+        'W123',
+        'Updated title',
+        'New description',
+        moderator
+      );
 
       expect(result).toEqual(updated);
       expect(mockRepo.updateWarning).toHaveBeenCalledWith('W123', {

@@ -1,11 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { EconomyService } from '../../services/economyService';
 import { economyRepository } from '../../repositories/economyRepository';
-import type {
-  EconomyBalance,
-  EconomySettings,
-  EconomyTransaction,
-} from '../../database/schema';
+import type { EconomyBalance, EconomySettings, EconomyTransaction } from '../../database/schema';
 
 jest.mock('../../repositories/economyRepository', () => ({
   economyRepository: {
@@ -73,9 +69,7 @@ const createSettings = (overrides: Partial<EconomySettings> = {}): EconomySettin
     ...overrides,
   }) as EconomySettings;
 
-const createTransaction = (
-  overrides: Partial<EconomyTransaction> = {}
-): EconomyTransaction =>
+const createTransaction = (overrides: Partial<EconomyTransaction> = {}): EconomyTransaction =>
   ({
     id: 'txn-1',
     userId: 'user-1',
@@ -144,13 +138,7 @@ describe('EconomyService', () => {
       mockRepository.addToBalance.mockResolvedValueOnce(updatedBalance);
       mockRepository.createTransaction.mockResolvedValueOnce(transaction);
 
-      const result = await service.addMoney(
-        'user-1',
-        'guild-1',
-        200,
-        'reward',
-        'Weekly reward'
-      );
+      const result = await service.addMoney('user-1', 'guild-1', 200, 'reward', 'Weekly reward');
 
       expect(result.success).toBe(true);
       expect(result.balance).toEqual(updatedBalance);
@@ -192,7 +180,11 @@ describe('EconomyService', () => {
       const toBalance = createBalance({ userId: 'to-user', balance: 300 });
       const deductedBalance = createBalance({ userId: 'from-user', balance: 300 });
       const creditedBalance = createBalance({ userId: 'to-user', balance: 500 });
-      const debitTransaction = createTransaction({ id: 'txn-1', userId: 'from-user', amount: -200 });
+      const debitTransaction = createTransaction({
+        id: 'txn-1',
+        userId: 'from-user',
+        amount: -200,
+      });
       const creditTransaction = createTransaction({ id: 'txn-2', userId: 'to-user', amount: 200 });
 
       mockRepository.getBalance
@@ -212,12 +204,7 @@ describe('EconomyService', () => {
       const result = await service.transferMoney('from-user', 'to-user', 'guild-1', 200);
 
       expect(result.success).toBe(true);
-      expect(mockRepository.addToBalance).toHaveBeenNthCalledWith(
-        1,
-        'from-user',
-        'guild-1',
-        -200
-      );
+      expect(mockRepository.addToBalance).toHaveBeenNthCalledWith(1, 'from-user', 'guild-1', -200);
       expect(mockRepository.addToBalance).toHaveBeenNthCalledWith(2, 'to-user', 'guild-1', 200);
     });
   });
@@ -307,9 +294,7 @@ describe('EconomyService', () => {
 
   describe('rob', () => {
     it('aborts when robbing is disabled', async () => {
-      mockRepository.ensureSettings.mockResolvedValueOnce(
-        createSettings({ robEnabled: false })
-      );
+      mockRepository.ensureSettings.mockResolvedValueOnce(createSettings({ robEnabled: false }));
 
       const result = await service.rob('robber', 'victim', 'guild-1');
 

@@ -5,13 +5,13 @@ import { tickets, ticketPanels } from '../../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { z } from 'zod';
-import { 
-  ChannelType, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
+import {
+  ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-  TextChannel
+  TextChannel,
 } from 'discord.js';
 
 const router = Router();
@@ -27,7 +27,7 @@ const createPanelSchema = z.object({
   buttonEmoji: z.string().optional(),
   buttonStyle: z.number().min(1).max(4).optional(),
   supportRoles: z.array(z.string()).optional(),
-  maxTicketsPerUser: z.number().min(1).max(10).optional()
+  maxTicketsPerUser: z.number().min(1).max(10).optional(),
 });
 
 const updatePanelSchema = createPanelSchema.partial();
@@ -35,24 +35,24 @@ const updatePanelSchema = createPanelSchema.partial();
 // POST /guilds/{guildId}/tickets/panels - Create ticket panel
 router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = createPanelSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const data = validation.data;
     const guild = client.guilds.cache.get(guildId);
-    
+
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -61,7 +61,7 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
     if (!channel || !channel.isTextBased()) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid channel ID or channel is not text-based'
+        message: 'Invalid channel ID or channel is not text-based',
       });
     }
 
@@ -70,15 +70,16 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
     if (!category || category.type !== ChannelType.GuildCategory) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid category ID'
+        message: 'Invalid category ID',
       });
     }
 
     // Create panel in database
     const db = getDatabase();
     const panelId = `panel_${Date.now()}`;
-    
-    const [panel] = await db.insert(ticketPanels)
+
+    const [panel] = await db
+      .insert(ticketPanels)
       .values({
         guildId,
         panelId,
@@ -86,13 +87,15 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
         description: data.description,
         categoryId: data.categoryId,
         channelId: data.channelId,
-        welcomeMessage: data.welcomeMessage || 'Thank you for creating a ticket! Support will be with you shortly.',
+        welcomeMessage:
+          data.welcomeMessage ||
+          'Thank you for creating a ticket! Support will be with you shortly.',
         buttonLabel: data.buttonLabel || 'Create Ticket',
         buttonStyle: data.buttonStyle || 1,
         supportRoles: data.supportRoles || [],
         maxTicketsPerUser: data.maxTicketsPerUser || 3,
         isActive: true,
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .returning();
 
@@ -100,15 +103,15 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
     const embed = new EmbedBuilder()
       .setTitle(data.title)
       .setDescription(data.description)
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setFooter({ text: 'Click the button below to create a ticket' });
 
     // Create button
     const button = new ButtonBuilder()
       .setCustomId(`ticket_create_${panelId}`)
       .setLabel(data.buttonLabel || 'Create Ticket')
-      .setStyle(data.buttonStyle as ButtonStyle || ButtonStyle.Primary);
-    
+      .setStyle((data.buttonStyle as ButtonStyle) || ButtonStyle.Primary);
+
     if (data.buttonEmoji) {
       button.setEmoji(data.buttonEmoji);
     }
@@ -119,7 +122,7 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
     try {
       const message = await (channel as TextChannel).send({
         embeds: [embed],
-        components: [row]
+        components: [row],
       });
 
       // Update panel with message ID
@@ -138,8 +141,8 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
           description: panel.description,
           categoryId: panel.categoryId,
           channelId: panel.channelId,
-          messageId: message.id
-        }
+          messageId: message.id,
+        },
       });
     } catch (error) {
       // Rollback panel creation if message send fails
@@ -150,7 +153,7 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
     logger.error('Error creating ticket panel:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to create ticket panel'
+      message: 'Failed to create ticket panel',
     });
   }
 });
@@ -158,14 +161,14 @@ router.post('/:guildId/tickets/panels', async (req: Request, res: Response) => {
 // PATCH /guilds/{guildId}/tickets/panels/{panelId} - Update panel
 router.patch('/:guildId/tickets/panels/:panelId', async (req: Request, res: Response) => {
   const { guildId, panelId } = req.params;
-  
+
   try {
     const validation = updatePanelSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -176,16 +179,13 @@ router.patch('/:guildId/tickets/panels/:panelId', async (req: Request, res: Resp
     const [existingPanel] = await db
       .select()
       .from(ticketPanels)
-      .where(and(
-        eq(ticketPanels.id, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+      .where(and(eq(ticketPanels.id, panelId), eq(ticketPanels.guildId, guildId)))
       .limit(1);
 
     if (!existingPanel) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Ticket panel not found'
+        message: 'Ticket panel not found',
       });
     }
 
@@ -194,27 +194,28 @@ router.patch('/:guildId/tickets/panels/:panelId', async (req: Request, res: Resp
       .update(ticketPanels)
       .set({
         ...updates,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(ticketPanels.id, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+      .where(and(eq(ticketPanels.id, panelId), eq(ticketPanels.guildId, guildId)))
       .returning();
 
     // Update the panel message if title or description changed
-    if ((updates.title || updates.description) && existingPanel.messageId && existingPanel.channelId) {
+    if (
+      (updates.title || updates.description) &&
+      existingPanel.messageId &&
+      existingPanel.channelId
+    ) {
       const guild = client.guilds.cache.get(guildId);
       const channel = guild?.channels.cache.get(existingPanel.channelId) as TextChannel;
-      
+
       if (channel) {
         try {
           const message = await channel.messages.fetch(existingPanel.messageId);
-          
+
           const embed = new EmbedBuilder()
             .setTitle(updatedPanel.title)
             .setDescription(updatedPanel.description)
-            .setColor(0x5865F2)
+            .setColor(0x5865f2)
             .setFooter({ text: 'Click the button below to create a ticket' });
 
           await message.edit({ embeds: [embed] });
@@ -233,14 +234,14 @@ router.patch('/:guildId/tickets/panels/:panelId', async (req: Request, res: Resp
         title: updatedPanel.title,
         description: updatedPanel.description,
         categoryId: updatedPanel.categoryId,
-        channelId: updatedPanel.channelId
-      }
+        channelId: updatedPanel.channelId,
+      },
     });
   } catch (error) {
     logger.error('Error updating ticket panel:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update ticket panel'
+      message: 'Failed to update ticket panel',
     });
   }
 });
@@ -248,7 +249,7 @@ router.patch('/:guildId/tickets/panels/:panelId', async (req: Request, res: Resp
 // DELETE /guilds/{guildId}/tickets/panels/{panelId} - Delete panel
 router.delete('/:guildId/tickets/panels/:panelId', async (req: Request, res: Response) => {
   const { guildId, panelId } = req.params;
-  
+
   try {
     const db = getDatabase();
 
@@ -256,16 +257,13 @@ router.delete('/:guildId/tickets/panels/:panelId', async (req: Request, res: Res
     const [existingPanel] = await db
       .select()
       .from(ticketPanels)
-      .where(and(
-        eq(ticketPanels.id, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ))
+      .where(and(eq(ticketPanels.id, panelId), eq(ticketPanels.guildId, guildId)))
       .limit(1);
 
     if (!existingPanel) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Ticket panel not found'
+        message: 'Ticket panel not found',
       });
     }
 
@@ -273,7 +271,7 @@ router.delete('/:guildId/tickets/panels/:panelId', async (req: Request, res: Res
     if (existingPanel.messageId && existingPanel.channelId) {
       const guild = client.guilds.cache.get(guildId);
       const channel = guild?.channels.cache.get(existingPanel.channelId) as TextChannel;
-      
+
       if (channel) {
         try {
           const message = await channel.messages.fetch(existingPanel.messageId);
@@ -287,22 +285,19 @@ router.delete('/:guildId/tickets/panels/:panelId', async (req: Request, res: Res
     // Delete panel from database
     await db
       .delete(ticketPanels)
-      .where(and(
-        eq(ticketPanels.id, panelId),
-        eq(ticketPanels.guildId, guildId)
-      ));
+      .where(and(eq(ticketPanels.id, panelId), eq(ticketPanels.guildId, guildId)));
 
     logger.info(`Deleted ticket panel ${panelId} from guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'Ticket panel deleted successfully'
+      message: 'Ticket panel deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting ticket panel:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to delete ticket panel'
+      message: 'Failed to delete ticket panel',
     });
   }
 });
@@ -311,7 +306,7 @@ router.delete('/:guildId/tickets/panels/:panelId', async (req: Request, res: Res
 router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Response) => {
   const { guildId, ticketId } = req.params;
   const { closedBy, reason } = req.body;
-  
+
   try {
     const db = getDatabase();
 
@@ -319,23 +314,20 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
     const [ticket] = await db
       .select()
       .from(tickets)
-      .where(and(
-        eq(tickets.id, ticketId),
-        eq(tickets.guildId, guildId)
-      ))
+      .where(and(eq(tickets.id, ticketId), eq(tickets.guildId, guildId)))
       .limit(1);
 
     if (!ticket) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Ticket not found'
+        message: 'Ticket not found',
       });
     }
 
     if (ticket.status === 'closed') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Ticket is already closed'
+        message: 'Ticket is already closed',
       });
     }
 
@@ -343,7 +335,7 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -354,12 +346,9 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
         status: 'closed',
         closedAt: new Date(),
         closedBy: closedBy || null,
-        closedReason: reason || null
+        closedReason: reason || null,
       })
-      .where(and(
-        eq(tickets.id, ticketId),
-        eq(tickets.guildId, guildId)
-      ));
+      .where(and(eq(tickets.id, ticketId), eq(tickets.guildId, guildId)));
 
     // Delete the ticket channel
     const channel = guild.channels.cache.get(ticket.channelId);
@@ -370,11 +359,11 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
           const embed = new EmbedBuilder()
             .setTitle('🔒 Ticket Closed')
             .setDescription(reason || 'This ticket has been closed.')
-            .setColor(0xFF0000)
+            .setColor(0xff0000)
             .setTimestamp();
 
           await (channel as TextChannel).send({ embeds: [embed] });
-          
+
           // Wait a moment before deleting
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
@@ -389,13 +378,15 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
     try {
       const user = await client.users.fetch(ticket.userId);
       await user.send({
-        embeds: [{
-          title: '🎫 Ticket Closed',
-          description: `Your ticket in **${guild.name}** has been closed.`,
-          fields: reason ? [{ name: 'Reason', value: reason }] : [],
-          color: 0xFF0000,
-          timestamp: new Date().toISOString()
-        }]
+        embeds: [
+          {
+            title: '🎫 Ticket Closed',
+            description: `Your ticket in **${guild.name}** has been closed.`,
+            fields: reason ? [{ name: 'Reason', value: reason }] : [],
+            color: 0xff0000,
+            timestamp: new Date().toISOString(),
+          },
+        ],
       });
     } catch (error) {
       logger.warn(`Could not DM user about ticket closure: ${error}`);
@@ -405,13 +396,13 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
 
     return res.json({
       success: true,
-      message: 'Ticket closed successfully'
+      message: 'Ticket closed successfully',
     });
   } catch (error) {
     logger.error('Error closing ticket:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to close ticket'
+      message: 'Failed to close ticket',
     });
   }
 });
@@ -419,23 +410,20 @@ router.post('/:guildId/tickets/:ticketId/close', async (req: Request, res: Respo
 // GET /guilds/{guildId}/tickets/{ticketId} - Get ticket details
 router.get('/:guildId/tickets/:ticketId', async (req: Request, res: Response) => {
   const { guildId, ticketId } = req.params;
-  
+
   try {
     const db = getDatabase();
 
     const [ticket] = await db
       .select()
       .from(tickets)
-      .where(and(
-        eq(tickets.id, ticketId),
-        eq(tickets.guildId, guildId)
-      ))
+      .where(and(eq(tickets.id, ticketId), eq(tickets.guildId, guildId)))
       .limit(1);
 
     if (!ticket) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Ticket not found'
+        message: 'Ticket not found',
       });
     }
 
@@ -448,13 +436,13 @@ router.get('/:guildId/tickets/:ticketId', async (req: Request, res: Response) =>
       createdAt: ticket.createdAt.toISOString(),
       closedAt: ticket.closedAt?.toISOString() || null,
       closedBy: ticket.closedBy,
-      closedReason: ticket.closedReason
+      closedReason: ticket.closedReason,
     });
   } catch (error) {
     logger.error('Error fetching ticket:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to fetch ticket'
+      message: 'Failed to fetch ticket',
     });
   }
 });

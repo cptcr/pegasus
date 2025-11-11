@@ -947,21 +947,20 @@ export async function refreshXPConfigEmbed(
         .setStyle(ButtonStyle.Primary)
     );
 
-    const levelUpChannelRow =
-      new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-        new ChannelSelectMenuBuilder()
-          .setCustomId('config_xp_levelup_channel')
-          .setPlaceholder(
-            config.levelUpChannel
-              ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
-                  channel: `<#${config.levelUpChannel}>`,
-                })
-              : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
-          )
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-      );
+    const levelUpChannelRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('config_xp_levelup_channel')
+        .setPlaceholder(
+          config.levelUpChannel
+            ? t('commands.config.subcommands.xp.placeholders.levelUpChannelSet', {
+                channel: `<#${config.levelUpChannel}>`,
+              })
+            : t('commands.config.subcommands.xp.placeholders.levelUpChannelUnset')
+        )
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    );
 
     const announcementControlsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()

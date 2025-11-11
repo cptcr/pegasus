@@ -133,13 +133,19 @@ export class GiveawayService {
       return { success: false, error: 'Member not found' };
     }
 
-    const requirementCheck = this.checkRequirements(member, giveaway.requirements as GiveawayRequirements);
+    const requirementCheck = this.checkRequirements(
+      member,
+      giveaway.requirements as GiveawayRequirements
+    );
     if (!requirementCheck.met) {
       return { success: false, error: requirementCheck.reason };
     }
 
     // Calculate entries
-    const bonusMultiplier = this.calculateBonusEntries(member, giveaway.bonusEntries as GiveawayBonusEntries);
+    const bonusMultiplier = this.calculateBonusEntries(
+      member,
+      giveaway.bonusEntries as GiveawayBonusEntries
+    );
     const totalEntries = 1 * bonusMultiplier;
 
     // Add entry
@@ -197,7 +203,7 @@ export class GiveawayService {
 
     // Get updated giveaway with ended status
     const updatedGiveaway = await giveawayRepository.getGiveaway(giveawayId);
-    
+
     // Update the giveaway message
     if (updatedGiveaway) {
       await this.updateGiveawayEmbed(updatedGiveaway, winners);
@@ -372,20 +378,25 @@ export class GiveawayService {
     return Array.from(winners);
   }
 
-  private async updateGiveawayEmbed(giveaway: { 
-    giveawayId: string;
-    channelId: string;
-    messageId: string | null;
-    status: string;
-    embedColor: number;
-    description: string | null;
-    prize: string;
-    hostedBy: string;
-    winnerCount: number;
-    endTime: Date;
-    announcementSent?: boolean;
-  } | null, winners?: string[]) {
-    const client = (global as { client?: { channels: { fetch: (id: string) => Promise<unknown> } } }).client;
+  private async updateGiveawayEmbed(
+    giveaway: {
+      giveawayId: string;
+      channelId: string;
+      messageId: string | null;
+      status: string;
+      embedColor: number;
+      description: string | null;
+      prize: string;
+      hostedBy: string;
+      winnerCount: number;
+      endTime: Date;
+      announcementSent?: boolean;
+    } | null,
+    winners?: string[]
+  ) {
+    const client = (
+      global as { client?: { channels: { fetch: (id: string) => Promise<unknown> } } }
+    ).client;
     if (!client || !giveaway) return;
 
     try {
@@ -481,35 +492,41 @@ export class GiveawayService {
       await message.edit({ embeds: [embed], components });
 
       // Send winner announcement
-      if (giveaway.status === 'ended' && winners && winners.length > 0 && !giveaway.announcementSent) {
+      if (
+        giveaway.status === 'ended' &&
+        winners &&
+        winners.length > 0 &&
+        !giveaway.announcementSent
+      ) {
         const winnerMentions = winners.map(w => `<@${w}>`).join(', ');
-        await channel.send({
-          content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`,
-          reply: { messageReference: giveaway.messageId }
-        }).catch(() => {
-          // Fallback without reply
-          void channel.send({
-            content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`
+        await channel
+          .send({
+            content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`,
+            reply: { messageReference: giveaway.messageId },
+          })
+          .catch(() => {
+            // Fallback without reply
+            void channel.send({
+              content: `🎉 **GIVEAWAY ENDED** 🎉\n\nCongratulations ${winnerMentions}! You won **${giveaway.prize}**!`,
+            });
           });
-        });
         // Mark announcement as sent to prevent duplicates
         giveaway.announcementSent = true;
+        await giveawayRepository.updateGiveaway(giveaway.giveawayId, { announcementSent: true });
       }
     } catch (error) {
       logger.error('Error updating giveaway embed:', error);
     }
   }
 
-  private scheduleGiveawayEnd(giveaway: {
-    giveawayId: string;
-    endTime: Date;
-    status?: string;
-  }) {
+  private scheduleGiveawayEnd(giveaway: { giveawayId: string; endTime: Date; status?: string }) {
     const endTime = new Date(giveaway.endTime);
     const now = new Date();
     const timeUntilEnd = endTime.getTime() - now.getTime();
 
-    logger.info(`Giveaway ${giveaway.giveawayId}: End time: ${endTime.toISOString()}, Now: ${now.toISOString()}, Time until end: ${timeUntilEnd}ms (${Math.floor(timeUntilEnd / 1000)}s)`);
+    logger.info(
+      `Giveaway ${giveaway.giveawayId}: End time: ${endTime.toISOString()}, Now: ${now.toISOString()}, Time until end: ${timeUntilEnd}ms (${Math.floor(timeUntilEnd / 1000)}s)`
+    );
 
     if (timeUntilEnd <= 0) {
       // Giveaway should have already ended
@@ -528,7 +545,9 @@ export class GiveawayService {
     }, timeoutValue);
 
     this.activeTimers.set(giveaway.giveawayId, timer);
-    logger.info(`Scheduled giveaway ${giveaway.giveawayId} to end in ${Math.floor(timeUntilEnd / 1000)}s`);
+    logger.info(
+      `Scheduled giveaway ${giveaway.giveawayId} to end in ${Math.floor(timeUntilEnd / 1000)}s`
+    );
   }
 
   async initializeActiveGiveaways() {
@@ -546,6 +565,9 @@ export class GiveawayService {
 
     // Start periodic check for expired giveaways (every minute)
     this.startPeriodicExpiredCheck();
+
+    // Resume any pending winner announcements after restarts
+    await this.processPendingAnnouncements();
   }
 
   private startPeriodicExpiredCheck() {
@@ -566,6 +588,16 @@ export class GiveawayService {
     for (const giveaway of expiredGiveaways) {
       logger.info(`Processing expired giveaway: ${giveaway.giveawayId}`);
       await this.endGiveaway(giveaway.giveawayId, { id: 'system' } as User);
+    }
+  }
+
+  private async processPendingAnnouncements() {
+    const pending = await giveawayRepository.getEndedGiveawaysPendingAnnouncement();
+    for (const giveaway of pending) {
+      const winners = Array.isArray(giveaway.winners) ? (giveaway.winners as string[]) : [];
+      if (winners.length === 0) continue;
+      logger.info(`Sending pending giveaway announcement for ${giveaway.giveawayId}`);
+      await this.updateGiveawayEmbed(giveaway, winners);
     }
   }
 

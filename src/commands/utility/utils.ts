@@ -9,14 +9,17 @@ import {
 } from 'discord.js';
 import { Command, CommandCategory } from '../../types/command';
 import { t, getGuildLocale } from '../../i18n';
-// import { SteamService } from '../../services/steamService';
-import { SteamService } from '../../services/steamServiceMock';
+import { SteamService as RealSteamService } from '../../services/steamService';
+import { SteamService as MockSteamService } from '../../services/steamServiceMock';
 import { HelpService } from '../../services/helpService';
 import { logger } from '../../utils/logger';
 import * as os from 'os';
 import { version as djsVersion } from 'discord.js';
 
-// const steamService = new SteamService();
+const steamService =
+  process.env.STEAM_API_KEY && process.env.STEAM_API_KEY !== ''
+    ? new RealSteamService()
+    : new MockSteamService();
 const helpService = new HelpService();
 
 export const data = new SlashCommandBuilder()

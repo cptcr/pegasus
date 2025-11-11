@@ -1,9 +1,4 @@
-import {
-  ButtonInteraction,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  type GuildMember,
-} from 'discord.js';
+import { ButtonInteraction, EmbedBuilder, PermissionFlagsBits, type GuildMember } from 'discord.js';
 import { t } from '../../i18n';
 import { logger } from '../../utils/logger';
 import { wordFilterService } from '../../services/wordFilterService';
@@ -40,9 +35,12 @@ export async function handleWordFilterActionButtons(interaction: ButtonInteracti
 
   if (actionType === 'dismiss') {
     await interaction.deferUpdate();
-    await appendResolution(interaction, t('modLogs.filter.actions.resolvedDismiss', {
-      moderator: interaction.user.tag,
-    }));
+    await appendResolution(
+      interaction,
+      t('modLogs.filter.actions.resolvedDismiss', {
+        moderator: interaction.user.tag,
+      })
+    );
     return;
   }
 
@@ -148,15 +146,20 @@ async function handleTimeout(
     return;
   }
 
-  if (!(await ensureModerationPermissions(interaction, member, PermissionFlagsBits.ModerateMembers))) {
+  if (
+    !(await ensureModerationPermissions(interaction, member, PermissionFlagsBits.ModerateMembers))
+  ) {
     return;
   }
 
   const duration = durationSeconds > 0 ? durationSeconds : 600;
 
-  await member.timeout(duration * 1000, t('modLogs.filter.actions.timeoutReason', {
-    pattern: rule.pattern,
-  }));
+  await member.timeout(
+    duration * 1000,
+    t('modLogs.filter.actions.timeoutReason', {
+      pattern: rule.pattern,
+    })
+  );
 
   await interaction.editReply({
     content: t('modLogs.filter.actions.timeoutSuccess', {
@@ -243,13 +246,12 @@ async function ensureModerationPermissions(
     return false;
   }
 
-  const executorMember = await interaction.guild!.members.fetch(interaction.user.id).catch(() => null);
+  const executorMember = await interaction
+    .guild!.members.fetch(interaction.user.id)
+    .catch(() => null);
   const botMember = interaction.guild!.members.me;
 
-  if (
-    botMember &&
-    targetMember.roles.highest.comparePositionTo(botMember.roles.highest) >= 0
-  ) {
+  if (botMember && targetMember.roles.highest.comparePositionTo(botMember.roles.highest) >= 0) {
     await interaction.editReply({
       content: t('modLogs.filter.actions.botHierarchy'),
     });

@@ -212,19 +212,14 @@ export async function withLocale<T>(locale: string, callback: () => Promise<T>):
   return localeContext.run(locale, callback);
 }
 
-export async function getTranslation(
-  guildId: string,
-  userId: string
-): Promise<LocaleObject> {
+export async function getTranslation(guildId: string, userId: string): Promise<LocaleObject> {
   const locale = await resolveLocale(userId, guildId);
   const bundle = i18next.getResourceBundle(locale, 'translation') as LocaleObject | undefined;
   if (bundle) {
     return bundle;
   }
 
-  return (
-    (i18next.getResourceBundle('en', 'translation') as LocaleObject) || ({} as LocaleObject)
-  );
+  return (i18next.getResourceBundle('en', 'translation') as LocaleObject) || ({} as LocaleObject);
 }
 
 async function ensureLocaleResources(locale: string): Promise<void> {

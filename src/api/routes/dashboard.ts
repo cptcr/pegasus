@@ -118,7 +118,8 @@ router.get('/overview', async (_req: Request, res: Response) => {
         icon: guild.iconURL({ size: 256 }) ?? null,
         memberCount: guild.memberCount,
         approximatePresence: guild.members.cache.filter(
-          member => !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
+          member =>
+            !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
         ).size,
         premiumTier: guild.premiumTier,
         boosters: guild.premiumSubscriptionCount ?? 0,
@@ -201,16 +202,15 @@ router.get('/guilds', async (req: Request, res: Response) => {
       boosters: guild.premiumSubscriptionCount ?? 0,
       configured: configuredSet.has(guild.id),
       onlineMembers: guild.members.cache.filter(
-        member => !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
+        member =>
+          !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
       ).size,
       botMembers: guild.members.cache.filter(member => member.user.bot).size,
     }));
 
     if (search) {
       guildsArray = guildsArray.filter(
-        guild =>
-          guild.name.toLowerCase().includes(search) ||
-          guild.id.includes(search)
+        guild => guild.name.toLowerCase().includes(search) || guild.id.includes(search)
       );
     }
 
@@ -402,7 +402,8 @@ router.get('/guilds/:guildId/overview', async (req: Request, res: Response) => {
         icon: guild.iconURL({ size: 256 }) ?? null,
         memberCount: guild.memberCount,
         approximatePresence: guild.members.cache.filter(
-          member => !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
+          member =>
+            !member.user.bot && member.presence?.status && member.presence.status !== 'offline'
         ).size,
         premiumTier: guild.premiumTier,
         boosters: guild.premiumSubscriptionCount ?? 0,

@@ -169,7 +169,7 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .transform(val => val === 'true')
     .default('false'),
-  
+
   // API Configuration
   ENABLE_API: z
     .enum(['true', 'false'])
@@ -193,10 +193,7 @@ const EnvSchema = z.object({
         const origins = z.array(z.string()).parse(parsed);
         return origins.map(normalize).filter(Boolean);
       } catch {
-        return value
-          .split(',')
-          .map(normalize)
-          .filter(Boolean);
+        return value.split(',').map(normalize).filter(Boolean);
       }
     }),
 });

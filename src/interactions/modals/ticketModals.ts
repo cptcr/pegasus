@@ -49,10 +49,14 @@ async function handleTicketCreation(
   }
 
   try {
-    const { ticket, channel } = await ticketService.createTicket(interaction, {
-      ...panel,
-      supportRoles: (panel.supportRoles as string[]) || [],
-    }, reason);
+    const { ticket, channel } = await ticketService.createTicket(
+      interaction,
+      {
+        ...panel,
+        supportRoles: (panel.supportRoles as string[]) || [],
+      },
+      reason
+    );
 
     const embed = new EmbedBuilder()
       .setTitle(t('tickets.ticketCreated', { number: ticket.ticketNumber }))

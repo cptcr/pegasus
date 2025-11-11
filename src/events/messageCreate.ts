@@ -13,10 +13,7 @@ import { guildService } from '../services/guildService';
 import { listCommandService } from '../services/listCommandService';
 import { logger } from '../utils/logger';
 import { getTranslation, t } from '../i18n';
-import {
-  wordFilterService,
-  type WordFilterViolation,
-} from '../services/wordFilterService';
+import { wordFilterService, type WordFilterViolation } from '../services/wordFilterService';
 import { modLogService } from '../services/modLogService';
 import type { WordFilterActionConfig, WordFilterSeverity } from '../types';
 
@@ -161,15 +158,13 @@ async function notifyFilteredUser(
   const guild = message.guild;
   if (!guild) return;
 
-  const ruleSummaries = violations
-    .map(violation => `• ${violation.rule.pattern}`)
-    .join('\n');
+  const ruleSummaries = violations.map(violation => `• ${violation.rule.pattern}`).join('\n');
 
   const statusKey = deletion.deleted
     ? 'modLogs.filter.status.deleted'
     : deletion.attempted
-    ? 'modLogs.filter.status.failed'
-    : 'modLogs.filter.status.kept';
+      ? 'modLogs.filter.status.failed'
+      : 'modLogs.filter.status.kept';
 
   try {
     await message.author.send(
@@ -384,10 +379,14 @@ function buildFilterActionRows(
   });
 
   const limitedActions = actions.slice(0, 4);
-  const buttons = limitedActions.map(action => createActionButton(action, message, primaryViolation.rule.id));
+  const buttons = limitedActions.map(action =>
+    createActionButton(action, message, primaryViolation.rule.id)
+  );
 
   const dismissButton = new ButtonBuilder()
-    .setCustomId(`${FILTER_ACTION_PREFIX}|dismiss|${message.author.id}|${primaryViolation.rule.id}|0`)
+    .setCustomId(
+      `${FILTER_ACTION_PREFIX}|dismiss|${message.author.id}|${primaryViolation.rule.id}|0`
+    )
     .setLabel(t('modLogs.filter.actions.label.dismiss'))
     .setStyle(ButtonStyle.Secondary);
 

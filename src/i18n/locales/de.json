@@ -206,8 +206,18 @@
       },
       "gamble": {
         "description": "Spiele verschiedene Glücksspiele",
+        "rateLimited": "Du hast in letzter Zeit sehr häufig gespielt. Mach eine kurze Pause und versuche es später erneut.",
         "invalidBet": "Einsatz muss zwischen {{symbol}}{{min}} und {{symbol}}{{max}} liegen",
         "insufficientFunds": "Unzureichendes Guthaben oder ungültiger Einsatz",
+        "common": {
+          "result": "Ergebnis",
+          "wonLabel": "Gewonnen",
+          "lostLabel": "Verloren",
+          "returnedLabel": "Zurückerstattet",
+          "newBalance": "Neuer Kontostand",
+          "multiplier": "Multiplikator",
+          "yourChoice": "Deine Wahl"
+        },
         "dice": {
           "description": "Würfle gegen den Dealer",
           "title": "🎲 Würfelspiel",
@@ -223,7 +233,8 @@
           "description": "Wirf eine Münze",
           "title": "🪙 Münzwurf",
           "landed": "Die Münze zeigt **{{result}}**!",
-          "yourChoice": "Deine Wahl"
+          "yourChoice": "Deine Wahl",
+          "resultField": "Wurfergebnis"
         },
         "slots": {
           "description": "Spiele am Spielautomaten",
@@ -350,6 +361,20 @@
             "warnid": "Die nachzuschlagende Verwarnungs-ID"
           },
           "notFound": "Verwarnung {{warnId}} nicht gefunden"
+        },
+        "delete": {
+          "description": "Eine Verwarnung löschen",
+          "options": {
+            "warnid": "Die zu löschende Verwarnungs-ID"
+          },
+          "success": {
+            "title": "Verwarnung gelöscht",
+            "description": "Verwarnung {{warnId}} wurde gelöscht.",
+            "target": "Ziel",
+            "moderator": "Moderator"
+          },
+          "notFound": "Verwarnung {{warnId}} nicht gefunden",
+          "error": "Verwarnung konnte nicht gelöscht werden"
         },
         "view": {
           "description": "Alle Verwarnungen eines Benutzers anzeigen",

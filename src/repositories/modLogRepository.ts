@@ -33,9 +33,7 @@ export class ModLogRepository {
     const [record] = await this.db
       .select()
       .from(modLogSettings)
-      .where(
-        and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category))
-      )
+      .where(and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category)))
       .limit(1);
 
     return record ? mapModLogSetting(record) : null;
@@ -71,9 +69,7 @@ export class ModLogRepository {
   async delete(guildId: string, category: ModLogCategory): Promise<boolean> {
     const [record] = await this.db
       .delete(modLogSettings)
-      .where(
-        and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category))
-      )
+      .where(and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category)))
       .returning();
 
     return Boolean(record);
@@ -90,9 +86,7 @@ export class ModLogRepository {
         enabled,
         updatedAt: new Date(),
       })
-      .where(
-        and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category))
-      )
+      .where(and(eq(modLogSettings.guildId, guildId), eq(modLogSettings.category, category)))
       .returning();
 
     return record ? mapModLogSetting(record) : null;

@@ -21,7 +21,7 @@ class CacheManager {
     hits: 0,
     misses: 0,
     size: 0,
-    hitRate: 0
+    hitRate: 0,
   };
   private cleanupInterval: NodeJS.Timeout;
 
@@ -35,7 +35,7 @@ class CacheManager {
    */
   get(key: string): any | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       this.stats.misses++;
       this.updateHitRate();
@@ -65,9 +65,9 @@ class CacheManager {
       data,
       timestamp: Date.now(),
       ttl,
-      hits: 0
+      hits: 0,
     };
-    
+
     this.cache.set(key, entry);
     this.stats.size = this.cache.size;
   }
@@ -152,7 +152,9 @@ class CacheManager {
 
     if (deletedCount > 0) {
       this.stats.size = this.cache.size;
-      logger.debug(`Cache invalidation: removed ${deletedCount} entries matching pattern ${pattern}`);
+      logger.debug(
+        `Cache invalidation: removed ${deletedCount} entries matching pattern ${pattern}`
+      );
     }
 
     return deletedCount;
@@ -197,16 +199,16 @@ export const cacheManager = new CacheManager();
 
 // Cache TTL configurations
 export const CacheTTL = {
-  STATS: 500,          // 500ms for stats endpoints
-  GUILD_DATA: 5000,    // 5 seconds for guild data
-  MEMBER_LIST: 30000,  // 30 seconds for member lists
-  SETTINGS: 10000,     // 10 seconds for settings
-  ECONOMY: 2000,       // 2 seconds for economy data
-  MODERATION: 3000,    // 3 seconds for moderation data
-  TICKETS: 5000,       // 5 seconds for ticket data
-  XP: 2000,           // 2 seconds for XP data
-  GIVEAWAYS: 1000,    // 1 second for giveaways (real-time)
-  DEFAULT: 5000       // Default 5 seconds
+  STATS: 500, // 500ms for stats endpoints
+  GUILD_DATA: 5000, // 5 seconds for guild data
+  MEMBER_LIST: 30000, // 30 seconds for member lists
+  SETTINGS: 10000, // 10 seconds for settings
+  ECONOMY: 2000, // 2 seconds for economy data
+  MODERATION: 3000, // 3 seconds for moderation data
+  TICKETS: 5000, // 5 seconds for ticket data
+  XP: 2000, // 2 seconds for XP data
+  GIVEAWAYS: 1000, // 1 second for giveaways (real-time)
+  DEFAULT: 5000, // Default 5 seconds
 };
 
 /**
@@ -222,10 +224,10 @@ export function cacheMiddleware(ttl?: number, keyGenerator?: (req: Request) => s
 
     // Generate cache key
     const cacheKey = keyGenerator ? keyGenerator(req) : `${req.method}:${req.originalUrl}`;
-    
+
     // Try to get from cache
     const cachedData = cacheManager.get(cacheKey);
-    
+
     if (cachedData !== null) {
       // Add cache headers
       res.setHeader('X-Cache', 'HIT');
@@ -236,19 +238,19 @@ export function cacheMiddleware(ttl?: number, keyGenerator?: (req: Request) => s
 
     // Cache miss - store original send function
     const originalSend = res.json.bind(res);
-    
+
     // Override json method to cache the response
-    res.json = function(data: any): Response {
+    res.json = function (data: any): Response {
       // Only cache successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
         const cacheTTL = ttl || CacheTTL.DEFAULT;
         cacheManager.set(cacheKey, data, cacheTTL);
-        
+
         // Add cache headers
         res.setHeader('X-Cache', 'MISS');
         res.setHeader('X-Cache-TTL', String(cacheTTL));
       }
-      
+
       return originalSend(data);
     };
 
@@ -271,7 +273,7 @@ export function conditionalCache(
 
     const cacheKey = `${req.method}:${req.originalUrl}`;
     const cachedData = cacheManager.get(cacheKey);
-    
+
     if (cachedData !== null) {
       res.setHeader('X-Cache', 'HIT');
       res.json(cachedData);
@@ -279,8 +281,8 @@ export function conditionalCache(
     }
 
     const originalSend = res.json.bind(res);
-    
-    res.json = function(data: any): Response {
+
+    res.json = function (data: any): Response {
       if (res.statusCode >= 200 && res.statusCode < 300 && shouldCache(req, res, data)) {
         const cacheTTL = ttl || CacheTTL.DEFAULT;
         cacheManager.set(cacheKey, data, cacheTTL);
@@ -289,7 +291,7 @@ export function conditionalCache(
       } else {
         res.setHeader('X-Cache', 'BYPASS');
       }
-      
+
       return originalSend(data);
     };
 
@@ -304,11 +306,11 @@ export function invalidateCache(pattern: string | ((req: Request) => string)) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     const invalidationPattern = typeof pattern === 'function' ? pattern(req) : pattern;
     const count = cacheManager.invalidatePattern(invalidationPattern);
-    
+
     if (count > 0) {
       logger.debug(`Invalidated ${count} cache entries for pattern: ${invalidationPattern}`);
     }
-    
+
     next();
   };
 }
@@ -321,6 +323,6 @@ export function cacheStatsMiddleware(_req: Request, res: Response): void {
   res.json({
     ...stats,
     hitRate: `${stats.hitRate.toFixed(2)}%`,
-    memoryUsage: process.memoryUsage().heapUsed
+    memoryUsage: process.memoryUsage().heapUsed,
   });
 }

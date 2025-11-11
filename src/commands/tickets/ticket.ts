@@ -63,9 +63,7 @@ function buildPanelPreviewEmbed(
   options?: { isActive?: boolean }
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(
-      mode === 'create' ? t('tickets.panelCreation') : t('tickets.editingPanel')
-    )
+    .setTitle(mode === 'create' ? t('tickets.panelCreation') : t('tickets.editingPanel'))
     .setDescription(
       mode === 'create'
         ? t('tickets.configuringPanel', { id: draft.panelId })
@@ -127,9 +125,10 @@ function buildPanelPreviewEmbed(
   if (draft.welcomeMessage) {
     embed.addFields({
       name: t('tickets.welcomeMessageField'),
-      value: draft.welcomeMessage.length > 256
-        ? `${draft.welcomeMessage.slice(0, 253)}...`
-        : draft.welcomeMessage,
+      value:
+        draft.welcomeMessage.length > 256
+          ? `${draft.welcomeMessage.slice(0, 253)}...`
+          : draft.welcomeMessage,
       inline: false,
     });
   }
@@ -483,9 +482,7 @@ async function handlePanelCreate(
           return;
         }
 
-        panelDraft.supportRoles = Array.from(
-          new Set([...panelDraft.supportRoles, ...roleIds])
-        );
+        panelDraft.supportRoles = Array.from(new Set([...panelDraft.supportRoles, ...roleIds]));
 
         await modalInteraction.reply({
           content: t('tickets.modals.rolesAdded', { count: roleIds.length }),
@@ -600,7 +597,10 @@ async function handlePanelCreate(
         panelDraft.footer = footerText.length > 0 ? footerText : undefined;
 
         await modalInteraction.reply({
-          content: footerText.length > 0 ? t('tickets.modals.footerSet') : t('tickets.modals.footerCleared'),
+          content:
+            footerText.length > 0
+              ? t('tickets.modals.footerSet')
+              : t('tickets.modals.footerCleared'),
           ephemeral: true,
         });
 
@@ -795,9 +795,7 @@ async function handlePanelEdit(
     const actionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('panel_edit_toggle')
-        .setLabel(
-          currentPanel.isActive ? t('tickets.deactivatePanel') : t('tickets.activatePanel')
-        )
+        .setLabel(currentPanel.isActive ? t('tickets.deactivatePanel') : t('tickets.activatePanel'))
         .setStyle(currentPanel.isActive ? ButtonStyle.Danger : ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('panel_edit_close')
@@ -865,7 +863,10 @@ async function handlePanelEdit(
       return;
     }
 
-    if (componentInteraction.customId === selectMenuId && componentInteraction.isStringSelectMenu()) {
+    if (
+      componentInteraction.customId === selectMenuId &&
+      componentInteraction.isStringSelectMenu()
+    ) {
       const value = componentInteraction.values[0];
 
       switch (value) {
@@ -1136,7 +1137,8 @@ async function handlePanelEdit(
           panelDraft.imageUrl = url.length > 0 ? url : undefined;
 
           await submission.reply({
-            content: url.length > 0 ? t('tickets.modals.imageSet') : t('tickets.modals.imageCleared'),
+            content:
+              url.length > 0 ? t('tickets.modals.imageSet') : t('tickets.modals.imageCleared'),
             ephemeral: true,
           });
           await refreshUI();
@@ -1171,7 +1173,8 @@ async function handlePanelEdit(
           panelDraft.footer = footer.length > 0 ? footer : undefined;
 
           await submission.reply({
-            content: footer.length > 0 ? t('tickets.modals.footerSet') : t('tickets.modals.footerCleared'),
+            content:
+              footer.length > 0 ? t('tickets.modals.footerSet') : t('tickets.modals.footerCleared'),
             ephemeral: true,
           });
           await refreshUI();
@@ -1318,7 +1321,9 @@ async function handlePanelEdit(
         case 'panel_edit_close': {
           collector.stop('closed');
           await componentInteraction.update({
-            embeds: [buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive })],
+            embeds: [
+              buildPanelPreviewEmbed(panelDraft, 'edit', { isActive: currentPanel.isActive }),
+            ],
             components: [],
           });
           break;

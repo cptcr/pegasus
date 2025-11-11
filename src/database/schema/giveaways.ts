@@ -1,4 +1,13 @@
-import { pgTable, varchar, timestamp, integer, text, json, primaryKey } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  varchar,
+  timestamp,
+  integer,
+  text,
+  json,
+  primaryKey,
+  boolean,
+} from 'drizzle-orm/pg-core';
 import { guilds } from './guilds';
 import { users } from './users';
 
@@ -23,6 +32,7 @@ export const giveaways = pgTable('giveaways', {
   embedColor: integer('embed_color').default(0x0099ff).notNull(),
   winners: json('winners'),
   endedAt: timestamp('ended_at'),
+  announcementSent: boolean('announcement_sent').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

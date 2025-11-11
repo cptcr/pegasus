@@ -15,7 +15,7 @@ export async function loadEvents(client: Client): Promise<void> {
       const filePath = join(eventsPath, file);
       // Use require for CommonJS compatibility
       const eventModule = require(filePath);
-      
+
       const module = eventModule as {
         name?: string;
         once?: boolean;
@@ -31,7 +31,7 @@ export async function loadEvents(client: Client): Promise<void> {
 
       // Fix unsafe spread by properly typing the args
       const typedExecute = module.execute as (...args: unknown[]) => Promise<void> | void;
-      
+
       if (module.once) {
         client.once(module.name, (...args: unknown[]) => {
           void typedExecute(...args);

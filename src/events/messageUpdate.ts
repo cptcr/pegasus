@@ -1,9 +1,4 @@
-import {
-  EmbedBuilder,
-  Events,
-  type Message,
-  type PartialMessage,
-} from 'discord.js';
+import { EmbedBuilder, Events, type Message, type PartialMessage } from 'discord.js';
 import { modLogService } from '../services/modLogService';
 import { t } from '../i18n';
 import { logger } from '../utils/logger';

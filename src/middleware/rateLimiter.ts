@@ -152,10 +152,7 @@ export class EnhancedRateLimiter {
   /**
    * Check and consume rate limit points
    */
-  consume(
-    key: string,
-    config: RateLimitConfig = RateLimitPresets.general
-  ): RateLimitResult {
+  consume(key: string, config: RateLimitConfig = RateLimitPresets.general): RateLimitResult {
     const hashedKey = this.hashKey(key);
     const fullKey = `${config.keyPrefix || 'rl'}:${hashedKey}`;
 
@@ -208,10 +205,7 @@ export class EnhancedRateLimiter {
   /**
    * Check rate limit without consuming
    */
-  check(
-    key: string,
-    config: RateLimitConfig = RateLimitPresets.general
-  ): RateLimitResult {
+  check(key: string, config: RateLimitConfig = RateLimitPresets.general): RateLimitResult {
     const hashedKey = this.hashKey(key);
     const fullKey = `${config.keyPrefix || 'rl'}:${hashedKey}`;
 
@@ -387,9 +381,7 @@ export class DistributedRateLimiter {
   /**
    * Apply multiple rate limits in sequence
    */
-  consumeMultiple(
-    keys: { key: string; config: RateLimitConfig }[]
-  ): RateLimitResult[] {
+  consumeMultiple(keys: { key: string; config: RateLimitConfig }[]): RateLimitResult[] {
     const results: RateLimitResult[] = [];
 
     for (const { key, config } of keys) {
@@ -420,10 +412,7 @@ export class DistributedRateLimiter {
   } {
     // Command-specific limit
     if (commandConfig) {
-      const commandResult = this.limiter.consume(
-        `cmd:${commandName}:${userId}`,
-        commandConfig
-      );
+      const commandResult = this.limiter.consume(`cmd:${commandName}:${userId}`, commandConfig);
       if (!commandResult.allowed) {
         return { allowed: false, level: 'command', result: commandResult };
       }
@@ -561,12 +550,7 @@ export function applyRateLimit(
   }
 
   // Apply hierarchical rate limiting
-  const result = rateLimiterInstance.consumeHierarchical(
-    userId,
-    guildId,
-    commandName,
-    config
-  );
+  const result = rateLimiterInstance.consumeHierarchical(userId, guildId, commandName, config);
 
   if (!result.allowed) {
     logger.debug(

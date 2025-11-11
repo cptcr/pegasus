@@ -5,8 +5,9 @@ import { modCases, guildSettings } from '../../database/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { z } from 'zod';
-import { PermissionFlagsBits } from 'discord.js';
+import { Guild, GuildMember, PermissionFlagsBits } from 'discord.js';
 import { warningService } from '../../services/warningService';
+import { moderationScheduler } from '../../services/moderationScheduler';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const warnSchema = z.object({
   userId: z.string(),
   moderatorId: z.string(),
   reason: z.string().min(1).max(500),
-  level: z.number().min(1).max(5).optional()
+  level: z.number().min(1).max(5).optional(),
 });
 
 const banSchema = z.object({
@@ -23,20 +24,20 @@ const banSchema = z.object({
   moderatorId: z.string(),
   reason: z.string().min(1).max(500),
   duration: z.number().optional(), // Duration in days for temp ban
-  deleteMessageDays: z.number().min(0).max(7).optional()
+  deleteMessageDays: z.number().min(0).max(7).optional(),
 });
 
 const kickSchema = z.object({
   userId: z.string(),
   moderatorId: z.string(),
-  reason: z.string().min(1).max(500)
+  reason: z.string().min(1).max(500),
 });
 
 const muteSchema = z.object({
   userId: z.string(),
   moderatorId: z.string(),
   reason: z.string().min(1).max(500),
-  duration: z.number().min(1).optional() // Duration in minutes
+  duration: z.number().min(1).optional(), // Duration in minutes
 });
 
 const moderationSettingsSchema = z.object({
@@ -48,7 +49,7 @@ const moderationSettingsSchema = z.object({
   warnThresholdMute: z.number().min(1).optional(),
   antiSpamEnabled: z.boolean().optional(),
   antiLinksEnabled: z.boolean().optional(),
-  antiInvitesEnabled: z.boolean().optional()
+  antiInvitesEnabled: z.boolean().optional(),
 });
 
 // Helper function to log moderation action
@@ -58,55 +59,105 @@ async function logModAction(
   moderatorId: string,
   type: string,
   reason: string,
-  duration?: number
+  durationSeconds?: number
 ) {
   const db = getDatabase();
-  
-  const [newCase] = await db.insert(modCases).values({
-    guildId,
-    userId,
-    moderatorId,
-    type,
-    reason,
-    duration,
-    createdAt: new Date()
-  }).returning();
-  
+  const expiresAt =
+    durationSeconds && durationSeconds > 0 ? new Date(Date.now() + durationSeconds * 1000) : null;
+
+  const [newCase] = await db
+    .insert(modCases)
+    .values({
+      guildId,
+      userId,
+      moderatorId,
+      type,
+      reason,
+      duration: durationSeconds ?? null,
+      expiresAt,
+      createdAt: new Date(),
+    })
+    .returning();
+
+  if (type === 'ban' && expiresAt) {
+    await moderationScheduler.scheduleTempBan({
+      caseId: newCase.id,
+      guildId,
+      userId,
+      expiresAt,
+    });
+  }
+
   return newCase.id;
+}
+
+async function requireModeratorPermission(
+  guild: Guild,
+  moderatorId: string,
+  permission: bigint
+): Promise<{ member: GuildMember | null; error?: { status: number; message: string } }> {
+  const member = await guild.members.fetch(moderatorId).catch(() => null);
+  if (!member) {
+    return {
+      member: null,
+      error: { status: 404, message: 'Moderator not found in guild' },
+    };
+  }
+
+  if (!member.permissions.has(permission)) {
+    return {
+      member: null,
+      error: { status: 403, message: 'Moderator lacks the required permission' },
+    };
+  }
+
+  return { member };
 }
 
 // POST /guilds/{guildId}/moderation/warn - Issue warning
 router.post('/:guildId/moderation/warn', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = warnSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const { userId, moderatorId, reason, level = 1 } = validation.data;
-    
+
     // Get guild and users
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
     const user = await client.users.fetch(userId).catch(() => null);
     const moderator = await client.users.fetch(moderatorId).catch(() => null);
-    
+
     if (!user || !moderator) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'User or moderator not found'
+        message: 'User or moderator not found',
+      });
+    }
+
+    const moderatorCheck = await requireModeratorPermission(
+      guild,
+      moderatorId,
+      PermissionFlagsBits.ModerateMembers
+    );
+    if (moderatorCheck.error) {
+      return res.status(moderatorCheck.error.status).json({
+        error: 'Forbidden',
+        message: moderatorCheck.error.message,
       });
     }
 
@@ -126,16 +177,18 @@ router.post('/:guildId/moderation/warn', async (req: Request, res: Response) => 
     // Try to DM the user
     try {
       await user.send({
-        embeds: [{
-          title: '⚠️ Warning Received',
-          description: `You have been warned in **${guild.name}**`,
-          fields: [
-            { name: 'Reason', value: reason, inline: false },
-            { name: 'Level', value: level.toString(), inline: true }
-          ],
-          color: 0xFFCC00,
-          timestamp: new Date().toISOString()
-        }]
+        embeds: [
+          {
+            title: '⚠️ Warning Received',
+            description: `You have been warned in **${guild.name}**`,
+            fields: [
+              { name: 'Reason', value: reason, inline: false },
+              { name: 'Level', value: level.toString(), inline: true },
+            ],
+            color: 0xffcc00,
+            timestamp: new Date().toISOString(),
+          },
+        ],
       });
     } catch (error) {
       logger.warn(`Could not DM user ${userId} about warning`);
@@ -152,14 +205,14 @@ router.post('/:guildId/moderation/warn', async (req: Request, res: Response) => 
         moderatorId,
         reason,
         level,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     logger.error('Error issuing warning:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to issue warning'
+      message: 'Failed to issue warning',
     });
   }
 });
@@ -167,25 +220,25 @@ router.post('/:guildId/moderation/warn', async (req: Request, res: Response) => 
 // POST /guilds/{guildId}/moderation/ban - Ban user
 router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = banSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const { userId, moderatorId, reason, duration, deleteMessageDays = 0 } = validation.data;
-    
+
     // Get guild
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -194,7 +247,19 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
     if (!botMember?.permissions.has(PermissionFlagsBits.BanMembers)) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Bot does not have permission to ban members'
+        message: 'Bot does not have permission to ban members',
+      });
+    }
+
+    const moderatorCheck = await requireModeratorPermission(
+      guild,
+      moderatorId,
+      PermissionFlagsBits.BanMembers
+    );
+    if (moderatorCheck.error) {
+      return res.status(moderatorCheck.error.status).json({
+        error: 'Forbidden',
+        message: moderatorCheck.error.message,
       });
     }
 
@@ -202,23 +267,29 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'User not found'
+        message: 'User not found',
       });
     }
 
     // Try to DM the user before banning
     try {
       await user.send({
-        embeds: [{
-          title: '🔨 You have been banned',
-          description: `You have been banned from **${guild.name}**`,
-          fields: [
-            { name: 'Reason', value: reason, inline: false },
-            { name: 'Duration', value: duration ? `${duration} days` : 'Permanent', inline: true }
-          ],
-          color: 0xFF0000,
-          timestamp: new Date().toISOString()
-        }]
+        embeds: [
+          {
+            title: '🔨 You have been banned',
+            description: `You have been banned from **${guild.name}**`,
+            fields: [
+              { name: 'Reason', value: reason, inline: false },
+              {
+                name: 'Duration',
+                value: duration ? `${duration} days` : 'Permanent',
+                inline: true,
+              },
+            ],
+            color: 0xff0000,
+            timestamp: new Date().toISOString(),
+          },
+        ],
       });
     } catch (error) {
       logger.warn(`Could not DM user ${userId} about ban`);
@@ -227,17 +298,18 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
     // Ban the user
     await guild.members.ban(userId, {
       reason: `${reason} | Banned by ${moderatorId}`,
-      deleteMessageSeconds: deleteMessageDays * 24 * 60 * 60
+      deleteMessageSeconds: deleteMessageDays * 24 * 60 * 60,
     });
 
     // Log the moderation action
-    const caseId = await logModAction(guildId, userId, moderatorId, 'ban', reason, duration);
+    const durationSeconds = duration ? duration * 86400 : undefined;
+    const caseId = await logModAction(guildId, userId, moderatorId, 'ban', reason, durationSeconds);
 
     // If it's a temporary ban, store it for later unbanning
     if (duration) {
       const unbanDate = new Date();
       unbanDate.setDate(unbanDate.getDate() + duration);
-      
+
       // Store temp ban info (you would need a scheduled job to check and unban)
       // This is a simplified version - in production you'd want a proper scheduled jobs system
     }
@@ -252,14 +324,14 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
         moderatorId,
         reason,
         duration,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     logger.error('Error banning user:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to ban user'
+      message: 'Failed to ban user',
     });
   }
 });
@@ -267,25 +339,25 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
 // POST /guilds/{guildId}/moderation/kick - Kick user
 router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = kickSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const { userId, moderatorId, reason } = validation.data;
-    
+
     // Get guild
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -294,7 +366,31 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
     if (!botMember?.permissions.has(PermissionFlagsBits.KickMembers)) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Bot does not have permission to kick members'
+        message: 'Bot does not have permission to kick members',
+      });
+    }
+
+    const moderatorCheck = await requireModeratorPermission(
+      guild,
+      moderatorId,
+      PermissionFlagsBits.KickMembers
+    );
+    if (moderatorCheck.error) {
+      return res.status(moderatorCheck.error.status).json({
+        error: 'Forbidden',
+        message: moderatorCheck.error.message,
+      });
+    }
+
+    const moderatorCheck = await requireModeratorPermission(
+      guild,
+      moderatorId,
+      PermissionFlagsBits.ManageRoles
+    );
+    if (moderatorCheck.error) {
+      return res.status(moderatorCheck.error.status).json({
+        error: 'Forbidden',
+        message: moderatorCheck.error.message,
       });
     }
 
@@ -302,7 +398,7 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
     if (!member) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Member not found in guild'
+        message: 'Member not found in guild',
       });
     }
 
@@ -310,22 +406,22 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
     if (!member.kickable) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Cannot kick this member (higher role or owner)'
+        message: 'Cannot kick this member (higher role or owner)',
       });
     }
 
     // Try to DM the user before kicking
     try {
       await member.send({
-        embeds: [{
-          title: '👢 You have been kicked',
-          description: `You have been kicked from **${guild.name}**`,
-          fields: [
-            { name: 'Reason', value: reason, inline: false }
-          ],
-          color: 0xFFA500,
-          timestamp: new Date().toISOString()
-        }]
+        embeds: [
+          {
+            title: '👢 You have been kicked',
+            description: `You have been kicked from **${guild.name}**`,
+            fields: [{ name: 'Reason', value: reason, inline: false }],
+            color: 0xffa500,
+            timestamp: new Date().toISOString(),
+          },
+        ],
       });
     } catch (error) {
       logger.warn(`Could not DM user ${userId} about kick`);
@@ -346,14 +442,14 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
         userId,
         moderatorId,
         reason,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     logger.error('Error kicking user:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to kick user'
+      message: 'Failed to kick user',
     });
   }
 });
@@ -361,25 +457,25 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
 // POST /guilds/{guildId}/moderation/mute - Mute user
 router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = muteSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const { userId, moderatorId, reason, duration } = validation.data;
-    
+
     // Get guild
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -387,7 +483,7 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
     if (!member) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Member not found in guild'
+        message: 'Member not found in guild',
       });
     }
 
@@ -396,30 +492,32 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
     if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Bot does not have permission to manage roles'
+        message: 'Bot does not have permission to manage roles',
       });
     }
 
     // Get or create muted role
     let muteRole = guild.roles.cache.find(r => r.name === 'Muted');
-    
+
     if (!muteRole) {
       // Create mute role if it doesn't exist
       muteRole = await guild.roles.create({
         name: 'Muted',
         color: 0x808080,
         permissions: [],
-        reason: 'Auto-created mute role'
+        reason: 'Auto-created mute role',
       });
 
       // Update all channels to deny send messages for muted role
       for (const channel of guild.channels.cache.values()) {
         if (channel.isTextBased() && 'permissionOverwrites' in channel) {
-          await channel.permissionOverwrites.create(muteRole.id, {
-            SendMessages: false,
-            AddReactions: false,
-            Speak: false
-          }).catch(() => {});
+          await channel.permissionOverwrites
+            .create(muteRole.id, {
+              SendMessages: false,
+              AddReactions: false,
+              Speak: false,
+            })
+            .catch(() => {});
         }
       }
     }
@@ -428,33 +526,50 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
     await member.roles.add(muteRole, `${reason} | Muted by ${moderatorId}`);
 
     // Log the moderation action
-    const caseId = await logModAction(guildId, userId, moderatorId, 'mute', reason, duration);
+    const muteDurationSeconds = duration ? duration * 60 : undefined;
+    const caseId = await logModAction(
+      guildId,
+      userId,
+      moderatorId,
+      'mute',
+      reason,
+      muteDurationSeconds
+    );
 
     // If it's a temporary mute, schedule unmute
     if (duration) {
-      setTimeout(async () => {
-        try {
-          await member.roles.remove(muteRole!.id, 'Mute duration expired');
-          logger.info(`Unmuted user ${userId} in guild ${guildId} (duration expired)`);
-        } catch (error) {
-          logger.error(`Failed to unmute user ${userId}:`, error);
-        }
-      }, duration * 60 * 1000);
+      setTimeout(
+        async () => {
+          try {
+            await member.roles.remove(muteRole!.id, 'Mute duration expired');
+            logger.info(`Unmuted user ${userId} in guild ${guildId} (duration expired)`);
+          } catch (error) {
+            logger.error(`Failed to unmute user ${userId}:`, error);
+          }
+        },
+        duration * 60 * 1000
+      );
     }
 
     // Try to DM the user
     try {
       await member.send({
-        embeds: [{
-          title: '🔇 You have been muted',
-          description: `You have been muted in **${guild.name}**`,
-          fields: [
-            { name: 'Reason', value: reason, inline: false },
-            { name: 'Duration', value: duration ? `${duration} minutes` : 'Indefinite', inline: true }
-          ],
-          color: 0x808080,
-          timestamp: new Date().toISOString()
-        }]
+        embeds: [
+          {
+            title: '🔇 You have been muted',
+            description: `You have been muted in **${guild.name}**`,
+            fields: [
+              { name: 'Reason', value: reason, inline: false },
+              {
+                name: 'Duration',
+                value: duration ? `${duration} minutes` : 'Indefinite',
+                inline: true,
+              },
+            ],
+            color: 0x808080,
+            timestamp: new Date().toISOString(),
+          },
+        ],
       });
     } catch (error) {
       logger.warn(`Could not DM user ${userId} about mute`);
@@ -470,14 +585,14 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
         moderatorId,
         reason,
         duration,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     logger.error('Error muting user:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to mute user'
+      message: 'Failed to mute user',
     });
   }
 });
@@ -485,14 +600,14 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
 // PATCH /guilds/{guildId}/moderation/settings - Update mod settings
 router.patch('/:guildId/moderation/settings', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = moderationSettingsSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -507,10 +622,11 @@ router.patch('/:guildId/moderation/settings', async (req: Request, res: Response
       .limit(1);
 
     const settingUpdates: any = {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
-    if (updates.antiSpamEnabled !== undefined) settingUpdates.antiSpamEnabled = updates.antiSpamEnabled;
+    if (updates.antiSpamEnabled !== undefined)
+      settingUpdates.antiSpamEnabled = updates.antiSpamEnabled;
     if (updates.logChannelId !== undefined) settingUpdates.logsChannel = updates.logChannelId;
 
     if (!existingSettings) {
@@ -520,27 +636,24 @@ router.patch('/:guildId/moderation/settings', async (req: Request, res: Response
         antiSpamEnabled: updates.antiSpamEnabled || false,
         logsChannel: updates.logChannelId || null,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
     } else if (Object.keys(settingUpdates).length > 1) {
       // Update existing settings
-      await db
-        .update(guildSettings)
-        .set(settingUpdates)
-        .where(eq(guildSettings.guildId, guildId));
+      await db.update(guildSettings).set(settingUpdates).where(eq(guildSettings.guildId, guildId));
     }
 
     logger.info(`Updated moderation settings for guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'Moderation settings updated successfully'
+      message: 'Moderation settings updated successfully',
     });
   } catch (error) {
     logger.error('Error updating moderation settings:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update moderation settings'
+      message: 'Failed to update moderation settings',
     });
   }
 });

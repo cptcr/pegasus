@@ -1,10 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { getDatabase } from '../../database/connection';
-import { economyShopItems, economyBalances, economyTransactions } from '../../database/schema';
+import {
+  economyShopItems,
+  economyBalances,
+  economyTransactions,
+  economySettings,
+} from '../../database/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { economyRepository } from '../../repositories/economyRepository';
 
 const router = Router();
 
@@ -18,35 +24,39 @@ const createShopItemSchema = z.object({
   effectValue: z.any().optional(),
   stock: z.number().optional(),
   requiresRole: z.string().optional(),
-  enabled: z.boolean().optional()
+  enabled: z.boolean().optional(),
 });
 
 const updateShopItemSchema = createShopItemSchema.partial();
 
 const economySettingsSchema = z.object({
-  enabled: z.boolean().optional(),
   currencyName: z.string().optional(),
   currencySymbol: z.string().optional(),
   startingBalance: z.number().min(0).optional(),
   dailyAmount: z.number().min(0).optional(),
   dailyStreakBonus: z.number().min(0).optional(),
-  maxBalance: z.number().min(0).optional(),
   workCooldown: z.number().min(0).optional(),
   workRewardMin: z.number().min(0).optional(),
-  workRewardMax: z.number().min(0).optional()
+  workRewardMax: z.number().min(0).optional(),
+  robEnabled: z.boolean().optional(),
+  robCooldown: z.number().min(0).optional(),
+  robSuccessRate: z.number().min(0).max(100).optional(),
+  robMinAmount: z.number().min(0).optional(),
+  maxBet: z.number().min(1).optional(),
+  minBet: z.number().min(0).optional(),
 });
 
 // POST /guilds/{guildId}/economy/shop-items - Create shop item
 router.post('/:guildId/economy/shop-items', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = createShopItemSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -54,7 +64,8 @@ router.post('/:guildId/economy/shop-items', async (req: Request, res: Response) 
     const itemData = validation.data;
     const itemId = uuidv4();
 
-    const [newItem] = await db.insert(economyShopItems)
+    const [newItem] = await db
+      .insert(economyShopItems)
       .values({
         guildId,
         name: itemData.name,
@@ -67,7 +78,7 @@ router.post('/:guildId/economy/shop-items', async (req: Request, res: Response) 
         requiresRole: itemData.requiresRole || null,
         enabled: itemData.enabled !== false,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -84,14 +95,14 @@ router.post('/:guildId/economy/shop-items', async (req: Request, res: Response) 
         effectType: newItem.effectType,
         effectValue: newItem.effectValue,
         stock: newItem.stock,
-        enabled: newItem.enabled
-      }
+        enabled: newItem.enabled,
+      },
     });
   } catch (error) {
     logger.error('Error creating shop item:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to create shop item'
+      message: 'Failed to create shop item',
     });
   }
 });
@@ -99,14 +110,14 @@ router.post('/:guildId/economy/shop-items', async (req: Request, res: Response) 
 // PATCH /guilds/{guildId}/economy/shop-items/{itemId} - Update shop item
 router.patch('/:guildId/economy/shop-items/:itemId', async (req: Request, res: Response) => {
   const { guildId, itemId } = req.params;
-  
+
   try {
     const validation = updateShopItemSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -117,16 +128,13 @@ router.patch('/:guildId/economy/shop-items/:itemId', async (req: Request, res: R
     const [existingItem] = await db
       .select()
       .from(economyShopItems)
-      .where(and(
-        eq(economyShopItems.id, itemId),
-        eq(economyShopItems.guildId, guildId)
-      ))
+      .where(and(eq(economyShopItems.id, itemId), eq(economyShopItems.guildId, guildId)))
       .limit(1);
 
     if (!existingItem) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Shop item not found'
+        message: 'Shop item not found',
       });
     }
 
@@ -135,12 +143,9 @@ router.patch('/:guildId/economy/shop-items/:itemId', async (req: Request, res: R
       .update(economyShopItems)
       .set({
         ...updates,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
-      .where(and(
-        eq(economyShopItems.id, itemId),
-        eq(economyShopItems.guildId, guildId)
-      ))
+      .where(and(eq(economyShopItems.id, itemId), eq(economyShopItems.guildId, guildId)))
       .returning();
 
     logger.info(`Updated shop item ${itemId} for guild ${guildId}`);
@@ -156,14 +161,14 @@ router.patch('/:guildId/economy/shop-items/:itemId', async (req: Request, res: R
         effectType: updatedItem.effectType,
         effectValue: updatedItem.effectValue,
         stock: updatedItem.stock,
-        enabled: updatedItem.enabled
-      }
+        enabled: updatedItem.enabled,
+      },
     });
   } catch (error) {
     logger.error('Error updating shop item:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update shop item'
+      message: 'Failed to update shop item',
     });
   }
 });
@@ -171,7 +176,7 @@ router.patch('/:guildId/economy/shop-items/:itemId', async (req: Request, res: R
 // DELETE /guilds/{guildId}/economy/shop-items/{itemId} - Delete shop item
 router.delete('/:guildId/economy/shop-items/:itemId', async (req: Request, res: Response) => {
   const { guildId, itemId } = req.params;
-  
+
   try {
     const db = getDatabase();
 
@@ -179,38 +184,32 @@ router.delete('/:guildId/economy/shop-items/:itemId', async (req: Request, res: 
     const [existingItem] = await db
       .select()
       .from(economyShopItems)
-      .where(and(
-        eq(economyShopItems.id, itemId),
-        eq(economyShopItems.guildId, guildId)
-      ))
+      .where(and(eq(economyShopItems.id, itemId), eq(economyShopItems.guildId, guildId)))
       .limit(1);
 
     if (!existingItem) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Shop item not found'
+        message: 'Shop item not found',
       });
     }
 
     // Delete the item
     await db
       .delete(economyShopItems)
-      .where(and(
-        eq(economyShopItems.id, itemId),
-        eq(economyShopItems.guildId, guildId)
-      ));
+      .where(and(eq(economyShopItems.id, itemId), eq(economyShopItems.guildId, guildId)));
 
     logger.info(`Deleted shop item ${itemId} from guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'Shop item deleted successfully'
+      message: 'Shop item deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting shop item:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to delete shop item'
+      message: 'Failed to delete shop item',
     });
   }
 });
@@ -218,31 +217,61 @@ router.delete('/:guildId/economy/shop-items/:itemId', async (req: Request, res: 
 // PATCH /guilds/{guildId}/economy/settings - Update economy settings
 router.patch('/:guildId/economy/settings', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = economySettingsSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
-    // For now, just return success since economy settings are managed in a different way
-    // In production, you would create a separate economy_settings table or use a JSON column
-    logger.info(`Economy settings update requested for guild ${guildId}`);
+    const updates = validation.data;
+    const settingsUpdates: Partial<typeof economySettings.$inferInsert> = {};
+
+    if (updates.currencyName !== undefined) settingsUpdates.currencyName = updates.currencyName;
+    if (updates.currencySymbol !== undefined)
+      settingsUpdates.currencySymbol = updates.currencySymbol;
+    if (updates.startingBalance !== undefined)
+      settingsUpdates.startingBalance = updates.startingBalance;
+    if (updates.dailyAmount !== undefined) settingsUpdates.dailyAmount = updates.dailyAmount;
+    if (updates.dailyStreakBonus !== undefined)
+      settingsUpdates.dailyStreakBonus = updates.dailyStreakBonus;
+    if (updates.workCooldown !== undefined) settingsUpdates.workCooldown = updates.workCooldown;
+    if (updates.workRewardMin !== undefined) settingsUpdates.workMinAmount = updates.workRewardMin;
+    if (updates.workRewardMax !== undefined) settingsUpdates.workMaxAmount = updates.workRewardMax;
+    if (updates.robEnabled !== undefined) settingsUpdates.robEnabled = updates.robEnabled;
+    if (updates.robCooldown !== undefined) settingsUpdates.robCooldown = updates.robCooldown;
+    if (updates.robSuccessRate !== undefined)
+      settingsUpdates.robSuccessRate = updates.robSuccessRate;
+    if (updates.robMinAmount !== undefined) settingsUpdates.robMinAmount = updates.robMinAmount;
+    if (updates.maxBet !== undefined) settingsUpdates.maxBet = updates.maxBet;
+    if (updates.minBet !== undefined) settingsUpdates.minBet = updates.minBet;
+
+    if (Object.keys(settingsUpdates).length === 0) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'No updatable economy settings were provided',
+      });
+    }
+
+    settingsUpdates.updatedAt = new Date();
+    await economyRepository.ensureSettings(guildId);
+    const updated = await economyRepository.updateSettings(guildId, settingsUpdates);
+
+    logger.info(`Economy settings updated for guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'Economy settings updated successfully',
-      note: 'Settings are managed through bot configuration'
+      settings: updated,
     });
   } catch (error) {
     logger.error('Error updating economy settings:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update economy settings'
+      message: 'Failed to update economy settings',
     });
   }
 });
@@ -251,36 +280,30 @@ router.patch('/:guildId/economy/settings', async (req: Request, res: Response) =
 router.post('/:guildId/economy/reset', async (req: Request, res: Response) => {
   const { guildId } = req.params;
   const { resetBalances = true, resetShop = false, resetTransactions = true } = req.body;
-  
+
   try {
     const db = getDatabase();
 
     // Start a transaction for data consistency
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       if (resetBalances) {
         // Reset all user balances
-        await tx
-          .delete(economyBalances)
-          .where(eq(economyBalances.guildId, guildId));
-        
+        await tx.delete(economyBalances).where(eq(economyBalances.guildId, guildId));
+
         logger.info(`Reset economy balances for guild ${guildId}`);
       }
 
       if (resetShop) {
         // Delete all shop items
-        await tx
-          .delete(economyShopItems)
-          .where(eq(economyShopItems.guildId, guildId));
-        
+        await tx.delete(economyShopItems).where(eq(economyShopItems.guildId, guildId));
+
         logger.info(`Reset shop items for guild ${guildId}`);
       }
 
       if (resetTransactions) {
         // Delete all transactions
-        await tx
-          .delete(economyTransactions)
-          .where(eq(economyTransactions.guildId, guildId));
-        
+        await tx.delete(economyTransactions).where(eq(economyTransactions.guildId, guildId));
+
         logger.info(`Reset transactions for guild ${guildId}`);
       }
     });
@@ -291,14 +314,14 @@ router.post('/:guildId/economy/reset', async (req: Request, res: Response) => {
       reset: {
         balances: resetBalances,
         shop: resetShop,
-        transactions: resetTransactions
-      }
+        transactions: resetTransactions,
+      },
     });
   } catch (error) {
     logger.error('Error resetting economy data:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to reset economy data'
+      message: 'Failed to reset economy data',
     });
   }
 });

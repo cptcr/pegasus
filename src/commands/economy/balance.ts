@@ -101,7 +101,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     logger.error('Error in balance command:', error);
     await interaction.editReply({
-      embeds: [embedBuilder.createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.')],
+      embeds: [
+        embedBuilder.createErrorEmbed('Error', 'Failed to fetch balance. Please try again later.'),
+      ],
     });
   }
 }

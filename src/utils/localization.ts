@@ -287,7 +287,7 @@ export const optionDescriptions = {
     en: 'Trigger type for this automation',
     de: 'Auslöser-Typ für diese Automatisierung',
     es: 'Tipo de disparador para esta automatización',
-    fr: "Type de déclencheur pour cette automatisation",
+    fr: 'Type de déclencheur pour cette automatisation',
   },
   triggerValue: {
     en: 'Value at which the automation triggers',

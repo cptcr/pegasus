@@ -106,7 +106,7 @@ export class SteamService {
           steamid?: string;
         };
       };
-      
+
       if (responseData.response.success === 1) {
         return responseData.response.steamid ?? null;
       }

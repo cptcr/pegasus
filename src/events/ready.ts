@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { giveawayService } from '../services/giveawayService';
 import { registerCommands } from '../handlers/commandHandler';
 import chalk from 'chalk';
+import { moderationScheduler } from '../services/moderationScheduler';
 
 export const name = Events.ClientReady;
 export const once = true;
@@ -20,6 +21,11 @@ export async function execute(client: Client<true>) {
   // Initialize active giveaways
   await giveawayService.initializeActiveGiveaways();
   logger.info(chalk.blue('Initialized active giveaways'));
+
+  // Resume moderation schedules (e.g., temp bans)
+  moderationScheduler.attachClient(client);
+  await moderationScheduler.initialize();
+  logger.info(chalk.blue('Moderation scheduler initialized'));
 
   // Set bot status
   client.user.setPresence({

@@ -61,7 +61,8 @@ function loadListDefinitions(configPath: string): ListCommandMap {
 
       const entries = Object.entries(value.items)
         .filter(
-          ([name, url]) => typeof name === 'string' && typeof url === 'string' && url.trim().length > 0
+          ([name, url]) =>
+            typeof name === 'string' && typeof url === 'string' && url.trim().length > 0
         )
         .map(([name, url]) => ({
           name,
@@ -117,7 +118,9 @@ function loadListDefinitions(configPath: string): ListCommandMap {
                   description: cmdDescription,
                 };
               })
-              .filter((command): command is { name: string; description?: string } => command !== null)
+              .filter(
+                (command): command is { name: string; description?: string } => command !== null
+              )
           : [];
 
         commands.set(helpPrefix, {

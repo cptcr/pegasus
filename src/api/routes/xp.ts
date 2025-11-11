@@ -17,25 +17,25 @@ const xpSettingsSchema = z.object({
   announceLevelUp: z.boolean().optional(),
   xpBlacklistRoles: z.array(z.string()).optional(),
   xpBlacklistChannels: z.array(z.string()).optional(),
-  xpMultiplierRoles: z.record(z.string(), z.number()).optional()
+  xpMultiplierRoles: z.record(z.string(), z.number()).optional(),
 });
 
 const roleRewardSchema = z.object({
   level: z.number().min(1).max(1000),
-  roleId: z.string()
+  roleId: z.string(),
 });
 
 // PATCH /guilds/{guildId}/xp/settings - Update XP settings
 router.patch('/:guildId/xp/settings', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = xpSettingsSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -60,12 +60,12 @@ router.patch('/:guildId/xp/settings', async (req: Request, res: Response) => {
         levelUpChannel: updates.levelUpChannel,
         xpAnnounceLevelUp: updates.announceLevelUp,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
     } else {
       // Update existing settings
       const updateData: any = {
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       if (updates.enabled !== undefined) updateData.xpEnabled = updates.enabled;
@@ -73,25 +73,23 @@ router.patch('/:guildId/xp/settings', async (req: Request, res: Response) => {
       if (updates.xpCooldown !== undefined) updateData.xpCooldown = updates.xpCooldown;
       if (updates.levelUpMessage !== undefined) updateData.levelUpMessage = updates.levelUpMessage;
       if (updates.levelUpChannel !== undefined) updateData.levelUpChannel = updates.levelUpChannel;
-      if (updates.announceLevelUp !== undefined) updateData.xpAnnounceLevelUp = updates.announceLevelUp;
+      if (updates.announceLevelUp !== undefined)
+        updateData.xpAnnounceLevelUp = updates.announceLevelUp;
 
-      await db
-        .update(guildSettings)
-        .set(updateData)
-        .where(eq(guildSettings.guildId, guildId));
+      await db.update(guildSettings).set(updateData).where(eq(guildSettings.guildId, guildId));
     }
 
     logger.info(`Updated XP settings for guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'XP settings updated successfully'
+      message: 'XP settings updated successfully',
     });
   } catch (error) {
     logger.error('Error updating XP settings:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update XP settings'
+      message: 'Failed to update XP settings',
     });
   }
 });
@@ -99,14 +97,14 @@ router.patch('/:guildId/xp/settings', async (req: Request, res: Response) => {
 // POST /guilds/{guildId}/xp/rewards - Add role reward
 router.post('/:guildId/xp/rewards', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = roleRewardSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -117,26 +115,24 @@ router.post('/:guildId/xp/rewards', async (req: Request, res: Response) => {
     const [existingReward] = await db
       .select()
       .from(xpRewards)
-      .where(and(
-        eq(xpRewards.guildId, guildId),
-        eq(xpRewards.level, level)
-      ))
+      .where(and(eq(xpRewards.guildId, guildId), eq(xpRewards.level, level)))
       .limit(1);
 
     if (existingReward) {
       return res.status(409).json({
         error: 'Conflict',
-        message: `A role reward already exists for level ${level}`
+        message: `A role reward already exists for level ${level}`,
       });
     }
 
     // Create new role reward
-    const [newReward] = await db.insert(xpRewards)
+    const [newReward] = await db
+      .insert(xpRewards)
       .values({
         guildId,
         level,
         roleId,
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .returning();
 
@@ -146,14 +142,14 @@ router.post('/:guildId/xp/rewards', async (req: Request, res: Response) => {
       success: true,
       reward: {
         level: newReward.level,
-        roleId: newReward.roleId
-      }
+        roleId: newReward.roleId,
+      },
     });
   } catch (error) {
     logger.error('Error creating role reward:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to create role reward'
+      message: 'Failed to create role reward',
     });
   }
 });
@@ -161,7 +157,7 @@ router.post('/:guildId/xp/rewards', async (req: Request, res: Response) => {
 // DELETE /guilds/{guildId}/xp/rewards/:level - Remove role reward
 router.delete('/:guildId/xp/rewards/:level', async (req: Request, res: Response) => {
   const { guildId, level } = req.params;
-  
+
   try {
     const db = getDatabase();
 
@@ -169,38 +165,32 @@ router.delete('/:guildId/xp/rewards/:level', async (req: Request, res: Response)
     const [existingReward] = await db
       .select()
       .from(xpRewards)
-      .where(and(
-        eq(xpRewards.level, parseInt(level)),
-        eq(xpRewards.guildId, guildId)
-      ))
+      .where(and(eq(xpRewards.level, parseInt(level)), eq(xpRewards.guildId, guildId)))
       .limit(1);
 
     if (!existingReward) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Role reward not found'
+        message: 'Role reward not found',
       });
     }
 
     // Delete the reward
     await db
       .delete(xpRewards)
-      .where(and(
-        eq(xpRewards.level, parseInt(level)),
-        eq(xpRewards.guildId, guildId)
-      ));
+      .where(and(eq(xpRewards.level, parseInt(level)), eq(xpRewards.guildId, guildId)));
 
     logger.info(`Deleted XP role reward for level ${level} from guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'Role reward deleted successfully'
+      message: 'Role reward deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting role reward:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to delete role reward'
+      message: 'Failed to delete role reward',
     });
   }
 });
@@ -209,11 +199,11 @@ router.delete('/:guildId/xp/rewards/:level', async (req: Request, res: Response)
 router.post('/:guildId/xp/reset', async (req: Request, res: Response) => {
   const { guildId } = req.params;
   const { resetLevels = true, resetRewards = false, keepSettings = true } = req.body;
-  
+
   try {
     const db = getDatabase();
 
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       if (resetLevels) {
         // Reset all member XP and levels
         await tx
@@ -224,16 +214,14 @@ router.post('/:guildId/xp/reset', async (req: Request, res: Response) => {
             messages: 0,
           })
           .where(eq(members.guildId, guildId));
-        
+
         logger.info(`Reset XP levels for all members in guild ${guildId}`);
       }
 
       if (resetRewards) {
         // Delete all role rewards
-        await tx
-          .delete(xpRewards)
-          .where(eq(xpRewards.guildId, guildId));
-        
+        await tx.delete(xpRewards).where(eq(xpRewards.guildId, guildId));
+
         logger.info(`Reset XP role rewards for guild ${guildId}`);
       }
 
@@ -245,13 +233,13 @@ router.post('/:guildId/xp/reset', async (req: Request, res: Response) => {
             xpEnabled: true,
             xpPerMessage: 15,
             xpCooldown: 60,
-            levelUpMessage: 'Congratulations {user}! You\'ve reached level {level}!',
+            levelUpMessage: "Congratulations {user}! You've reached level {level}!",
             levelUpChannel: null,
             xpAnnounceLevelUp: true,
-            updatedAt: new Date()
+            updatedAt: new Date(),
           })
           .where(eq(guildSettings.guildId, guildId));
-        
+
         logger.info(`Reset XP settings for guild ${guildId}`);
       }
     });
@@ -262,14 +250,14 @@ router.post('/:guildId/xp/reset', async (req: Request, res: Response) => {
       reset: {
         levels: resetLevels,
         rewards: resetRewards,
-        settings: !keepSettings
-      }
+        settings: !keepSettings,
+      },
     });
   } catch (error) {
     logger.error('Error resetting XP data:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to reset XP data'
+      message: 'Failed to reset XP data',
     });
   }
 });
@@ -277,23 +265,20 @@ router.post('/:guildId/xp/reset', async (req: Request, res: Response) => {
 // GET /guilds/{guildId}/xp/user/{userId} - Get specific user XP data
 router.get('/:guildId/xp/user/:userId', async (req: Request, res: Response) => {
   const { guildId, userId } = req.params;
-  
+
   try {
     const db = getDatabase();
 
     const [member] = await db
       .select()
       .from(members)
-      .where(and(
-        eq(members.guildId, guildId),
-        eq(members.userId, userId)
-      ))
+      .where(and(eq(members.guildId, guildId), eq(members.userId, userId)))
       .limit(1);
 
     if (!member) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Member not found'
+        message: 'Member not found',
       });
     }
 
@@ -311,13 +296,13 @@ router.get('/:guildId/xp/user/:userId', async (req: Request, res: Response) => {
       xpProgress,
       xpNeeded,
       progressPercentage: Math.floor((xpProgress / xpNeeded) * 100),
-      lastXpGain: null
+      lastXpGain: null,
     });
   } catch (error) {
     logger.error('Error fetching user XP:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to fetch user XP data'
+      message: 'Failed to fetch user XP data',
     });
   }
 });
@@ -326,7 +311,7 @@ router.get('/:guildId/xp/user/:userId', async (req: Request, res: Response) => {
 router.patch('/:guildId/xp/user/:userId', async (req: Request, res: Response) => {
   const { guildId, userId } = req.params;
   const { xp, level, addXp, addLevel } = req.body;
-  
+
   try {
     const db = getDatabase();
 
@@ -334,10 +319,7 @@ router.patch('/:guildId/xp/user/:userId', async (req: Request, res: Response) =>
     const [member] = await db
       .select()
       .from(members)
-      .where(and(
-        eq(members.guildId, guildId),
-        eq(members.userId, userId)
-      ))
+      .where(and(eq(members.guildId, guildId), eq(members.userId, userId)))
       .limit(1);
 
     if (!member) {
@@ -348,44 +330,41 @@ router.patch('/:guildId/xp/user/:userId', async (req: Request, res: Response) =>
         xp: xp || 0,
         level: level || 0,
         messages: 0,
-        joinedAt: new Date()
+        joinedAt: new Date(),
       });
     } else {
       // Update member XP/level
       const updateData: any = {};
-      
+
       if (xp !== undefined) {
         updateData.xp = xp;
       } else if (addXp !== undefined) {
         updateData.xp = member.xp + addXp;
       }
-      
+
       if (level !== undefined) {
         updateData.level = level;
       } else if (addLevel !== undefined) {
         updateData.level = member.level + addLevel;
       }
-      
+
       await db
         .update(members)
         .set(updateData)
-        .where(and(
-          eq(members.guildId, guildId),
-          eq(members.userId, userId)
-        ));
+        .where(and(eq(members.guildId, guildId), eq(members.userId, userId)));
     }
 
     logger.info(`Manually adjusted XP for user ${userId} in guild ${guildId}`);
 
     return res.json({
       success: true,
-      message: 'User XP updated successfully'
+      message: 'User XP updated successfully',
     });
   } catch (error) {
     logger.error('Error updating user XP:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update user XP'
+      message: 'Failed to update user XP',
     });
   }
 });

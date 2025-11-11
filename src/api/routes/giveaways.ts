@@ -6,12 +6,12 @@ import { eq, and } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { 
+import {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  TextChannel
+  TextChannel,
 } from 'discord.js';
 
 const router = Router();
@@ -25,12 +25,16 @@ const createGiveawaySchema = z.object({
   winnerCount: z.number().min(1).max(20),
   hostedBy: z.string(),
   requiredRole: z.string().optional(),
-  bonusEntries: z.array(z.object({
-    roleId: z.string(),
-    entries: z.number().min(1).max(10)
-  })).optional(),
+  bonusEntries: z
+    .array(
+      z.object({
+        roleId: z.string(),
+        entries: z.number().min(1).max(10),
+      })
+    )
+    .optional(),
   allowedRoles: z.array(z.string()).optional(),
-  blockedRoles: z.array(z.string()).optional()
+  blockedRoles: z.array(z.string()).optional(),
 });
 
 const updateGiveawaySchema = z.object({
@@ -39,10 +43,14 @@ const updateGiveawaySchema = z.object({
   winnerCount: z.number().min(1).max(20).optional(),
   endTime: z.string().datetime().optional(),
   requiredRole: z.string().optional(),
-  bonusEntries: z.array(z.object({
-    roleId: z.string(),
-    entries: z.number().min(1).max(10)
-  })).optional()
+  bonusEntries: z
+    .array(
+      z.object({
+        roleId: z.string(),
+        entries: z.number().min(1).max(10),
+      })
+    )
+    .optional(),
 });
 
 // Helper function to select random winners
@@ -54,24 +62,24 @@ function selectWinners(entries: string[], count: number): string[] {
 // POST /guilds/{guildId}/giveaways - Create giveaway
 router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
   const { guildId } = req.params;
-  
+
   try {
     const validation = createGiveawaySchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
     const data = validation.data;
     const guild = client.guilds.cache.get(guildId);
-    
+
     if (!guild) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Guild not found'
+        message: 'Guild not found',
       });
     }
 
@@ -79,7 +87,7 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
     if (!channel || !channel.isTextBased()) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Invalid channel ID or channel is not text-based'
+        message: 'Invalid channel ID or channel is not text-based',
       });
     }
 
@@ -90,13 +98,15 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
     // Create giveaway embed
     const embed = new EmbedBuilder()
       .setTitle('🎉 GIVEAWAY 🎉')
-      .setDescription(`**Prize:** ${data.prize}\n${data.description || ''}\n\nReact with 🎉 to enter!`)
+      .setDescription(
+        `**Prize:** ${data.prize}\n${data.description || ''}\n\nReact with 🎉 to enter!`
+      )
       .addFields(
         { name: 'Ends', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true },
         { name: 'Winners', value: data.winnerCount.toString(), inline: true },
         { name: 'Hosted By', value: `<@${data.hostedBy}>`, inline: true }
       )
-      .setColor(0x5865F2)
+      .setColor(0x5865f2)
       .setFooter({ text: `Giveaway ID: ${giveawayId}` })
       .setTimestamp(endTime);
 
@@ -116,7 +126,7 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
     // Send giveaway message
     const message = await channel.send({
       embeds: [embed],
-      components: [row]
+      components: [row],
     });
 
     // Create giveaway in database
@@ -133,7 +143,7 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
       status: 'active',
       requirements: data.requiredRole ? { requiredRole: data.requiredRole } : {},
       bonusEntries: data.bonusEntries || {},
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     // Schedule giveaway end
@@ -156,14 +166,14 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
         channelId: data.channelId,
         messageId: message.id,
         endTime: endTime.toISOString(),
-        winnerCount: data.winnerCount
-      }
+        winnerCount: data.winnerCount,
+      },
     });
   } catch (error) {
     logger.error('Error creating giveaway:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to create giveaway'
+      message: 'Failed to create giveaway',
     });
   }
 });
@@ -171,14 +181,14 @@ router.post('/:guildId/giveaways', async (req: Request, res: Response) => {
 // PATCH /guilds/{guildId}/giveaways/{giveawayId} - Update giveaway
 router.patch('/:guildId/giveaways/:giveawayId', async (req: Request, res: Response) => {
   const { guildId, giveawayId } = req.params;
-  
+
   try {
     const validation = updateGiveawaySchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Invalid request body',
-        details: validation.error.errors
+        details: validation.error.errors,
       });
     }
 
@@ -189,23 +199,20 @@ router.patch('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respon
     const [giveaway] = await db
       .select()
       .from(giveaways)
-      .where(and(
-        eq(giveaways.giveawayId, giveawayId),
-        eq(giveaways.guildId, guildId)
-      ))
+      .where(and(eq(giveaways.giveawayId, giveawayId), eq(giveaways.guildId, guildId)))
       .limit(1);
 
     if (!giveaway) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Giveaway not found'
+        message: 'Giveaway not found',
       });
     }
 
     if (giveaway.status !== 'active') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Cannot update ended giveaway'
+        message: 'Cannot update ended giveaway',
       });
     }
 
@@ -215,35 +222,39 @@ router.patch('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respon
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.winnerCount) updateData.winnerCount = updates.winnerCount;
     if (updates.endTime) updateData.endTime = new Date(updates.endTime);
-    if (updates.requiredRole !== undefined) updateData.requirements = { requiredRole: updates.requiredRole };
+    if (updates.requiredRole !== undefined)
+      updateData.requirements = { requiredRole: updates.requiredRole };
     if (updates.bonusEntries) updateData.bonusEntries = updates.bonusEntries || {};
 
     await db
       .update(giveaways)
       .set(updateData)
-      .where(and(
-        eq(giveaways.giveawayId, giveawayId),
-        eq(giveaways.guildId, guildId)
-      ));
+      .where(and(eq(giveaways.giveawayId, giveawayId), eq(giveaways.guildId, guildId)));
 
     // Update the giveaway message
     const guild = client.guilds.cache.get(guildId);
     const channel = guild?.channels.cache.get(giveaway.channelId) as TextChannel;
-    
+
     if (channel && giveaway.messageId) {
       try {
         const message = await channel.messages.fetch(giveaway.messageId);
         const endTime = updateData.endTime || giveaway.endTime;
-        
+
         const embed = new EmbedBuilder()
           .setTitle('🎉 GIVEAWAY 🎉')
-          .setDescription(`**Prize:** ${updateData.prize || giveaway.prize}\n${updateData.description || giveaway.description || ''}\n\nReact with 🎉 to enter!`)
+          .setDescription(
+            `**Prize:** ${updateData.prize || giveaway.prize}\n${updateData.description || giveaway.description || ''}\n\nReact with 🎉 to enter!`
+          )
           .addFields(
             { name: 'Ends', value: `<t:${Math.floor(endTime.getTime() / 1000)}:R>`, inline: true },
-            { name: 'Winners', value: (updateData.winnerCount || giveaway.winnerCount).toString(), inline: true },
+            {
+              name: 'Winners',
+              value: (updateData.winnerCount || giveaway.winnerCount).toString(),
+              inline: true,
+            },
             { name: 'Hosted By', value: `<@${giveaway.hostedBy}>`, inline: true }
           )
-          .setColor(0x5865F2)
+          .setColor(0x5865f2)
           .setFooter({ text: `Giveaway ID: ${giveawayId}` })
           .setTimestamp(endTime);
 
@@ -257,13 +268,13 @@ router.patch('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respon
 
     return res.json({
       success: true,
-      message: 'Giveaway updated successfully'
+      message: 'Giveaway updated successfully',
     });
   } catch (error) {
     logger.error('Error updating giveaway:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to update giveaway'
+      message: 'Failed to update giveaway',
     });
   }
 });
@@ -271,7 +282,7 @@ router.patch('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respon
 // DELETE /guilds/{guildId}/giveaways/{giveawayId} - Delete giveaway
 router.delete('/:guildId/giveaways/:giveawayId', async (req: Request, res: Response) => {
   const { guildId, giveawayId } = req.params;
-  
+
   try {
     const db = getDatabase();
 
@@ -279,23 +290,20 @@ router.delete('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respo
     const [giveaway] = await db
       .select()
       .from(giveaways)
-      .where(and(
-        eq(giveaways.giveawayId, giveawayId),
-        eq(giveaways.guildId, guildId)
-      ))
+      .where(and(eq(giveaways.giveawayId, giveawayId), eq(giveaways.guildId, guildId)))
       .limit(1);
 
     if (!giveaway) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Giveaway not found'
+        message: 'Giveaway not found',
       });
     }
 
     // Delete giveaway message
     const guild = client.guilds.cache.get(guildId);
     const channel = guild?.channels.cache.get(giveaway.channelId) as TextChannel;
-    
+
     if (channel && giveaway.messageId) {
       try {
         const message = await channel.messages.fetch(giveaway.messageId);
@@ -306,7 +314,7 @@ router.delete('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respo
     }
 
     // Delete giveaway and entries from database
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await tx.delete(giveawayEntries).where(eq(giveawayEntries.giveawayId, giveawayId));
       await tx.delete(giveaways).where(eq(giveaways.giveawayId, giveawayId));
     });
@@ -315,13 +323,13 @@ router.delete('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respo
 
     return res.json({
       success: true,
-      message: 'Giveaway deleted successfully'
+      message: 'Giveaway deleted successfully',
     });
   } catch (error) {
     logger.error('Error deleting giveaway:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to delete giveaway'
+      message: 'Failed to delete giveaway',
     });
   }
 });
@@ -329,15 +337,12 @@ router.delete('/:guildId/giveaways/:giveawayId', async (req: Request, res: Respo
 // Helper function to end a giveaway
 async function endGiveaway(giveawayId: string, guildId: string) {
   const db = getDatabase();
-  
+
   // Get giveaway
   const [giveaway] = await db
     .select()
     .from(giveaways)
-    .where(and(
-      eq(giveaways.giveawayId, giveawayId),
-      eq(giveaways.guildId, guildId)
-    ))
+    .where(and(eq(giveaways.giveawayId, giveawayId), eq(giveaways.guildId, guildId)))
     .limit(1);
 
   if (!giveaway || giveaway.status !== 'active') {
@@ -360,31 +365,27 @@ async function endGiveaway(giveawayId: string, guildId: string) {
     .set({
       status: 'ended',
       winners,
-      endedAt: new Date()
+      endedAt: new Date(),
     })
     .where(eq(giveaways.giveawayId, giveawayId));
 
   // Update message
   const guild = client.guilds.cache.get(guildId);
   const channel = guild?.channels.cache.get(giveaway.channelId) as TextChannel;
-  
+
   if (channel && giveaway.messageId) {
     try {
       const message = await channel.messages.fetch(giveaway.messageId);
-      
+
       const embed = new EmbedBuilder()
         .setTitle('🎉 GIVEAWAY ENDED 🎉')
         .setDescription(`**Prize:** ${giveaway.prize}`)
-        .addFields(
-          { 
-            name: 'Winners', 
-            value: winners.length > 0 
-              ? winners.map(w => `<@${w}>`).join(', ')
-              : 'No valid entries',
-            inline: false 
-          }
-        )
-        .setColor(0xFF0000)
+        .addFields({
+          name: 'Winners',
+          value: winners.length > 0 ? winners.map(w => `<@${w}>`).join(', ') : 'No valid entries',
+          inline: false,
+        })
+        .setColor(0xff0000)
         .setFooter({ text: `Giveaway ID: ${giveawayId}` })
         .setTimestamp();
 
@@ -393,7 +394,7 @@ async function endGiveaway(giveawayId: string, guildId: string) {
       // Announce winners
       if (winners.length > 0) {
         await channel.send({
-          content: `Congratulations ${winners.map(w => `<@${w}>`).join(', ')}! You won **${giveaway.prize}**!`
+          content: `Congratulations ${winners.map(w => `<@${w}>`).join(', ')}! You won **${giveaway.prize}**!`,
         });
       }
     } catch (error) {
@@ -407,14 +408,14 @@ async function endGiveaway(giveawayId: string, guildId: string) {
 // POST /guilds/{guildId}/giveaways/{giveawayId}/end - End giveaway
 router.post('/:guildId/giveaways/:giveawayId/end', async (req: Request, res: Response) => {
   const { guildId, giveawayId } = req.params;
-  
+
   try {
     const winners = await endGiveaway(giveawayId, guildId);
-    
+
     if (winners === null) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Giveaway not found or already ended'
+        message: 'Giveaway not found or already ended',
       });
     }
 
@@ -423,13 +424,13 @@ router.post('/:guildId/giveaways/:giveawayId/end', async (req: Request, res: Res
     return res.json({
       success: true,
       winners,
-      message: 'Giveaway ended successfully'
+      message: 'Giveaway ended successfully',
     });
   } catch (error) {
     logger.error('Error ending giveaway:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to end giveaway'
+      message: 'Failed to end giveaway',
     });
   }
 });
@@ -438,7 +439,7 @@ router.post('/:guildId/giveaways/:giveawayId/end', async (req: Request, res: Res
 router.post('/:guildId/giveaways/:giveawayId/reroll', async (req: Request, res: Response) => {
   const { guildId, giveawayId } = req.params;
   const { count = 1 } = req.body;
-  
+
   try {
     const db = getDatabase();
 
@@ -446,23 +447,20 @@ router.post('/:guildId/giveaways/:giveawayId/reroll', async (req: Request, res: 
     const [giveaway] = await db
       .select()
       .from(giveaways)
-      .where(and(
-        eq(giveaways.giveawayId, giveawayId),
-        eq(giveaways.guildId, guildId)
-      ))
+      .where(and(eq(giveaways.giveawayId, giveawayId), eq(giveaways.guildId, guildId)))
       .limit(1);
 
     if (!giveaway) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'Giveaway not found'
+        message: 'Giveaway not found',
       });
     }
 
     if (giveaway.status !== 'ended') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Can only reroll ended giveaways'
+        message: 'Can only reroll ended giveaways',
       });
     }
 
@@ -474,25 +472,26 @@ router.post('/:guildId/giveaways/:giveawayId/reroll', async (req: Request, res: 
 
     // Select new winners (excluding previous winners)
     const previousWinners = (giveaway.winners as string[]) || [];
-    const eligibleUsers = [...new Set(entries.map(e => e.userId))]
-      .filter(u => !previousWinners.includes(u));
-    
+    const eligibleUsers = [...new Set(entries.map(e => e.userId))].filter(
+      u => !previousWinners.includes(u)
+    );
+
     const newWinners = selectWinners(eligibleUsers, count);
 
     if (newWinners.length === 0) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'No eligible participants for reroll'
+        message: 'No eligible participants for reroll',
       });
     }
 
     // Announce new winners
     const guild = client.guilds.cache.get(guildId);
     const channel = guild?.channels.cache.get(giveaway.channelId) as TextChannel;
-    
+
     if (channel) {
       await channel.send({
-        content: `🎉 **REROLL!** Congratulations ${newWinners.map(w => `<@${w}>`).join(', ')}! You won **${giveaway.prize}**!`
+        content: `🎉 **REROLL!** Congratulations ${newWinners.map(w => `<@${w}>`).join(', ')}! You won **${giveaway.prize}**!`,
       });
     }
 
@@ -501,13 +500,13 @@ router.post('/:guildId/giveaways/:giveawayId/reroll', async (req: Request, res: 
     return res.json({
       success: true,
       newWinners,
-      message: 'Giveaway rerolled successfully'
+      message: 'Giveaway rerolled successfully',
     });
   } catch (error) {
     logger.error('Error rerolling giveaway:', error);
     return res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to reroll giveaway'
+      message: 'Failed to reroll giveaway',
     });
   }
 });

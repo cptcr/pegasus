@@ -83,17 +83,17 @@ async function getDatabaseLatency(): Promise<number> {
 
 async function getApiLatency(url: string): Promise<number | null> {
   if (!url) return null;
-  
+
   const start = Date.now();
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    
-    await fetch(url, { 
+
+    await fetch(url, {
       signal: controller.signal,
-      method: 'HEAD'
+      method: 'HEAD',
     });
-    
+
     clearTimeout(timeout);
     return Date.now() - start;
   } catch {
@@ -107,28 +107,32 @@ router.get('/', async (_req: Request, res: Response) => {
     const botProcess = await getProcessInfo(process.pid);
 
     const dbLatency = await getDatabaseLatency();
-    
-    const steamLatency = process.env.STEAM_API_KEY 
+
+    const steamLatency = process.env.STEAM_API_KEY
       ? await getApiLatency('https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/')
       : null;
-    
+
     const weatherLatency = process.env.WEATHER_API_KEY
       ? await getApiLatency('https://api.openweathermap.org/data/2.5/weather?q=London')
       : null;
-      
+
     const newsLatency = process.env.NEWS_API_KEY
       ? await getApiLatency('https://newsapi.org/v2/top-headlines?country=us')
       : null;
 
-    const botMemory = botProcess ? {
-      used: botProcess.memoryRss || 0,
-      total: systemInfo.memory.total,
-      percentage: botProcess.memoryRss ? (botProcess.memoryRss / systemInfo.memory.total) * 100 : 0
-    } : {
-      used: 0,
-      total: systemInfo.memory.total,
-      percentage: 0
-    };
+    const botMemory = botProcess
+      ? {
+          used: botProcess.memoryRss || 0,
+          total: systemInfo.memory.total,
+          percentage: botProcess.memoryRss
+            ? (botProcess.memoryRss / systemInfo.memory.total) * 100
+            : 0,
+        }
+      : {
+          used: 0,
+          total: systemInfo.memory.total,
+          percentage: 0,
+        };
 
     const guilds = client.guilds.cache;
     const totalUsers = guilds.reduce((acc, guild) => acc + guild.memberCount, 0);
@@ -145,7 +149,7 @@ router.get('/', async (_req: Request, res: Response) => {
         channels: totalChannels,
         commands: client.commands?.size || 0,
         ping: client.ws.ping,
-        memory: botMemory
+        memory: botMemory,
       },
       system: systemInfo.os,
       cpu: systemInfo.cpu,
@@ -161,9 +165,19 @@ router.get('/', async (_req: Request, res: Response) => {
           latency: client.ws.ping,
           shards: Array.from(client.ws.shards.values()).map(shard => ({
             id: shard.id,
-            status: ['READY', 'CONNECTING', 'RECONNECTING', 'IDLE', 'NEARLY', 'DISCONNECTED', 'WAITING_FOR_GUILDS', 'IDENTIFYING', 'RESUMING'][shard.status],
-            ping: shard.ping
-          }))
+            status: [
+              'READY',
+              'CONNECTING',
+              'RECONNECTING',
+              'IDLE',
+              'NEARLY',
+              'DISCONNECTED',
+              'WAITING_FOR_GUILDS',
+              'IDENTIFYING',
+              'RESUMING',
+            ][shard.status],
+            ping: shard.ping,
+          })),
         },
         database: {
           connected: dbLatency >= 0,
@@ -171,33 +185,33 @@ router.get('/', async (_req: Request, res: Response) => {
           pool: {
             total: 20,
             idle: 0,
-            waiting: 0
-          }
+            waiting: 0,
+          },
         },
         apis: {
           steam: {
             available: !!process.env.STEAM_API_KEY,
-            latency: steamLatency
+            latency: steamLatency,
           },
           weather: {
             available: !!process.env.WEATHER_API_KEY,
-            latency: weatherLatency
+            latency: weatherLatency,
           },
           news: {
             available: !!process.env.NEWS_API_KEY,
-            latency: newsLatency
-          }
-        }
+            latency: newsLatency,
+          },
+        },
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     res.json(status);
   } catch (error) {
     logger.error('Error fetching system status:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch system status',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

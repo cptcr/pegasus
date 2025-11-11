@@ -206,8 +206,18 @@
       },
       "gamble": {
         "description": "Jouez à divers jeux de hasard",
+        "rateLimited": "Vous avez joué trop souvent récemment. Faites une courte pause puis réessayez.",
         "invalidBet": "Le pari doit être entre {{symbol}}{{min}} et {{symbol}}{{max}}",
         "insufficientFunds": "Fonds insuffisants ou pari invalide",
+        "common": {
+          "result": "Résultat",
+          "wonLabel": "Gagné",
+          "lostLabel": "Perdu",
+          "returnedLabel": "Remboursé",
+          "newBalance": "Nouveau solde",
+          "multiplier": "Multiplicateur",
+          "yourChoice": "Votre choix"
+        },
         "dice": {
           "description": "Lancez les dés contre le croupier",
           "title": "🎲 Jeu de Dés",
@@ -223,7 +233,8 @@
           "description": "Lancez une pièce",
           "title": "🪙 Pile ou Face",
           "landed": "La pièce est tombée sur **{{result}}**!",
-          "yourChoice": "Votre Choix"
+          "yourChoice": "Votre Choix",
+          "resultField": "Résultat du lancer"
         },
         "slots": {
           "description": "Jouez à la machine à sous",
@@ -350,6 +361,20 @@
             "warnid": "L'ID d'avertissement à rechercher"
           },
           "notFound": "Avertissement {{warnId}} introuvable"
+        },
+        "delete": {
+          "description": "Supprimer un avertissement",
+          "options": {
+            "warnid": "L'ID d'avertissement à supprimer"
+          },
+          "success": {
+            "title": "Avertissement supprimé",
+            "description": "L'avertissement {{warnId}} a été supprimé.",
+            "target": "Cible",
+            "moderator": "Modérateur"
+          },
+          "notFound": "Avertissement {{warnId}} introuvable",
+          "error": "Impossible de supprimer l'avertissement"
         },
         "view": {
           "description": "Voir tous les avertissements d'un utilisateur",

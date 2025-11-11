@@ -109,6 +109,10 @@ export enum ModActionType {
   Unmute = 'unmute',
   Unban = 'unban',
   Timeout = 'timeout',
+  Lock = 'lock',
+  Unlock = 'unlock',
+  Slowmode = 'slowmode',
+  Purge = 'purge',
 }
 
 export interface Giveaway {

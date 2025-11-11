@@ -3,7 +3,11 @@ import {
   type CreateWordFilterRuleData,
   type UpdateWordFilterRuleData,
 } from '../repositories/wordFilterRepository';
-import { type WordFilterActionConfig, type WordFilterRule, type WordFilterSeverity } from '../types';
+import {
+  type WordFilterActionConfig,
+  type WordFilterRule,
+  type WordFilterSeverity,
+} from '../types';
 import { logger } from '../utils/logger';
 
 const CACHE_TTL_MS = 60 * 1000;
@@ -85,20 +89,11 @@ export class WordFilterService {
       case 'low':
         return [{ type: 'warn' }];
       case 'medium':
-        return [
-          { type: 'warn' },
-          { type: 'timeout', durationSeconds: 600 },
-        ];
+        return [{ type: 'warn' }, { type: 'timeout', durationSeconds: 600 }];
       case 'high':
-        return [
-          { type: 'timeout', durationSeconds: 1800 },
-          { type: 'kick' },
-        ];
+        return [{ type: 'timeout', durationSeconds: 1800 }, { type: 'kick' }];
       case 'critical':
-        return [
-          { type: 'timeout', durationSeconds: 3600 },
-          { type: 'ban' },
-        ];
+        return [{ type: 'timeout', durationSeconds: 3600 }, { type: 'ban' }];
       default:
         return [{ type: 'warn' }];
     }

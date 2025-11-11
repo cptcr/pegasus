@@ -39,7 +39,7 @@ export class HelpService {
         for (const file of commandFiles) {
           try {
             const filePath = join(categoryPath, file);
-            const commandModule = await import(filePath) as CommandModule;
+            const commandModule = (await import(filePath)) as CommandModule;
 
             let commandData: Command['data'] | null = null;
             let commandCategory: CommandCategory = this.getCategoryFromPath(category);
@@ -49,16 +49,22 @@ export class HelpService {
             if (commandModule.default && typeof commandModule.default === 'object') {
               // Default export pattern
               const defaultExport = commandModule.default as Command;
-              if ('data' in defaultExport && 'execute' in defaultExport && 
-                  typeof defaultExport.execute === 'function') {
+              if (
+                'data' in defaultExport &&
+                'execute' in defaultExport &&
+                typeof defaultExport.execute === 'function'
+              ) {
                 commandData = defaultExport.data;
                 commandCategory = defaultExport.category || this.getCategoryFromPath(category);
                 executeFunction = defaultExport.execute;
               }
             } else {
               // Named export pattern (data, execute, category)
-              if (commandModule.data && commandModule.execute && 
-                  typeof commandModule.execute === 'function') {
+              if (
+                commandModule.data &&
+                commandModule.execute &&
+                typeof commandModule.execute === 'function'
+              ) {
                 commandData = commandModule.data;
                 commandCategory = commandModule.category || this.getCategoryFromPath(category);
                 executeFunction = commandModule.execute;
@@ -71,9 +77,18 @@ export class HelpService {
                 data: commandData,
                 execute: executeFunction,
                 category: commandCategory,
-                cooldown: typeof moduleExport === 'object' && moduleExport && 'cooldown' in moduleExport ? moduleExport.cooldown : commandModule.cooldown,
-                permissions: typeof moduleExport === 'object' && moduleExport && 'permissions' in moduleExport ? moduleExport.permissions : commandModule.permissions,
-                autocomplete: typeof moduleExport === 'object' && moduleExport && 'autocomplete' in moduleExport ? moduleExport.autocomplete : commandModule.autocomplete,
+                cooldown:
+                  typeof moduleExport === 'object' && moduleExport && 'cooldown' in moduleExport
+                    ? moduleExport.cooldown
+                    : commandModule.cooldown,
+                permissions:
+                  typeof moduleExport === 'object' && moduleExport && 'permissions' in moduleExport
+                    ? moduleExport.permissions
+                    : commandModule.permissions,
+                autocomplete:
+                  typeof moduleExport === 'object' && moduleExport && 'autocomplete' in moduleExport
+                    ? moduleExport.autocomplete
+                    : commandModule.autocomplete,
               };
 
               const commandName = cmd.data.name;
@@ -95,7 +110,9 @@ export class HelpService {
         }
       }
 
-      logger.info(`Loaded ${this.commands.size} commands across ${this.commandsByCategory.size} categories`);
+      logger.info(
+        `Loaded ${this.commands.size} commands across ${this.commandsByCategory.size} categories`
+      );
     } catch (error) {
       logger.error('Error loading commands for help service:', error);
     }
@@ -103,14 +120,14 @@ export class HelpService {
 
   private getCategoryFromPath(categoryPath: string): CommandCategory {
     const categoryMap: Record<string, CommandCategory> = {
-      'utility': CommandCategory.Utility,
-      'moderation': CommandCategory.Moderation,
-      'economy': CommandCategory.Economy,
-      'xp': CommandCategory.XP,
-      'giveaways': CommandCategory.Giveaways,
-      'tickets': CommandCategory.Tickets,
-      'fun': CommandCategory.Fun,
-      'admin': CommandCategory.Admin,
+      utility: CommandCategory.Utility,
+      moderation: CommandCategory.Moderation,
+      economy: CommandCategory.Economy,
+      xp: CommandCategory.XP,
+      giveaways: CommandCategory.Giveaways,
+      tickets: CommandCategory.Tickets,
+      fun: CommandCategory.Fun,
+      admin: CommandCategory.Admin,
     };
 
     return categoryMap[categoryPath.toLowerCase()] || CommandCategory.Utility;
@@ -302,7 +319,9 @@ export class HelpService {
           // Subcommand group
           for (const subOption of option.options || []) {
             if (subOption.type === 1) {
-              subcommands.push(`• \`${option.name} ${subOption.name}\` - ${subOption.description || 'No description'}`);
+              subcommands.push(
+                `• \`${option.name} ${subOption.name}\` - ${subOption.description || 'No description'}`
+              );
             }
           }
         }

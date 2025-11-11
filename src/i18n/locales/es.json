@@ -206,8 +206,18 @@
       },
       "gamble": {
         "description": "Juega varios juegos de azar",
+        "rateLimited": "Has estado apostando demasiado seguido. Tómate un descanso y vuelve más tarde.",
         "invalidBet": "La apuesta debe estar entre {{symbol}}{{min}} y {{symbol}}{{max}}",
         "insufficientFunds": "Fondos insuficientes o apuesta inválida",
+        "common": {
+          "result": "Resultado",
+          "wonLabel": "Ganado",
+          "lostLabel": "Perdido",
+          "returnedLabel": "Devuelto",
+          "newBalance": "Nuevo saldo",
+          "multiplier": "Multiplicador",
+          "yourChoice": "Tu elección"
+        },
         "dice": {
           "description": "Tira los dados contra el crupier",
           "title": "🎲 Juego de Dados",
@@ -223,7 +233,8 @@
           "description": "Lanza una moneda",
           "title": "🪙 Lanzamiento de Moneda",
           "landed": "¡La moneda cayó en **{{result}}**!",
-          "yourChoice": "Tu Elección"
+          "yourChoice": "Tu Elección",
+          "resultField": "Resultado del lanzamiento"
         },
         "slots": {
           "description": "Juega a la máquina tragamonedas",
@@ -350,6 +361,20 @@
             "warnid": "El ID de advertencia a buscar"
           },
           "notFound": "Advertencia {{warnId}} no encontrada"
+        },
+        "delete": {
+          "description": "Eliminar una advertencia",
+          "options": {
+            "warnid": "El ID de advertencia a eliminar"
+          },
+          "success": {
+            "title": "Advertencia eliminada",
+            "description": "La advertencia {{warnId}} ha sido eliminada.",
+            "target": "Objetivo",
+            "moderator": "Moderador"
+          },
+          "notFound": "Advertencia {{warnId}} no encontrada",
+          "error": "No se pudo eliminar la advertencia"
         },
         "view": {
           "description": "Ver todas las advertencias de un usuario",

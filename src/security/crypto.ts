@@ -133,8 +133,8 @@ export class CryptoUtils {
   /**
    * Generate time-based OTP
    */
-  static generateTOTP(secret: string, window: number = 30): string {
-    const counter = Math.floor(Date.now() / 1000 / window);
+  static generateTOTP(secret: string, window: number = 30, counterOverride?: number): string {
+    const counter = counterOverride ?? Math.floor(Date.now() / 1000 / window);
     // Simple base32 decode (you may want to use a library for production)
     const base32Decode = (str: string): Buffer => {
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -172,8 +172,9 @@ export class CryptoUtils {
     window: number = 30,
     tolerance: number = 1
   ): boolean {
+    const baseCounter = Math.floor(Date.now() / 1000 / window);
     for (let i = -tolerance; i <= tolerance; i++) {
-      const testToken = this.generateTOTP(secret, window);
+      const testToken = this.generateTOTP(secret, window, baseCounter + i);
 
       if (crypto.timingSafeEqual(Buffer.from(token), Buffer.from(testToken))) {
         return true;

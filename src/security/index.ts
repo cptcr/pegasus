@@ -263,7 +263,10 @@ export class SecurityManager {
     interaction: ChatInputCommandInteraction,
     requirements: unknown
   ): Promise<SecurityCheckDetail> {
-    const result = await PermissionChecker.check(interaction, requirements as PermissionRequirement);
+    const result = await PermissionChecker.check(
+      interaction,
+      requirements as PermissionRequirement
+    );
 
     return {
       passed: result.allowed,
@@ -278,9 +281,7 @@ export class SecurityManager {
   /**
    * Validate command input
    */
-  private validateInput(
-    interaction: ChatInputCommandInteraction
-  ): SecurityCheckDetail {
+  private validateInput(interaction: ChatInputCommandInteraction): SecurityCheckDetail {
     const commandName = interaction.commandName;
     const subcommand = interaction.options.getSubcommand(false);
 
@@ -366,7 +367,7 @@ export class SecurityManager {
       type,
       timestamp: Date.now(),
       guildId:
-        'guildId' in context 
+        'guildId' in context
           ? (context as ChatInputCommandInteraction).guildId || undefined
           : (context as Message).guildId || undefined,
     });

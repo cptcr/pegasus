@@ -13,16 +13,16 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     // Get aggregated stats (already cached)
     let stats = statsAggregator.getStats();
-    
+
     // If stats are not available or too old, force refresh
     if (!stats || statsAggregator.getStatsAge() > 5000) {
       stats = await statsAggregator.refresh();
     }
-    
+
     if (!stats) {
       throw new Error('Failed to retrieve stats');
     }
-    
+
     // Format response to match existing API structure
     const response = {
       status: stats.bot.status,
@@ -31,27 +31,27 @@ router.get('/', async (_req: Request, res: Response) => {
       guilds: {
         total: stats.guilds.total,
         large: stats.guilds.large,
-        voice_active: stats.guilds.voiceActive
+        voice_active: stats.guilds.voiceActive,
       },
       users: {
         total: stats.users.total,
         unique: stats.users.unique,
         active_today: stats.users.activeToday,
-        online: stats.users.online
+        online: stats.users.online,
       },
       commands: {
         total_executed: stats.commands.totalExecuted,
         today: stats.commands.today,
         this_hour: stats.commands.thisHour,
         per_minute: stats.commands.perMinute,
-        most_used: stats.commands.topCommands
+        most_used: stats.commands.topCommands,
       },
       system: {
         memory_usage: stats.system.memoryUsage,
         memory_total: stats.system.memoryTotal,
         cpu_usage: stats.system.cpuUsage,
         latency: stats.bot.latency,
-        shard_count: stats.bot.shardCount
+        shard_count: stats.bot.shardCount,
       },
       features: {
         music: false,
@@ -66,19 +66,19 @@ router.get('/', async (_req: Request, res: Response) => {
           moderation: stats.features.moderation,
           tickets: stats.features.tickets,
           giveaways: stats.features.giveaways,
-          xp: stats.features.xp
-        }
+          xp: stats.features.xp,
+        },
       },
       version: '3.2.1',
-      cache_age: statsAggregator.getStatsAge()
+      cache_age: statsAggregator.getStatsAge(),
     };
-    
+
     res.json(response);
   } catch (error) {
     logger.error('Error fetching bot stats:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error', 
-      message: 'Failed to fetch bot statistics' 
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch bot statistics',
     });
   }
 });

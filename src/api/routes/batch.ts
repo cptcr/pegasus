@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { client } from '../../index';
 import { getDatabase } from '../../database/connection';
-import { guilds as guildsTable, guildSettings, members, economyBalances } from '../../database/schema';
+import {
+  guilds as guildsTable,
+  guildSettings,
+  members,
+  economyBalances,
+} from '../../database/schema';
 import { inArray, desc, sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { cacheManager, CacheTTL } from '../middleware/cache';
@@ -44,11 +49,11 @@ interface GuildSummary {
 router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
   try {
     const { guildIds, fields = ['basic', 'features'] } = req.body as BatchGuildRequest;
-    
+
     if (!guildIds || !Array.isArray(guildIds) || guildIds.length === 0) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'guildIds array is required'
+        message: 'guildIds array is required',
       });
       return;
     }
@@ -57,7 +62,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
     if (guildIds.length > 50) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'Maximum 50 guilds per batch request'
+        message: 'Maximum 50 guilds per batch request',
       });
       return;
     }
@@ -80,34 +85,32 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
     // Fetch uncached guild data
     if (uncachedGuildIds.length > 0) {
       // Get Discord guild data
-      const discordGuilds = uncachedGuildIds.map(id => {
-        const guild = client.guilds.cache.get(id);
-        if (!guild) return null;
-        
-        const onlineMembers = guild.members.cache.filter(
-          m => m.presence?.status !== 'offline'
-        );
+      const discordGuilds = uncachedGuildIds
+        .map(id => {
+          const guild = client.guilds.cache.get(id);
+          if (!guild) return null;
 
-        return {
-          id: guild.id,
-          name: guild.name,
-          icon: guild.icon,
-          memberCount: guild.memberCount,
-          onlineCount: onlineMembers.size
-        };
-      }).filter(Boolean);
+          const onlineMembers = guild.members.cache.filter(m => m.presence?.status !== 'offline');
+
+          return {
+            id: guild.id,
+            name: guild.name,
+            icon: guild.icon,
+            memberCount: guild.memberCount,
+            onlineCount: onlineMembers.size,
+          };
+        })
+        .filter(Boolean);
 
       // Get database data in parallel
       const [dbGuilds, dbSettings] = await Promise.all([
-        db.select()
-          .from(guildsTable)
-          .where(inArray(guildsTable.id, uncachedGuildIds))
-          .execute(),
-        
-        db.select()
+        db.select().from(guildsTable).where(inArray(guildsTable.id, uncachedGuildIds)).execute(),
+
+        db
+          .select()
           .from(guildSettings)
           .where(inArray(guildSettings.guildId, uncachedGuildIds))
-          .execute()
+          .execute(),
       ]);
 
       // Create guild ID maps for quick lookup
@@ -121,7 +124,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
           .select({
             guildId: members.guildId,
             totalMembers: sql<number>`COUNT(*)`,
-            activeMembers: sql<number>`COUNT(*) FILTER (WHERE last_active > NOW() - INTERVAL '7 days')`
+            activeMembers: sql<number>`COUNT(*) FILTER (WHERE ${members.updatedAt} > NOW() - INTERVAL '7 days')`,
           })
           .from(members)
           .where(inArray(members.guildId, uncachedGuildIds))
@@ -131,7 +134,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
         const economyStats = await db
           .select({
             guildId: economyBalances.guildId,
-            totalBalance: sql<number>`SUM(balance + bank_balance)`
+            totalBalance: sql<number>`SUM(balance + bank_balance)`,
           })
           .from(economyBalances)
           .where(inArray(economyBalances.guildId, uncachedGuildIds))
@@ -141,7 +144,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
         memberStats.forEach(stat => {
           statsMap.set(stat.guildId, {
             totalMembers: Number(stat.totalMembers) || 0,
-            activeMembers: Number(stat.activeMembers) || 0
+            activeMembers: Number(stat.activeMembers) || 0,
           });
         });
 
@@ -149,7 +152,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
           const existing = statsMap.get(stat.guildId) || {};
           statsMap.set(stat.guildId, {
             ...existing,
-            economyBalance: Number(stat.totalBalance) || 0
+            economyBalance: Number(stat.totalBalance) || 0,
           });
         });
       }
@@ -157,7 +160,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
       // Combine all data
       for (const discordGuild of discordGuilds) {
         if (!discordGuild) continue;
-        
+
         const dbGuild = dbGuildMap.get(discordGuild.id);
         const settings = settingsMap.get(discordGuild.id);
         const stats = statsMap.get(discordGuild.id);
@@ -173,14 +176,14 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
             moderation: true,
             tickets: true,
             xp: settings?.xpEnabled ?? true,
-            giveaways: true
-          }
+            giveaways: true,
+          },
         };
 
         if (fields.includes('settings')) {
           guildSummary.settings = {
             prefix: dbGuild?.prefix || '!',
-            language: dbGuild?.language || 'en'
+            language: dbGuild?.language || 'en',
           };
         }
 
@@ -191,7 +194,7 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
         // Cache the result
         const cacheKey = `batch:guild:${discordGuild.id}`;
         cacheManager.set(cacheKey, guildSummary, CacheTTL.GUILD_DATA);
-        
+
         results.push(guildSummary);
       }
     }
@@ -199,13 +202,13 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
     res.json({
       guilds: results,
       total: results.length,
-      cached: guildIds.length - uncachedGuildIds.length
+      cached: guildIds.length - uncachedGuildIds.length,
     });
   } catch (error) {
     logger.error('Error in batch guild request:', error);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to fetch batch guild data'
+      message: 'Failed to fetch batch guild data',
     });
   }
 });
@@ -217,11 +220,11 @@ router.post('/guilds', async (req: Request, res: Response): Promise<void> => {
 router.post('/members', async (req: Request, res: Response): Promise<void> => {
   try {
     const { guildIds, limit = 10 } = req.body;
-    
+
     if (!guildIds || !Array.isArray(guildIds) || guildIds.length === 0) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'guildIds array is required'
+        message: 'guildIds array is required',
       });
       return;
     }
@@ -229,7 +232,7 @@ router.post('/members', async (req: Request, res: Response): Promise<void> => {
     if (guildIds.length > 20) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'Maximum 20 guilds per batch request'
+        message: 'Maximum 20 guilds per batch request',
       });
       return;
     }
@@ -244,7 +247,7 @@ router.post('/members', async (req: Request, res: Response): Promise<void> => {
         userId: members.userId,
         xp: members.xp,
         level: members.level,
-        messages: members.messages
+        messages: members.messages,
       })
       .from(members)
       .where(inArray(members.guildId, guildIds))
@@ -262,20 +265,20 @@ router.post('/members', async (req: Request, res: Response): Promise<void> => {
           userId: member.userId,
           xp: member.xp || 0,
           level: member.level || 0,
-          messages: member.messages || 0
+          messages: member.messages || 0,
         });
       }
     }
 
     res.json({
       guilds: results,
-      total: Object.keys(results).length
+      total: Object.keys(results).length,
     });
   } catch (error) {
     logger.error('Error in batch members request:', error);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to fetch batch member data'
+      message: 'Failed to fetch batch member data',
     });
   }
 });
@@ -287,11 +290,11 @@ router.post('/members', async (req: Request, res: Response): Promise<void> => {
 router.post('/stats', async (req: Request, res: Response): Promise<void> => {
   try {
     const { guildIds } = req.body;
-    
+
     if (!guildIds || !Array.isArray(guildIds) || guildIds.length === 0) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'guildIds array is required'
+        message: 'guildIds array is required',
       });
       return;
     }
@@ -299,18 +302,18 @@ router.post('/stats', async (req: Request, res: Response): Promise<void> => {
     if (guildIds.length > 30) {
       res.status(400).json({
         error: 'Bad Request',
-        message: 'Maximum 30 guilds per batch request'
+        message: 'Maximum 30 guilds per batch request',
       });
       return;
     }
 
     const results: Record<string, any> = {};
-    
+
     // Check cache and Discord data
     for (const guildId of guildIds) {
       const cacheKey = `batch:stats:${guildId}`;
       const cached = cacheManager.get(cacheKey);
-      
+
       if (cached) {
         results[guildId] = cached;
       } else {
@@ -322,9 +325,9 @@ router.post('/stats', async (req: Request, res: Response): Promise<void> => {
             boostLevel: guild.premiumTier,
             boostCount: guild.premiumSubscriptionCount || 0,
             channelCount: guild.channels.cache.size,
-            roleCount: guild.roles.cache.size
+            roleCount: guild.roles.cache.size,
           };
-          
+
           cacheManager.set(cacheKey, stats, CacheTTL.GUILD_DATA);
           results[guildId] = stats;
         }
@@ -333,13 +336,13 @@ router.post('/stats', async (req: Request, res: Response): Promise<void> => {
 
     res.json({
       guilds: results,
-      total: Object.keys(results).length
+      total: Object.keys(results).length,
     });
   } catch (error) {
     logger.error('Error in batch stats request:', error);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to fetch batch stats'
+      message: 'Failed to fetch batch stats',
     });
   }
 });

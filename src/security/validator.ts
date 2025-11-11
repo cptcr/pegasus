@@ -58,6 +58,10 @@ export const CommandSchemas = {
       description: ValidationSchemas.description,
     }),
 
+    delete: z.object({
+      warnId: z.string().regex(/^W[a-zA-Z0-9]{10}$/),
+    }),
+
     automation: z.object({
       name: ValidationSchemas.title,
       description: ValidationSchemas.description,
@@ -100,25 +104,68 @@ export const CommandSchemas = {
 
   moderation: {
     ban: z.object({
-      userId: ValidationSchemas.snowflake,
+      user: ValidationSchemas.snowflake,
       reason: ValidationSchemas.description.optional(),
       duration: ValidationSchemas.duration.optional(),
-      deleteMessages: z.boolean().optional().default(false),
+      delete_days: z.number().int().min(0).max(7).optional(),
     }),
 
     kick: z.object({
-      userId: ValidationSchemas.snowflake,
+      user: ValidationSchemas.snowflake,
       reason: ValidationSchemas.description.optional(),
     }),
 
     timeout: z.object({
-      userId: ValidationSchemas.snowflake,
+      user: ValidationSchemas.snowflake,
       duration: ValidationSchemas.duration,
       reason: ValidationSchemas.description.optional(),
     }),
-    
+
+    mute: z.object({
+      user: ValidationSchemas.snowflake,
+      duration: ValidationSchemas.duration.optional(),
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    unmute: z.object({
+      user: ValidationSchemas.snowflake,
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    unban: z.object({
+      user_id: ValidationSchemas.snowflake,
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    purge: z.object({
+      amount: z.number().int().min(2).max(100),
+      user: ValidationSchemas.snowflake.optional(),
+      channel: ValidationSchemas.snowflake.optional(),
+    }),
+
+    lock: z.object({
+      channel: ValidationSchemas.snowflake.optional(),
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    unlock: z.object({
+      channel: ValidationSchemas.snowflake.optional(),
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    slowmode: z.object({
+      duration: z.number().int().min(0).max(21600),
+      channel: ValidationSchemas.snowflake.optional(),
+      reason: ValidationSchemas.description.optional(),
+    }),
+
+    modlog: z.object({
+      user: ValidationSchemas.snowflake.optional(),
+      limit: z.number().int().min(1).max(25).optional(),
+    }),
+
     'reset-xp': z.object({
-      userId: ValidationSchemas.snowflake,
+      user: ValidationSchemas.snowflake,
     }),
   },
 
@@ -177,7 +224,7 @@ export const CommandSchemas = {
     }),
 
     xp: z.object({}).optional(), // No input required - just shows config UI
-    eco: z.object({}).optional(), // No input required - just shows config UI  
+    eco: z.object({}).optional(), // No input required - just shows config UI
     welcome: z.object({}).optional(), // No input required - just shows config UI
     autorole: z.object({}).optional(), // No input required - just shows config UI
     goodbye: z.object({}).optional(), // No input required - just shows config UI

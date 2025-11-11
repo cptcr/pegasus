@@ -1,9 +1,4 @@
-import {
-  EmbedBuilder,
-  Events,
-  type GuildMember,
-  type PartialGuildMember,
-} from 'discord.js';
+import { EmbedBuilder, Events, type GuildMember, type PartialGuildMember } from 'discord.js';
 import { modLogService } from '../services/modLogService';
 import { t } from '../i18n';
 import { logger } from '../utils/logger';
@@ -11,10 +6,7 @@ import { logger } from '../utils/logger';
 export const name = Events.GuildMemberUpdate;
 export const once = false;
 
-export async function execute(
-  oldMember: GuildMember | PartialGuildMember,
-  newMember: GuildMember
-) {
+export async function execute(oldMember: GuildMember | PartialGuildMember, newMember: GuildMember) {
   try {
     if ('partial' in oldMember && oldMember.partial) {
       try {
@@ -27,9 +19,7 @@ export async function execute(
     const changes: string[] = [];
 
     const oldNickname =
-      'nickname' in oldMember && oldMember.nickname !== undefined
-        ? oldMember.nickname
-        : null;
+      'nickname' in oldMember && oldMember.nickname !== undefined ? oldMember.nickname : null;
     const newNickname = newMember.nickname;
 
     if (oldNickname !== newNickname) {
@@ -42,9 +32,7 @@ export async function execute(
     }
 
     if ('roles' in oldMember && oldMember.roles) {
-      const addedRoles = newMember.roles.cache.filter(
-        role => !oldMember.roles.cache.has(role.id)
-      );
+      const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));
       const removedRoles = oldMember.roles.cache.filter(
         role => !newMember.roles.cache.has(role.id)
       );

@@ -56,11 +56,11 @@ export class WarningService {
     if (!guild || !user || !moderator) {
       throw new Error('Invalid parameters: guild, user, and moderator are required');
     }
-    
+
     // Ensure user and guild exist in database
     await ensureUserAndGuildExist(user, guild);
     await ensureUserAndGuildExist(moderator, guild);
-    
+
     // Create the warning
     const warning = await warningRepository.createWarning({
       guildId: guild.id,
@@ -118,6 +118,25 @@ export class WarningService {
     return updated;
   }
 
+  async deleteWarning(warnId: string, moderator: User) {
+    const warning = await warningRepository.getWarningById(warnId);
+    if (!warning || warning.active === false) {
+      throw new Error('Warning not found');
+    }
+
+    const deleted = await warningRepository.deactivateWarning(warnId, moderator.id);
+
+    await auditLogger.logAction({
+      action: 'WARN_DELETE',
+      userId: moderator.id,
+      guildId: warning.guildId,
+      targetId: warning.userId,
+      details: { warnId },
+    });
+
+    return deleted;
+  }
+
   async checkAutomations(guild: Guild, user: User) {
     const stats = await warningRepository.getUserWarningStats(guild.id, user.id);
     const automations = await warningRepository.getActiveAutomations(guild.id);
@@ -166,7 +185,10 @@ export class WarningService {
       guild.systemChannel ||
       guild.channels.cache.find(
         (ch): ch is TextChannel =>
-          ch.type === ChannelType.GuildText && (guild.members.me ? ch.permissionsFor(guild.members.me)?.has('SendMessages') === true : false)
+          ch.type === ChannelType.GuildText &&
+          (guild.members.me
+            ? ch.permissionsFor(guild.members.me)?.has('SendMessages') === true
+            : false)
       );
 
     if (notificationChannel) {
@@ -234,6 +256,8 @@ export class WarningService {
       });
     }
 
+    const targetMember = await guild.members.fetch(user.id).catch(() => null);
+
     // Execute automatic actions (non-interactive)
     for (const action of actions) {
       if (action.type === 'message' && action.message) {
@@ -245,12 +269,86 @@ export class WarningService {
         }
       } else if (action.type === 'role' && action.roleId) {
         // Add role to user
-        const member = await guild.members.fetch(user.id).catch(() => null);
-        if (member) {
-          await member.roles.add(action.roleId).catch(() => {});
+        if (targetMember) {
+          await targetMember.roles.add(action.roleId).catch(() => {});
+        }
+      } else if (action.type === 'kick') {
+        if (targetMember?.kickable) {
+          await targetMember
+            .kick(`Warning automation ${automation.name}`)
+            .catch(error => this.logAutomationError('kick', user.id, guild.id, error));
+        }
+      } else if (action.type === 'ban') {
+        await guild.members
+          .ban(user.id, { reason: `Warning automation ${automation.name}` })
+          .catch(error => this.logAutomationError('ban', user.id, guild.id, error));
+      } else if (action.type === 'timeout' && action.duration && targetMember) {
+        const timeoutMs = action.duration * 60 * 1000;
+        if (targetMember.moderatable) {
+          await targetMember
+            .disableCommunicationUntil(
+              new Date(Date.now() + timeoutMs),
+              `Warning automation ${automation.name}`
+            )
+            .catch(error => this.logAutomationError('timeout', user.id, guild.id, error));
+        }
+      } else if (action.type === 'mute' && action.duration && targetMember) {
+        const muteRole = await this.ensureMuteRole(guild);
+        if (muteRole) {
+          await targetMember.roles
+            .add(muteRole, `Warning automation ${automation.name}`)
+            .catch(error => this.logAutomationError('mute', user.id, guild.id, error));
+          setTimeout(
+            () => {
+              void targetMember.roles
+                .remove(muteRole, 'Warning automation mute expired')
+                .catch(() => {});
+            },
+            action.duration * 60 * 1000
+          );
         }
       }
     }
+  }
+
+  private logAutomationError(action: string, userId: string, guildId: string, error: unknown) {
+    logger.warn(
+      `Failed to execute automation action "${action}" for user ${userId} in guild ${guildId}:`,
+      error
+    );
+  }
+
+  private async ensureMuteRole(guild: Guild) {
+    let muteRole = guild.roles.cache.find(role => role.name === 'Muted');
+    if (muteRole) return muteRole;
+
+    try {
+      muteRole = await guild.roles.create({
+        name: 'Muted',
+        color: 0x808080,
+        permissions: [],
+        reason: 'Auto-created mute role for warning automation',
+      });
+
+      await Promise.all(
+        guild.channels.cache.map(async channel => {
+          if (channel.isTextBased() && 'permissionOverwrites' in channel) {
+            await channel.permissionOverwrites
+              .create(muteRole!.id, {
+                SendMessages: false,
+                AddReactions: false,
+                Speak: false,
+              })
+              .catch(() => {});
+          }
+        })
+      );
+    } catch (error) {
+      logger.error('Failed to create mute role for warning automation:', error);
+      return null;
+    }
+
+    return muteRole;
   }
 
   async getWarningEmbed(

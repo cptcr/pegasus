@@ -163,7 +163,7 @@ export class TicketRepository {
       frozenBy?: string;
       frozenAt?: Date;
     }
-    
+
     const updates: TicketUpdate = { status };
     const now = new Date();
 

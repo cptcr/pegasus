@@ -62,7 +62,7 @@ export class EnhancedSanitizer {
 
     // Path traversal
     pathTraversal: /\.\.\/|\.\.\\|\.\./g,
-    
+
     // Control characters (using string constructor to avoid ESLint issues)
     controlChars: new RegExp(String.raw`[\u0000-\u001F\u007F-\u009F]`, 'g'),
     fileControlChars: new RegExp(String.raw`[\u0000-\u001F\u0080-\u009F]`, 'g'),
@@ -179,11 +179,13 @@ export class EnhancedSanitizer {
    * Remove unsafe Unicode characters
    */
   private static removeUnsafeUnicode(text: string): string {
-    return text
-      .replace(this.PATTERNS.zeroWidth, '') // Remove zero-width characters
-      .replace(this.PATTERNS.rtlOverride, '') // Remove RTL override characters
-      // Remove control characters (using Unicode escape sequences to avoid linting issues)
-      .replace(this.PATTERNS.controlChars, ''); // Control characters
+    return (
+      text
+        .replace(this.PATTERNS.zeroWidth, '') // Remove zero-width characters
+        .replace(this.PATTERNS.rtlOverride, '') // Remove RTL override characters
+        // Remove control characters (using Unicode escape sequences to avoid linting issues)
+        .replace(this.PATTERNS.controlChars, '')
+    ); // Control characters
   }
 
   /**

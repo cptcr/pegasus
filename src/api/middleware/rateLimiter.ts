@@ -8,12 +8,12 @@ interface RateLimitEntry {
 }
 
 interface RateLimitOptions {
-  windowMs: number;      // Time window in milliseconds
-  maxRequests: number;   // Maximum requests per window
-  keyGenerator?: (req: Request) => string;  // Custom key generator
-  skipSuccessfulRequests?: boolean;  // Don't count successful requests
-  skipFailedRequests?: boolean;      // Don't count failed requests
-  message?: string;      // Custom error message
+  windowMs: number; // Time window in milliseconds
+  maxRequests: number; // Maximum requests per window
+  keyGenerator?: (req: Request) => string; // Custom key generator
+  skipSuccessfulRequests?: boolean; // Don't count successful requests
+  skipFailedRequests?: boolean; // Don't count failed requests
+  message?: string; // Custom error message
 }
 
 class RateLimiter {
@@ -35,7 +35,7 @@ class RateLimiter {
       keyGenerator,
       skipSuccessfulRequests = false,
       skipFailedRequests = false,
-      message = 'Too many requests, please try again later'
+      message = 'Too many requests, please try again later',
     } = options;
 
     return (req: Request, res: Response, next: NextFunction): void => {
@@ -45,13 +45,13 @@ class RateLimiter {
 
       // Get or create limit entry
       let entry = this.limits.get(key);
-      
+
       if (!entry || now > entry.resetTime) {
         // Create new entry or reset expired one
         entry = {
           count: 0,
           resetTime: now + windowMs,
-          firstRequest: now
+          firstRequest: now,
         };
         this.limits.set(key, entry);
       }
@@ -59,18 +59,18 @@ class RateLimiter {
       // Check if limit exceeded
       if (entry.count >= maxRequests) {
         const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-        
+
         res.setHeader('X-RateLimit-Limit', String(maxRequests));
         res.setHeader('X-RateLimit-Remaining', '0');
         res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
         res.setHeader('Retry-After', String(retryAfter));
-        
+
         logger.warn(`Rate limit exceeded for ${key}: ${entry.count}/${maxRequests} requests`);
-        
+
         res.status(429).json({
           error: 'Too Many Requests',
           message,
-          retryAfter
+          retryAfter,
         });
         return;
       }
@@ -80,19 +80,19 @@ class RateLimiter {
       let counted = false;
 
       const originalEndTyped = originalEnd as any;
-      (res as any).end = function(chunk?: any, encoding?: any, callback?: any): Response {
+      (res as any).end = function (chunk?: any, encoding?: any, callback?: any): Response {
         if (!counted) {
           counted = true;
-          
-          const shouldCount = 
+
+          const shouldCount =
             (!skipSuccessfulRequests || res.statusCode >= 400) &&
             (!skipFailedRequests || res.statusCode < 400);
-          
+
           if (shouldCount && entry) {
             entry.count++;
           }
         }
-        
+
         // Call original end with appropriate arguments
         if (typeof chunk === 'function') {
           return originalEndTyped.call(res, chunk);
@@ -130,7 +130,8 @@ class RateLimiter {
     let cleaned = 0;
 
     for (const [key, entry] of this.limits.entries()) {
-      if (now > entry.resetTime + 60000) { // Keep for 1 minute after expiry
+      if (now > entry.resetTime + 60000) {
+        // Keep for 1 minute after expiry
         this.limits.delete(key);
         cleaned++;
       }
@@ -146,12 +147,13 @@ class RateLimiter {
    */
   getStatus(): { totalKeys: number; activeKeys: number } {
     const now = Date.now();
-    const activeKeys = Array.from(this.limits.values())
-      .filter(entry => now <= entry.resetTime).length;
+    const activeKeys = Array.from(this.limits.values()).filter(
+      entry => now <= entry.resetTime
+    ).length;
 
     return {
       totalKeys: this.limits.size,
-      activeKeys
+      activeKeys,
     };
   }
 
@@ -188,15 +190,15 @@ export const RateLimitPresets = {
   // Standard API rate limit (100 requests per minute)
   standard: {
     windowMs: 60000,
-    maxRequests: 100
+    maxRequests: 100,
   },
-  
+
   // Strict rate limit (10 requests per minute)
   strict: {
     windowMs: 60000,
-    maxRequests: 10
+    maxRequests: 10,
   },
-  
+
   // Per-guild rate limit (10 requests per second per guild)
   perGuild: {
     windowMs: 1000,
@@ -205,9 +207,9 @@ export const RateLimitPresets = {
       const guildId = req.params.guildId || 'unknown';
       const ip = req.ip || 'unknown';
       return `guild:${guildId}:${ip}`;
-    }
+    },
   },
-  
+
   // Stats endpoint rate limit (matches dashboard refresh rate)
   stats: {
     windowMs: 500,
@@ -215,14 +217,14 @@ export const RateLimitPresets = {
     keyGenerator: (req: Request) => {
       const ip = req.ip || 'unknown';
       return `stats:${ip}`;
-    }
+    },
   },
-  
+
   // Heavy operation rate limit (1 request per 5 seconds)
   heavy: {
     windowMs: 5000,
-    maxRequests: 1
-  }
+    maxRequests: 1,
+  },
 };
 
 /**
@@ -244,7 +246,7 @@ export function guildRateLimiter(maxRequests: number = 10, windowMs: number = 10
       const ip = req.ip || req.socket.remoteAddress || 'unknown';
       return `guild:${guildId}:${ip}`;
     },
-    message: 'Too many requests for this guild, please slow down'
+    message: 'Too many requests for this guild, please slow down',
   });
 }
 
@@ -257,7 +259,7 @@ export function ipRateLimiter(maxRequests: number = 100, windowMs: number = 6000
     maxRequests,
     keyGenerator: (req: Request) => {
       return req.ip || req.socket.remoteAddress || 'unknown';
-    }
+    },
   });
 }
 
@@ -272,7 +274,7 @@ export function userRateLimiter(maxRequests: number = 50, windowMs: number = 600
       const userId = (req as any).userId || 'anonymous';
       return `user:${userId}`;
     },
-    message: 'User rate limit exceeded, please wait before making more requests'
+    message: 'User rate limit exceeded, please wait before making more requests',
   });
 }
 

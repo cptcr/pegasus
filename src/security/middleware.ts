@@ -47,9 +47,10 @@ export async function securityMiddleware(
     commandName: `${command.data.name}`,
     timestamp: Date.now(),
     isOwner: PermissionManager.isBotOwner(interaction.user.id),
-    permissions: interaction.member && 'permissions' in interaction.member 
-      ? (interaction.member as GuildMember).permissions.bitfield 
-      : 0n,
+    permissions:
+      interaction.member && 'permissions' in interaction.member
+        ? (interaction.member as GuildMember).permissions.bitfield
+        : 0n,
   };
 
   try {
@@ -231,7 +232,7 @@ function validateCommandInput(
   // Get validation schema
   let schema = null;
   const commandSchemas = CommandSchemas as Record<string, Record<string, unknown>>;
-  
+
   if (subcommandGroup && subcommand) {
     const groupSchemas = commandSchemas[commandName];
     if (groupSchemas && typeof groupSchemas === 'object') {
@@ -251,7 +252,7 @@ function validateCommandInput(
       schema = defaultSchemas['default'];
     }
   }
-  
+
   if (!schema) {
     return { passed: true }; // No schema defined, skip validation
   }
@@ -259,32 +260,40 @@ function validateCommandInput(
   try {
     // Extract options
     const options: Record<string, unknown> = {};
-    
+
     // Navigate through the command structure
     let targetOptions = interaction.options.data;
-    
+
     // If there's a subcommand group, navigate to it
     if (subcommandGroup) {
-      const group = targetOptions.find(opt => opt.name === subcommandGroup && opt.type === ApplicationCommandOptionType.SubcommandGroup);
+      const group = targetOptions.find(
+        opt =>
+          opt.name === subcommandGroup && opt.type === ApplicationCommandOptionType.SubcommandGroup
+      );
       if (group?.options) {
         targetOptions = group.options;
       }
     }
-    
+
     // If there's a subcommand, navigate to it
     if (subcommand) {
-      const sub = targetOptions.find(opt => opt.name === subcommand && opt.type === ApplicationCommandOptionType.Subcommand);
+      const sub = targetOptions.find(
+        opt => opt.name === subcommand && opt.type === ApplicationCommandOptionType.Subcommand
+      );
       if (sub?.options) {
         targetOptions = sub.options;
       }
     }
-    
+
     // Now extract the actual option values
     targetOptions.forEach(opt => {
       // Map user option to userId for validation
       if (opt.name === 'user' && commandName === 'warn') {
         options['userId'] = opt.value;
-      } else if (opt.name === 'user' && (commandName === 'moderation' || commandName === 'blacklist')) {
+      } else if (
+        opt.name === 'user' &&
+        (commandName === 'moderation' || commandName === 'blacklist')
+      ) {
         options['userId'] = opt.value;
       } else {
         options[opt.name] = opt.value;
@@ -428,14 +437,14 @@ function sanitizeOptions(options: unknown[]): unknown[] {
       return {
         name: option.name,
         type: option.type,
-        value: typeof option.value === 'string' ? Sanitizer.removeSensitive(option.value) : option.value,
+        value:
+          typeof option.value === 'string' ? Sanitizer.removeSensitive(option.value) : option.value,
         options: option.options ? sanitizeOptions(option.options) : undefined,
       };
     }
     return opt;
   });
 }
-
 
 /**
  * Message security middleware
