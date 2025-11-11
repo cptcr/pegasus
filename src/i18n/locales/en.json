@@ -992,6 +992,19 @@
           "noWarnings": "No warnings found for {{user}}",
           "stats": "Total Warnings: {{count}} | Total Level: {{level}}"
         },
+        "purge": {
+          "description": "Remove every warning for a user",
+          "options": {
+            "user": "The user whose warnings will be removed"
+          },
+          "noWarnings": "{{user}} has no active warnings to purge.",
+          "success": {
+            "title": "Warnings Purged",
+            "description": "Removed {{count}} warning(s) for {{user}}.",
+            "target": "Target",
+            "moderator": "Moderator"
+          }
+        },
         "automation": {
           "create": {
             "description": "Create a warning automation",

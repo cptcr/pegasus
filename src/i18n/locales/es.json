@@ -385,6 +385,19 @@
           "noWarnings": "No se encontraron advertencias para {{user}}",
           "stats": "Total de advertencias: {{count}} | Nivel total: {{level}}"
         },
+        "purge": {
+          "description": "Eliminar todas las advertencias de un usuario",
+          "options": {
+            "user": "El usuario cuyas advertencias se eliminarán"
+          },
+          "noWarnings": "{{user}} no tiene advertencias activas para eliminar.",
+          "success": {
+            "title": "Advertencias eliminadas",
+            "description": "Se eliminaron {{count}} advertencia(s) de {{user}}.",
+            "target": "Objetivo",
+            "moderator": "Moderador"
+          }
+        },
         "automation": {
           "create": {
             "description": "Crear una automatización de advertencias",

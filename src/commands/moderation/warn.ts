@@ -134,6 +134,19 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
       )
   )
+  .addSubcommand(subcommand =>
+    subcommand
+      .setName('purge')
+      .setDescription('Remove all warnings for a user')
+      .setDescriptionLocalizations(createLocalizationMap(subcommandDescriptions.warn.purge))
+      .addUserOption(option =>
+        option
+          .setName('user')
+          .setDescription('The user whose warnings will be purged')
+          .setDescriptionLocalizations(createLocalizationMap(optionDescriptions.user))
+          .setRequired(true)
+      )
+  )
   .addSubcommandGroup(group =>
     group
       .setName('automation')
@@ -253,6 +266,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return handleWarnDelete(interaction);
     case 'view':
       return handleWarnView(interaction);
+    case 'purge':
+      return handleWarnPurge(interaction);
     default:
       // Show help embed with all available commands
       return handleWarnHelp(interaction);
@@ -544,6 +559,53 @@ async function handleWarnView(interaction: ChatInputCommandInteraction): Promise
   }
 
   await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleWarnPurge(interaction: ChatInputCommandInteraction): Promise<any> {
+  await ensureDeferred(interaction);
+
+  const target = interaction.options.getUser('user', true);
+
+  try {
+    const result = await warningService.purgeWarnings(interaction.guild!, target, interaction.user);
+
+    if (result.count === 0) {
+      await interaction.editReply({
+        content: t('commands.warn.subcommands.purge.noWarnings', { user: target.tag }),
+      });
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle(t('commands.warn.subcommands.purge.success.title'))
+      .setDescription(
+        t('commands.warn.subcommands.purge.success.description', {
+          user: target.tag,
+          count: result.count,
+        })
+      )
+      .addFields(
+        {
+          name: t('commands.warn.subcommands.purge.success.target'),
+          value: `<@${target.id}>`,
+          inline: true,
+        },
+        {
+          name: t('commands.warn.subcommands.purge.success.moderator'),
+          value: interaction.user.tag,
+          inline: true,
+        }
+      )
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    logger.error('Error purging warnings:', error);
+    await interaction.editReply({
+      content: t('common.error'),
+    });
+  }
 }
 
 async function handleAutomationCreate(interaction: ChatInputCommandInteraction): Promise<any> {

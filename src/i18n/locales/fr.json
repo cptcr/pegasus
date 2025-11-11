@@ -385,6 +385,19 @@
           "noWarnings": "Aucun avertissement trouvé pour {{user}}",
           "stats": "Total des avertissements: {{count}} | Niveau total: {{level}}"
         },
+        "purge": {
+          "description": "Supprimer tous les avertissements d’un utilisateur",
+          "options": {
+            "user": "L’utilisateur dont les avertissements seront supprimés"
+          },
+          "noWarnings": "{{user}} n’a aucun avertissement actif à supprimer.",
+          "success": {
+            "title": "Avertissements supprimés",
+            "description": "{{count}} avertissement(s) supprimé(s) pour {{user}}.",
+            "target": "Cible",
+            "moderator": "Modérateur"
+          }
+        },
         "automation": {
           "create": {
             "description": "Créer une automatisation d'avertissements",

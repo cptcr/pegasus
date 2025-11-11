@@ -385,6 +385,19 @@
           "noWarnings": "Keine Verwarnungen für {{user}} gefunden",
           "stats": "Gesamtverwarnungen: {{count}} | Gesamtstufe: {{level}}"
         },
+        "purge": {
+          "description": "Alle Verwarnungen eines Benutzers entfernen",
+          "options": {
+            "user": "Der Benutzer, dessen Verwarnungen entfernt werden"
+          },
+          "noWarnings": "{{user}} hat keine aktiven Verwarnungen zum Entfernen.",
+          "success": {
+            "title": "Verwarnungen entfernt",
+            "description": "{{count}} Verwarnung(en) für {{user}} wurden entfernt.",
+            "target": "Ziel",
+            "moderator": "Moderator"
+          }
+        },
         "automation": {
           "create": {
             "description": "Eine Verwarnungsautomatisierung erstellen",

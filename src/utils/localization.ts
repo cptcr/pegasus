@@ -184,6 +184,12 @@ export const subcommandDescriptions = {
       es: 'Ver todas las advertencias de un usuario',
       fr: 'Voir tous les avertissements pour un utilisateur',
     },
+    purge: {
+      en: 'Remove all warnings for a user',
+      de: 'Alle Warnungen eines Benutzers entfernen',
+      es: 'Eliminar todas las advertencias de un usuario',
+      fr: 'Supprimer tous les avertissements d’un utilisateur',
+    },
     automation: {
       create: {
         en: 'Create a warning automation',
