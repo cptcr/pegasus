@@ -327,9 +327,13 @@ export class WarningService {
 
       await Promise.all(
         guild.channels.cache.map(async channel => {
+          const roleId = muteRole?.id;
+          if (!roleId) {
+            return;
+          }
           if (channel.isTextBased() && 'permissionOverwrites' in channel) {
             await channel.permissionOverwrites
-              .create(muteRole!.id, {
+              .create(roleId, {
                 SendMessages: false,
                 AddReactions: false,
                 Speak: false,

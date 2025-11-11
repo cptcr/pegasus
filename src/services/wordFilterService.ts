@@ -127,7 +127,7 @@ export class WordFilterService {
     const matches = [];
     let result: RegExpExecArray | null;
     const global = regex.global;
-    const clone = global ? regex : new RegExp(regex.source, regex.flags + 'g');
+    const clone = global ? regex : new RegExp(regex.source, `${regex.flags}g`);
 
     // Reset lastIndex to ensure fresh search
     clone.lastIndex = 0;

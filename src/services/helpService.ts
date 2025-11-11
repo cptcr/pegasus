@@ -134,7 +134,7 @@ export class HelpService {
   }
 
   async getHelpMenu(locale: string): Promise<EmbedBuilder> {
-    return withLocale(locale, async () => {
+    return withLocale(locale, () => {
       const embed = new EmbedBuilder()
         .setTitle(t('commands.help.title'))
         .setDescription(t('commands.help.description'))
@@ -170,7 +170,7 @@ export class HelpService {
         text: t('commands.help.menuFooter'),
       });
 
-      return embed;
+      return Promise.resolve(embed);
     });
   }
 
@@ -181,7 +181,7 @@ export class HelpService {
       return null;
     }
 
-    return withLocale(locale, async () => {
+    return withLocale(locale, () => {
       const embed = new EmbedBuilder()
         .setTitle(t('commands.help.commandInfo'))
         .setColor(0x7289da)
@@ -251,7 +251,7 @@ export class HelpService {
 
       embed.setTimestamp();
 
-      return embed;
+      return Promise.resolve(embed);
     });
   }
 

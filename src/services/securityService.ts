@@ -615,10 +615,8 @@ export class SecurityService {
 
     const cache = new Map<string, Set<string>>();
     for (const entry of activeEntries) {
-      if (!cache.has(entry.entityType)) {
-        cache.set(entry.entityType, new Set());
-      }
-      cache.get(entry.entityType)!.add(entry.entityId);
+      const set = this.getOrCreateEntitySet(cache, entry.entityType);
+      set.add(entry.entityId);
     }
 
     this.blacklistCache = cache;
@@ -627,10 +625,18 @@ export class SecurityService {
   }
 
   private addToBlacklistCache(type: string, entityId: string): void {
-    if (!this.blacklistCache.has(type)) {
-      this.blacklistCache.set(type, new Set());
+    const set = this.getOrCreateEntitySet(this.blacklistCache, type);
+    set.add(entityId);
+  }
+
+  private getOrCreateEntitySet(cache: Map<string, Set<string>>, type: string): Set<string> {
+    const existing = cache.get(type);
+    if (existing) {
+      return existing;
     }
-    this.blacklistCache.get(type)!.add(entityId);
+    const created = new Set<string>();
+    cache.set(type, created);
+    return created;
   }
 }
 
