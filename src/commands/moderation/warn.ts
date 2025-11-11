@@ -572,7 +572,11 @@ async function handleWarnPurge(interaction: ChatInputCommandInteraction): Promis
 
     if (result.count === 0) {
       await interaction.editReply({
-        content: t('commands.warn.subcommands.purge.noWarnings', { user: target.tag }),
+        content: translateOrFallback(
+          'commands.warn.subcommands.purge.noWarnings',
+          params => `${params?.user ?? 'This user'} has no active warnings to purge.`,
+          { user: target.tag }
+        ),
       });
       return;
     }
