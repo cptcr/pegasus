@@ -45,6 +45,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_giveaways_updated_at ON giveaways;
 CREATE TRIGGER trigger_update_giveaways_updated_at
   BEFORE UPDATE ON giveaways
   FOR EACH ROW
@@ -59,6 +60,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_giveaway_entries_updated_at ON giveaway_entries;
 CREATE TRIGGER trigger_update_giveaway_entries_updated_at
   BEFORE UPDATE ON giveaway_entries
   FOR EACH ROW

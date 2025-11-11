@@ -397,6 +397,8 @@
               "action": "Action d'automatisation (préréglage)",
               "message": "Message à envoyer (optionnel)"
             },
+            "prompt": "Appuie sur le bouton ci-dessous pour terminer la configuration de l’automatisation.",
+            "button": "Ouvrir l’assistant d’automatisation",
             "success": "Automatisation {{name}} créée avec succès",
             "invalidJson": "Format JSON invalide pour les actions",
             "invalidAction": "Action invalide. Choisissez : 1d Timeout, 1w Timeout, kick, ban, sendMessageOnly",

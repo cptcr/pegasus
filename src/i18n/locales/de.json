@@ -397,6 +397,8 @@
               "action": "Automatisierungsaktion (Vorgabe)",
               "message": "Nachricht senden (optional)"
             },
+            "prompt": "Klicke auf die Schaltfläche unten, um deine Automatisierung fertig zu konfigurieren.",
+            "button": "Automatisierung konfigurieren",
             "success": "Automatisierung {{name}} erfolgreich erstellt",
             "invalidJson": "Ungültiges JSON-Format für Aktionen",
             "invalidAction": "Ungültige Aktion. Wähle: 1d Timeout, 1w Timeout, Kick, Ban, sendMessageOnly",

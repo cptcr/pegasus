@@ -1,4 +1,13 @@
-import { ButtonInteraction, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
+import {
+  ButtonInteraction,
+  PermissionFlagsBits,
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  ModalActionRowComponentBuilder,
+} from 'discord.js';
 import { warningRepository } from '../../repositories/warningRepository';
 import { t } from '../../i18n';
 
@@ -9,6 +18,8 @@ export async function handleWarningActionButtons(interaction: ButtonInteraction)
     return handleWarningAction(interaction, action, params);
   } else if (prefix === 'warn_view') {
     return handleWarningView(interaction, params[0]);
+  } else if (prefix === 'warn_automation_modal') {
+    return handleAutomationModalButton(interaction, action, params);
   }
 }
 
@@ -216,4 +227,71 @@ async function handleWarningView(interaction: ButtonInteraction, userId: string)
   }
 
   await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleAutomationModalButton(
+  interaction: ButtonInteraction,
+  ownerId: string,
+  params: string[]
+) {
+  if (interaction.user.id !== ownerId) {
+    await interaction.reply({
+      content: t('common.notYourButton'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const [triggerType, triggerValue] = params;
+  if (!triggerType || !triggerValue) {
+    await interaction.reply({
+      content: t('commands.warn.subcommands.automation.create.missingTrigger'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId(`warn_automation_create:${triggerType}:${triggerValue}`)
+    .setTitle(t('commands.warn.subcommands.automation.create.modal.title'));
+
+  const nameInput = new TextInputBuilder()
+    .setCustomId('name')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.name'))
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(255);
+
+  const descriptionInput = new TextInputBuilder()
+    .setCustomId('description')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.description'))
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(1000);
+
+  const actionInput = new TextInputBuilder()
+    .setCustomId('action')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.action'))
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setPlaceholder('1d Timeout, 1w Timeout, kick, ban, sendMessageOnly');
+
+  const messageInput = new TextInputBuilder()
+    .setCustomId('message')
+    .setLabel(t('commands.warn.subcommands.automation.create.modal.message'))
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(1000)
+    .setPlaceholder('Optional message sent to the user when this triggers');
+
+  const rows = [
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(nameInput),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(actionInput),
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(messageInput),
+  ];
+
+  modal.addComponents(...rows);
+
+  await interaction.showModal(modal);
 }

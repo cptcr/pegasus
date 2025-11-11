@@ -8,6 +8,8 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalActionRowComponentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -533,48 +535,19 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
     | 'warn_level';
   const triggerValue = interaction.options.getInteger('trigger_value', true);
 
-  const modal = new ModalBuilder()
-    .setCustomId(`warn_automation_create:${triggerType}:${triggerValue}`)
-    .setTitle(t('commands.warn.subcommands.automation.create.modal.title'));
+  await interaction.deferReply({ ephemeral: true });
 
-  const nameInput = new TextInputBuilder()
-    .setCustomId('name')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.name'))
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(255);
+  const button = new ButtonBuilder()
+    .setCustomId(`warn_automation_modal:${interaction.user.id}:${triggerType}:${triggerValue}`)
+    .setLabel(t('commands.warn.subcommands.automation.create.button'))
+    .setStyle(ButtonStyle.Primary);
 
-  const descriptionInput = new TextInputBuilder()
-    .setCustomId('description')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.description'))
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(false)
-    .setMaxLength(1000);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-  const actionInput = new TextInputBuilder()
-    .setCustomId('action')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.action'))
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setPlaceholder('1d Timeout, 1w Timeout, kick, ban, sendMessageOnly');
-
-  const messageInput = new TextInputBuilder()
-    .setCustomId('message')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.message'))
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(false)
-    .setMaxLength(1000)
-    .setPlaceholder('Optional message sent to the user when this triggers');
-
-  const rows = [
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(nameInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(descriptionInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(actionInput),
-    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(messageInput),
-  ];
-
-  modal.addComponents(...rows);
-  await interaction.showModal(modal);
+  await interaction.editReply({
+    content: t('commands.warn.subcommands.automation.create.prompt'),
+    components: [row],
+  });
 }
 
 async function handleAutomationView(interaction: ChatInputCommandInteraction): Promise<any> {

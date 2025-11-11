@@ -1004,6 +1004,8 @@
               "action": "Automation Action Preset",
               "message": "Message to send (optional)"
             },
+            "prompt": "Press the button below to finish configuring your automation.",
+            "button": "Open Automation Builder",
             "success": "Successfully created automation {{name}}",
             "invalidJson": "Invalid JSON format for actions",
             "invalidAction": "Invalid action. Choose one of: 1d Timeout, 1w Timeout, kick, ban, sendMessageOnly",

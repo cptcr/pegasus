@@ -211,7 +211,7 @@ async function handleModal(interaction: ModalSubmitInteraction) {
     // Handle warning modals
     if (
       interaction.customId.startsWith('warn_edit:') ||
-      interaction.customId === 'warn_automation_create'
+      interaction.customId.startsWith('warn_automation_create')
     ) {
       await handleWarningModals(interaction);
       return;
