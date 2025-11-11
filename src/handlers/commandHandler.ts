@@ -1,6 +1,7 @@
 import { Client, REST, Routes } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
 import { logger } from '../utils/logger';
 import chalk from 'chalk';
 import type { Command } from '../types/command';
@@ -9,8 +10,14 @@ interface ExtendedClient extends Client {
   __commands?: Array<ReturnType<Command['data']['toJSON']>>;
 }
 
+type CommandModule = {
+  data?: Command['data'];
+  execute?: Command['execute'];
+  autocomplete?: Command['autocomplete'];
+};
+
 export async function loadCommands(client: Client): Promise<void> {
-  const commands = [];
+  const commands: Array<ReturnType<Command['data']['toJSON']>> = [];
   const commandsPath = join(__dirname, '..', 'commands');
   const commandCategories = readdirSync(commandsPath);
 
@@ -23,16 +30,11 @@ export async function loadCommands(client: Client): Promise<void> {
     for (const file of commandFiles) {
       try {
         const filePath = join(categoryPath, file);
-        // Use require for CommonJS compatibility in compiled code
-        const commandModule = require(filePath);
+        const moduleUrl = pathToFileURL(filePath).href;
+        const commandModule = (await import(moduleUrl)) as CommandModule;
 
-        const module = commandModule as {
-          data?: { name: string; toJSON: () => unknown };
-          execute?: unknown;
-        };
-
-        if (module.data && module.execute) {
-          const command = module as Command;
+        if (commandModule.data && commandModule.execute) {
+          const command = commandModule as Command;
           client.commands.set(command.data.name, command);
           commands.push(command.data.toJSON());
           logger.info(chalk.green(`Loaded command: ${command.data.name} (${category})`));
