@@ -1,7 +1,6 @@
 import { Client } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { pathToFileURL } from 'url';
 import { logger } from '../utils/logger';
 import chalk from 'chalk';
 
@@ -20,8 +19,7 @@ export async function loadEvents(client: Client): Promise<void> {
   for (const file of eventFiles) {
     try {
       const filePath = join(eventsPath, file);
-      const moduleUrl = pathToFileURL(filePath).href;
-      const module = (await import(moduleUrl)) as EventModule;
+      const module = (await import(filePath)) as EventModule;
 
       if (!module.name || !module.execute) {
         logger.warn(

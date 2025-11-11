@@ -1,7 +1,6 @@
 import { Client, REST, Routes } from 'discord.js';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { pathToFileURL } from 'url';
 import { logger } from '../utils/logger';
 import chalk from 'chalk';
 import type { Command } from '../types/command';
@@ -30,8 +29,7 @@ export async function loadCommands(client: Client): Promise<void> {
     for (const file of commandFiles) {
       try {
         const filePath = join(categoryPath, file);
-        const moduleUrl = pathToFileURL(filePath).href;
-        const commandModule = (await import(moduleUrl)) as CommandModule;
+        const commandModule = (await import(filePath)) as CommandModule;
 
         if (commandModule.data && commandModule.execute) {
           const command = commandModule as Command;
