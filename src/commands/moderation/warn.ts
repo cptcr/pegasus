@@ -13,7 +13,6 @@ import {
   InteractionReplyOptions,
   InteractionDeferReplyOptions,
   ChannelType,
-  GuildBasedChannel,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -229,6 +228,8 @@ export const permissions = [PermissionFlagsBits.ModerateMembers];
 export const preDefer = {
   ephemeral: false,
 };
+
+type CommandChannelOption = ReturnType<ChatInputCommandInteraction['options']['getChannel']>;
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
@@ -614,7 +615,7 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
     | 'warn_level';
   const triggerValue = interaction.options.getInteger('trigger_value', true);
   const notifyChannel = interaction.options.getChannel('notify_channel');
-  const notifyChannelId = resolveNotifyChannelId(notifyChannel);
+const notifyChannelId = resolveNotifyChannelId(notifyChannel);
 
   const button = new ButtonBuilder()
     .setCustomId(
@@ -777,13 +778,17 @@ async function deleteInitialReply(interaction: ChatInputCommandInteraction) {
   }
 }
 
-function resolveNotifyChannelId(channel: GuildBasedChannel | null): string | undefined {
+function resolveNotifyChannelId(channel: CommandChannelOption): string | undefined {
   if (!channel) {
     return undefined;
   }
 
-  if (channel.type === ChannelType.GuildText || (channel.isTextBased?.() ?? false)) {
+  if ('type' in channel && channel.type === ChannelType.GuildText) {
     return channel.id;
+  }
+
+  if ('isTextBased' in channel && typeof channel.isTextBased === 'function') {
+    return channel.isTextBased() ? channel.id : undefined;
   }
 
   return undefined;
