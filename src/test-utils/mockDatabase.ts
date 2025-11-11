@@ -1,5 +1,33 @@
 // Using jest mocking - no import needed since jest is global
 
+export const createMockTransaction = () => {
+  const mockTx = {
+    select: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue([]),
+
+    insert: jest.fn().mockReturnThis(),
+    values: jest.fn().mockReturnThis(),
+    returning: jest.fn().mockResolvedValue([]),
+
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+
+    delete: jest.fn().mockReturnThis(),
+
+    rollback: jest.fn(),
+    commit: jest.fn(),
+  };
+
+  return mockTx;
+};
+
+type MockTransaction = ReturnType<typeof createMockTransaction>;
+type TransactionCallback<T = unknown> = (tx: MockTransaction) => Promise<T> | T;
+
 export const createMockDb = () => {
   const mockDb = {
     select: jest.fn().mockReturnThis(),
@@ -25,7 +53,7 @@ export const createMockDb = () => {
 
     delete: jest.fn().mockReturnThis(),
 
-    transaction: jest.fn().mockImplementation(async (callback: any) => {
+    transaction: jest.fn().mockImplementation(async (callback: TransactionCallback) => {
       const mockTx = createMockTransaction();
       return await callback(mockTx);
     }),
@@ -37,31 +65,6 @@ export const createMockDb = () => {
   };
 
   return mockDb;
-};
-
-export const createMockTransaction = () => {
-  const mockTx = {
-    select: jest.fn().mockReturnThis(),
-    from: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    execute: jest.fn().mockResolvedValue([]),
-
-    insert: jest.fn().mockReturnThis(),
-    values: jest.fn().mockReturnThis(),
-    returning: jest.fn().mockResolvedValue([]),
-
-    update: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
-
-    delete: jest.fn().mockReturnThis(),
-
-    rollback: jest.fn(),
-    commit: jest.fn(),
-  };
-
-  return mockTx;
 };
 
 export const createMockGuildData = (overrides = {}) => ({

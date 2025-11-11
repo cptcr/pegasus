@@ -1,7 +1,23 @@
-import { EmbedBuilder, PermissionsBitField } from 'discord.js';
+import {
+  EmbedBuilder,
+  PermissionsBitField,
+  BitFieldResolvable,
+  PermissionsString,
+} from 'discord.js';
 import { createMockDb } from './mockDatabase';
 import { createMockClient } from './mockDiscord';
 // Using jest mocking - no import needed since jest is global
+
+type ReplyPayload = {
+  embeds?: EmbedBuilder[];
+  content?: string;
+  ephemeral?: boolean;
+};
+
+type ReplyableInteraction = {
+  reply: jest.Mock<Promise<void> | void, [ReplyPayload]>;
+  deferReply: jest.Mock;
+};
 
 export const expectEmbed = (embed: EmbedBuilder) => ({
   toHaveTitle: (title: string) => {
@@ -31,13 +47,15 @@ export const expectEmbed = (embed: EmbedBuilder) => ({
   },
 });
 
-export const expectInteractionReply = (interaction: any) => ({
+export const expectInteractionReply = (interaction: ReplyableInteraction) => ({
   toHaveBeenCalledWithEmbed: (matcher: (embed: EmbedBuilder) => boolean) => {
     expect(interaction.reply).toHaveBeenCalled();
-    const call = interaction.reply.mock.calls[0][0];
-    expect(call.embeds).toBeDefined();
-    expect(call.embeds.length).toBeGreaterThan(0);
-    expect(matcher(call.embeds[0])).toBe(true);
+    const payload = interaction.reply.mock.calls[0]?.[0] as ReplyPayload | undefined;
+    expect(payload?.embeds).toBeDefined();
+    expect(payload?.embeds?.length ?? 0).toBeGreaterThan(0);
+    const firstEmbed = payload?.embeds?.[0];
+    expect(firstEmbed).toBeDefined();
+    expect(matcher(firstEmbed as EmbedBuilder)).toBe(true);
   },
   toHaveBeenCalledWithContent: (content: string) => {
     expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content }));
@@ -50,8 +68,10 @@ export const expectInteractionReply = (interaction: any) => ({
   },
 });
 
-export const createMockPermissions = (permissions: string[]): PermissionsBitField => {
-  return new PermissionsBitField(permissions as any);
+type PermissionInput = BitFieldResolvable<PermissionsString, bigint> | undefined;
+
+export const createMockPermissions = (permissions: PermissionInput): PermissionsBitField => {
+  return new PermissionsBitField(permissions);
 };
 
 export const waitFor = async (condition: () => boolean, timeout = 5000): Promise<void> => {
@@ -65,7 +85,7 @@ export const waitFor = async (condition: () => boolean, timeout = 5000): Promise
 };
 
 export const mockI18n = () => {
-  const t = jest.fn((key: string, options?: any): string => {
+  const t = jest.fn((key: string, options?: Record<string, unknown>): string => {
     const translations: Record<string, string> = {
       'common.error': 'An error occurred',
       'common.success': 'Success!',
@@ -105,10 +125,10 @@ export const mockLogger = () => ({
 });
 
 export const mockCache = () => {
-  const cache = new Map();
+  const cache = new Map<string, unknown>();
   return {
     get: jest.fn((key: string) => cache.get(key)),
-    set: jest.fn((key: string, value: any, ttl?: number): void => {
+    set: jest.fn((key: string, value: unknown, ttl?: number): void => {
       cache.set(key, value);
       if (ttl) {
         setTimeout(() => cache.delete(key), ttl);
@@ -144,22 +164,18 @@ export const cleanupMocks = () => {
 };
 
 export const suppressConsole = () => {
-  const originalConsole = { ...console };
+  const spies: jest.SpyInstance[] = [];
 
   beforeAll(() => {
-    console.log = jest.fn(() => undefined);
-    console.error = jest.fn(() => undefined);
-    console.warn = jest.fn(() => undefined);
-    console.info = jest.fn(() => undefined);
-    console.debug = jest.fn(() => undefined);
+    spies.push(jest.spyOn(console, 'log').mockImplementation(() => undefined));
+    spies.push(jest.spyOn(console, 'error').mockImplementation(() => undefined));
+    spies.push(jest.spyOn(console, 'warn').mockImplementation(() => undefined));
+    spies.push(jest.spyOn(console, 'info').mockImplementation(() => undefined));
+    spies.push(jest.spyOn(console, 'debug').mockImplementation(() => undefined));
   });
 
   afterAll(() => {
-    console.log = originalConsole.log;
-    console.error = originalConsole.error;
-    console.warn = originalConsole.warn;
-    console.info = originalConsole.info;
-    console.debug = originalConsole.debug;
+    spies.forEach(spy => spy.mockRestore());
   });
 };
 

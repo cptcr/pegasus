@@ -10,10 +10,12 @@ import {
   Collection,
   PermissionsBitField,
   ChannelType,
+  Client,
+  TextChannel,
 } from 'discord.js';
 // Using jest mocking - no import needed since jest is global
 
-export const createMockClient = (): any => {
+export const createMockClient = (overrides: Record<string, unknown> = {}): Client => {
   const mockClient = {
     user: {
       id: 'bot123456789',
@@ -34,7 +36,7 @@ export const createMockClient = (): any => {
       fetch: jest.fn(),
     },
     channels: {
-      cache: new Collection<string, any>(),
+      cache: new Collection<string, unknown>(),
       fetch: jest.fn(),
     },
     ws: {
@@ -50,12 +52,13 @@ export const createMockClient = (): any => {
     isReady: jest.fn().mockReturnValue(true),
     readyAt: new Date(),
     uptime: 60000,
-  } as any;
+    ...overrides,
+  };
 
-  return mockClient;
+  return mockClient as unknown as Client;
 };
 
-export const createMockGuild = (overrides: Record<string, unknown> = {}): any => {
+export const createMockGuild = (overrides: Record<string, unknown> = {}): Guild => {
   const mockGuild = {
     id: '987654321098765432',
     name: 'Test Guild',
@@ -68,12 +71,12 @@ export const createMockGuild = (overrides: Record<string, unknown> = {}): any =>
       me: null,
     },
     channels: {
-      cache: new Collection<string, any>(),
+      cache: new Collection<string, unknown>(),
       fetch: jest.fn(),
       create: jest.fn(),
     },
     roles: {
-      cache: new Collection<string, any>(),
+      cache: new Collection<string, unknown>(),
       fetch: jest.fn(),
       create: jest.fn(),
       everyone: {
@@ -86,12 +89,12 @@ export const createMockGuild = (overrides: Record<string, unknown> = {}): any =>
     preferredLocale: 'en-US',
     available: true,
     ...overrides,
-  } as any;
+  };
 
-  return mockGuild;
+  return mockGuild as unknown as Guild;
 };
 
-export const createMockUser = (overrides: Record<string, unknown> = {}): any => {
+export const createMockUser = (overrides: Record<string, unknown> = {}): User => {
   const mockUser = {
     id: '123456789012345678',
     username: 'TestUser',
@@ -101,19 +104,19 @@ export const createMockUser = (overrides: Record<string, unknown> = {}): any => 
     tag: 'TestUser#1234',
     displayAvatarURL: jest.fn().mockReturnValue('https://cdn.discordapp.com/avatars/test.png'),
     ...overrides,
-  } as any;
+  };
 
-  return mockUser;
+  return mockUser as unknown as User;
 };
 
-export const createMockGuildMember = (overrides: Record<string, unknown> = {}): any => {
+export const createMockGuildMember = (overrides: Record<string, unknown> = {}): GuildMember => {
   const mockMember = {
     id: '123456789012345678',
     user: createMockUser(),
     guild: { id: '987654321098765432', name: 'Test Guild' },
     nickname: null,
     roles: {
-      cache: new Collection<string, any>(),
+      cache: new Collection<string, unknown>(),
       highest: {
         position: 1,
         id: '222222222222222222',
@@ -125,7 +128,7 @@ export const createMockGuildMember = (overrides: Record<string, unknown> = {}): 
     permissions: new PermissionsBitField(['SendMessages', 'ViewChannel']),
     joinedAt: new Date(),
     joinedTimestamp: Date.now(),
-    displayName: overrides.nickname || 'TestUser',
+    displayName: 'TestUser',
     voice: {
       channel: null,
       channelId: null,
@@ -137,12 +140,14 @@ export const createMockGuildMember = (overrides: Record<string, unknown> = {}): 
     timeout: jest.fn(),
     send: jest.fn(),
     ...overrides,
-  } as any;
+  };
 
-  return mockMember;
+  return mockMember as unknown as GuildMember;
 };
 
-export const createMockTextChannel = (overrides: Record<string, unknown> = {}): any => {
+export const createMockTextChannel = (
+  overrides: Record<string, unknown> = {}
+): TextChannel => {
   const mockChannel = {
     id: '333333333333333333',
     name: 'test-channel',
@@ -159,12 +164,12 @@ export const createMockTextChannel = (overrides: Record<string, unknown> = {}): 
       .fn()
       .mockReturnValue(new PermissionsBitField(['SendMessages', 'ViewChannel'])),
     ...overrides,
-  } as any;
+  };
 
-  return mockChannel;
+  return mockChannel as unknown as TextChannel;
 };
 
-export const createMockMessage = (overrides: Partial<Message> = {}): any => {
+export const createMockMessage = (overrides: Partial<Message> = {}): Message => {
   const mockMessage = {
     id: '444444444444444444',
     content: 'Test message',
@@ -192,14 +197,14 @@ export const createMockMessage = (overrides: Partial<Message> = {}): any => {
     delete: jest.fn(),
     react: jest.fn(),
     ...overrides,
-  } as any;
+  };
 
-  return mockMessage;
+  return mockMessage as unknown as Message;
 };
 
 export const createMockCommandInteraction = (
   overrides: Partial<ChatInputCommandInteraction> = {}
-): any => {
+): ChatInputCommandInteraction => {
   const mockInteraction = {
     id: '555555555555555555',
     commandName: 'test',
@@ -238,12 +243,14 @@ export const createMockCommandInteraction = (
     deleteReply: jest.fn().mockResolvedValue(undefined),
     fetchReply: jest.fn().mockResolvedValue(createMockMessage()),
     ...overrides,
-  } as any;
+  };
 
-  return mockInteraction;
+  return mockInteraction as unknown as ChatInputCommandInteraction;
 };
 
-export const createMockButtonInteraction = (overrides: Partial<ButtonInteraction> = {}): any => {
+export const createMockButtonInteraction = (
+  overrides: Partial<ButtonInteraction> = {}
+): ButtonInteraction => {
   const mockInteraction = {
     id: '777777777777777777',
     customId: 'test_button',
@@ -267,14 +274,14 @@ export const createMockButtonInteraction = (overrides: Partial<ButtonInteraction
     followUp: jest.fn().mockResolvedValue(undefined),
     deleteReply: jest.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as any;
+  };
 
-  return mockInteraction;
+  return mockInteraction as unknown as ButtonInteraction;
 };
 
 export const createMockModalSubmitInteraction = (
   overrides: Partial<ModalSubmitInteraction> = {}
-): any => {
+): ModalSubmitInteraction => {
   const mockInteraction = {
     id: '888888888888888888',
     customId: 'test_modal',
@@ -301,14 +308,14 @@ export const createMockModalSubmitInteraction = (
     followUp: jest.fn().mockResolvedValue(undefined),
     deleteReply: jest.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as any;
+  };
 
-  return mockInteraction;
+  return mockInteraction as unknown as ModalSubmitInteraction;
 };
 
 export const createMockSelectMenuInteraction = (
   overrides: Partial<SelectMenuInteraction> = {}
-): any => {
+): SelectMenuInteraction => {
   const mockInteraction = {
     id: '999999999999999999',
     customId: 'test_select',
@@ -333,9 +340,9 @@ export const createMockSelectMenuInteraction = (
     followUp: jest.fn().mockResolvedValue(undefined),
     deleteReply: jest.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as any;
+  };
 
-  return mockInteraction;
+  return mockInteraction as unknown as SelectMenuInteraction;
 };
 
 export const mockDiscordAPI = () => {
