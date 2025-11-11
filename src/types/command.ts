@@ -17,6 +17,9 @@ export interface Command {
   botPermissions?: PermissionResolvable[];
   guildOnly?: boolean;
   ownerOnly?: boolean;
+  preDefer?: {
+    ephemeral?: boolean;
+  };
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
   autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }

@@ -253,32 +253,32 @@ async function handleAutomationModalButton(
 
   const modal = new ModalBuilder()
     .setCustomId(`warn_automation_create:${triggerType}:${triggerValue}`)
-    .setTitle(t('commands.warn.subcommands.automation.create.modal.title'));
+    .setTitle(truncateLabel(t('commands.warn.subcommands.automation.create.modal.title'), 45));
 
   const nameInput = new TextInputBuilder()
     .setCustomId('name')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.name'))
+    .setLabel(truncateLabel(t('commands.warn.subcommands.automation.create.modal.name')))
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
     .setMaxLength(255);
 
   const descriptionInput = new TextInputBuilder()
     .setCustomId('description')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.description'))
+    .setLabel(truncateLabel(t('commands.warn.subcommands.automation.create.modal.description')))
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(false)
     .setMaxLength(1000);
 
   const actionInput = new TextInputBuilder()
     .setCustomId('action')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.action'))
+    .setLabel(truncateLabel(t('commands.warn.subcommands.automation.create.modal.action')))
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
     .setPlaceholder('1d Timeout, 1w Timeout, kick, ban, sendMessageOnly');
 
   const messageInput = new TextInputBuilder()
     .setCustomId('message')
-    .setLabel(t('commands.warn.subcommands.automation.create.modal.message'))
+    .setLabel(truncateLabel(t('commands.warn.subcommands.automation.create.modal.message')))
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(false)
     .setMaxLength(1000)
@@ -295,3 +295,11 @@ async function handleAutomationModalButton(
 
   await interaction.showModal(modal);
 }
+
+const MAX_LABEL_LENGTH = 45;
+const truncateLabel = (value: string, maxLength = MAX_LABEL_LENGTH) => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return value.slice(0, maxLength);
+};

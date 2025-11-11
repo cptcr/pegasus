@@ -10,6 +10,8 @@ import {
   ModalActionRowComponentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  InteractionReplyOptions,
+  InteractionDeferReplyOptions,
 } from 'discord.js';
 import { CommandCategory } from '../../types/command';
 import { t } from '../../i18n';
@@ -199,13 +201,16 @@ export const data = new SlashCommandBuilder()
 export const category = CommandCategory.Moderation;
 export const cooldown = 3;
 export const permissions = [PermissionFlagsBits.ModerateMembers];
+export const preDefer = {
+  ephemeral: false,
+};
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    return interaction.reply({
+    await respondEphemeral(interaction, {
       content: t('common.guildOnly'),
-      ephemeral: true,
     });
+    return;
   }
 
   const subcommandGroup = interaction.options.getSubcommandGroup();
@@ -291,11 +296,11 @@ async function handleWarnHelp(interaction: ChatInputCommandInteraction) {
     )
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await respondEphemeral(interaction, { embeds: [embed] });
 }
 
 async function handleWarnCreate(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply();
+  await ensureDeferred(interaction);
 
   const user = interaction.options.getUser('user', true);
   const title = interaction.options.getString('title', true);
@@ -391,10 +396,10 @@ async function handleWarnEdit(interaction: ChatInputCommandInteraction): Promise
   // Get the warning
   const warning = await warningRepository.getWarningById(warnId);
   if (!warning || warning.guildId !== interaction.guild!.id) {
-    return interaction.reply({
+    await respondEphemeral(interaction, {
       content: t('commands.warn.subcommands.edit.notFound'),
-      ephemeral: true,
     });
+    return;
   }
 
   // Create modal
@@ -429,7 +434,7 @@ async function handleWarnEdit(interaction: ChatInputCommandInteraction): Promise
 }
 
 async function handleWarnLookup(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply();
+  await ensureDeferred(interaction);
 
   const warnId = interaction.options.getString('warnid', true);
 
@@ -445,7 +450,7 @@ async function handleWarnLookup(interaction: ChatInputCommandInteraction): Promi
 }
 
 async function handleWarnDelete(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply({ ephemeral: true });
+  await ensureDeferred(interaction, { ephemeral: true });
 
   const warnId = interaction.options.getString('warnid', true);
 
@@ -453,7 +458,7 @@ async function handleWarnDelete(interaction: ChatInputCommandInteraction): Promi
     const deleted = await warningService.deleteWarning(warnId, interaction.user);
 
     if (!deleted) {
-      await interaction.editReply({
+      await respondEphemeral(interaction, {
         content: t('commands.warn.subcommands.delete.notFound', { warnId }),
       });
       return;
@@ -477,17 +482,17 @@ async function handleWarnDelete(interaction: ChatInputCommandInteraction): Promi
       )
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    await respondEphemeral(interaction, { embeds: [embed] });
   } catch (error) {
     logger.error('Error deleting warning:', error);
-    await interaction.editReply({
+    await respondEphemeral(interaction, {
       content: t('commands.warn.subcommands.delete.error'),
     });
   }
 }
 
 async function handleWarnView(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply();
+  await ensureDeferred(interaction);
 
   const user = interaction.options.getUser('user', true);
   const warnings = await warningRepository.getUserWarnings(interaction.guild!.id, user.id);
@@ -535,8 +540,6 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
     | 'warn_level';
   const triggerValue = interaction.options.getInteger('trigger_value', true);
 
-  await interaction.deferReply({ ephemeral: true });
-
   const button = new ButtonBuilder()
     .setCustomId(`warn_automation_modal:${interaction.user.id}:${triggerType}:${triggerValue}`)
     .setLabel(t('commands.warn.subcommands.automation.create.button'))
@@ -544,14 +547,14 @@ async function handleAutomationCreate(interaction: ChatInputCommandInteraction):
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-  await interaction.editReply({
+  await respondEphemeral(interaction, {
     content: t('commands.warn.subcommands.automation.create.prompt'),
     components: [row],
   });
 }
 
 async function handleAutomationView(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply();
+  await ensureDeferred(interaction);
 
   const automations = await warningRepository.getGuildAutomations(interaction.guild!.id);
 
@@ -595,7 +598,7 @@ async function handleAutomationView(interaction: ChatInputCommandInteraction): P
 }
 
 async function handleAutomationDelete(interaction: ChatInputCommandInteraction): Promise<any> {
-  await interaction.deferReply();
+  await ensureDeferred(interaction);
 
   const automationId = interaction.options.getString('automationid', true);
 
@@ -651,4 +654,43 @@ function formatAutomationDuration(minutes?: number): string {
   }
 
   return `${minutes}m`;
+}
+
+async function ensureDeferred(
+  interaction: ChatInputCommandInteraction,
+  options?: InteractionDeferReplyOptions
+) {
+  if (interaction.deferred || interaction.replied) {
+    return;
+  }
+
+  await interaction.deferReply(options);
+}
+
+async function respondEphemeral(
+  interaction: ChatInputCommandInteraction,
+  response: InteractionReplyOptions
+) {
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.reply({
+      ...response,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await deleteInitialReply(interaction);
+
+  await interaction.followUp({
+    ...response,
+    ephemeral: true,
+  });
+}
+
+async function deleteInitialReply(interaction: ChatInputCommandInteraction) {
+  try {
+    await interaction.deleteReply();
+  } catch {
+    // If the original reply is already gone, ignore the error
+  }
 }

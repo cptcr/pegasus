@@ -66,6 +66,10 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  if (command.preDefer) {
+    await preDeferInteraction(interaction, command.preDefer.ephemeral ?? false);
+  }
+
   try {
     logger.info(`Executing security checks for command: ${interaction.commandName}`);
 
@@ -75,12 +79,7 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
       logger.warn(
         `Security check failed for command ${interaction.commandName}: ${securityCheck.error}`
       );
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: securityCheck.error || 'Security check failed',
-          ephemeral: true,
-        });
-      }
+      await sendSecurityFailureResponse(interaction, securityCheck.error);
       return;
     }
 
@@ -120,6 +119,45 @@ async function handleCommand(interaction: ChatInputCommandInteraction) {
   }
 }
 
+async function preDeferInteraction(
+  interaction: ChatInputCommandInteraction,
+  ephemeral: boolean
+) {
+  if (interaction.deferred || interaction.replied) {
+    return;
+  }
+
+  try {
+    await interaction.deferReply({ ephemeral });
+  } catch (error) {
+    logger.warn('Failed to defer interaction before security checks:', error);
+  }
+}
+
+async function sendSecurityFailureResponse(
+  interaction: ChatInputCommandInteraction,
+  message?: string
+) {
+  const content = message || 'Security check failed';
+
+  if (interaction.deferred && !interaction.replied) {
+    try {
+      await interaction.deleteReply();
+    } catch {
+      // ignore if already deleted
+    }
+    await interaction.followUp({ content, ephemeral: true });
+    return;
+  }
+
+  if (interaction.replied) {
+    await interaction.followUp({ content, ephemeral: true });
+    return;
+  }
+
+  await interaction.reply({ content, ephemeral: true });
+}
+
 async function handleAutocomplete(interaction: AutocompleteInteraction) {
   const command = interaction.client.commands.get(interaction.commandName) as Command;
 
@@ -144,7 +182,8 @@ async function handleButton(interaction: ButtonInteraction) {
     // Handle warning action buttons
     if (
       interaction.customId.startsWith('warn_action:') ||
-      interaction.customId.startsWith('warn_view:')
+      interaction.customId.startsWith('warn_view:') ||
+      interaction.customId.startsWith('warn_automation_modal:')
     ) {
       await handleWarningActionButtons(interaction);
       return;
