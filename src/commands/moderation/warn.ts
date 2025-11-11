@@ -103,9 +103,8 @@ export const data = new SlashCommandBuilder()
       .setName('delete')
       .setDescription('Delete a warning by ID')
       .setDescriptionLocalizations({
-        en: 'Delete a warning by ID',
-        de: 'Eine Warnung anhand der ID löschen',
-        es: 'Eliminar una advertencia por ID',
+        'de': 'Eine Warnung anhand der ID löschen',
+        'es-ES': 'Eliminar una advertencia por ID',
         fr: 'Supprimer un avertissement par identifiant',
       })
       .addStringOption(option =>

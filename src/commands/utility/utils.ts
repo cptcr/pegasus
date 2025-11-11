@@ -16,10 +16,10 @@ import { logger } from '../../utils/logger';
 import * as os from 'os';
 import { version as djsVersion } from 'discord.js';
 
-const steamService =
+const realSteamService =
   process.env.STEAM_API_KEY && process.env.STEAM_API_KEY !== ''
     ? new RealSteamService()
-    : new MockSteamService();
+    : null;
 const helpService = new HelpService();
 
 export const data = new SlashCommandBuilder()
@@ -325,9 +325,71 @@ async function handleSteam(
   const username = interaction.options.getString('username', true);
 
   try {
-    // Temporarily use mock service
-    const embed = await SteamService.getPlayerSummary(username);
+    if (realSteamService) {
+      const profile = await realSteamService.getProfile(username);
+      if (!profile) {
+        await interaction.editReply({
+          content: t('commands.utils.steam.notFound', { lng: locale }),
+        });
+        return;
+      }
 
+      const embed = new EmbedBuilder()
+        .setTitle(profile.personaname)
+        .setURL(profile.profileurl)
+        .setColor(0x1b2838)
+        .setThumbnail(profile.avatarfull)
+        .addFields(
+          {
+            name: t('commands.utils.steam.status', { lng: locale }),
+            value: realSteamService.getStatusText(profile.personastate, locale),
+            inline: true,
+          },
+          {
+            name: t('commands.utils.steam.visibility', { lng: locale }),
+            value: realSteamService.getVisibilityText(profile.communityvisibilitystate, locale),
+            inline: true,
+          }
+        )
+        .setTimestamp();
+
+      if (profile.timecreated) {
+        embed.addFields({
+          name: t('commands.utils.steam.created', { lng: locale }),
+          value: `<t:${profile.timecreated}:R>`,
+          inline: true,
+        });
+      }
+
+      if (profile.gameextrainfo) {
+        embed.addFields({
+          name: t('commands.utils.steam.playing', { lng: locale }),
+          value: profile.gameextrainfo,
+          inline: true,
+        });
+      }
+
+      if (profile.realname) {
+        embed.addFields({
+          name: t('commands.utils.steam.realName', { lng: locale }),
+          value: profile.realname,
+          inline: true,
+        });
+      }
+
+      if (profile.loccountrycode) {
+        embed.addFields({
+          name: t('commands.utils.steam.country', { lng: locale }),
+          value: profile.loccountrycode,
+          inline: true,
+        });
+      }
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    const embed = MockSteamService.getPlayerSummary(username);
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     logger.error('Error fetching Steam profile:', error);

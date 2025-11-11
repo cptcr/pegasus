@@ -393,7 +393,6 @@ function createDiceEmbed(result: any, settings: any, locale: string): EmbedBuild
 
 function createCoinflipEmbed(result: any, settings: any, locale: string): EmbedBuilder {
   const details = result.details as CoinflipResult;
-  const emoji = details.result === 'heads' ? '🪙' : '🪙';
 
   return new EmbedBuilder()
     .setTitle(t('commands.economy.gamble.coinflip.title', { lng: locale }))

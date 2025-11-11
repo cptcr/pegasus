@@ -6,7 +6,6 @@ import {
   GuildMember,
   TextChannel,
   NewsChannel,
-  ThreadChannel,
   ChannelType,
   Collection,
   Snowflake,

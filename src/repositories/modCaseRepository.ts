@@ -18,6 +18,20 @@ export class ModCaseRepository {
     return getDatabase();
   }
 
+  private mapCase(record: typeof modCases.$inferSelect): ModCase {
+    return {
+      id: record.id,
+      guildId: record.guildId,
+      userId: record.userId,
+      moderatorId: record.moderatorId,
+      type: record.type as ModActionType,
+      reason: record.reason ?? undefined,
+      duration: record.duration ?? undefined,
+      expiresAt: record.expiresAt ?? undefined,
+      createdAt: record.createdAt,
+    };
+  }
+
   async create(data: CreateModCaseInput): Promise<ModCase> {
     const [created] = await this.db
       .insert(modCases)
@@ -32,7 +46,7 @@ export class ModCaseRepository {
       })
       .returning();
 
-    return created;
+    return this.mapCase(created);
   }
 
   async getById(guildId: string, caseId: number): Promise<ModCase | null> {
@@ -42,7 +56,7 @@ export class ModCaseRepository {
       .where(and(eq(modCases.guildId, guildId), eq(modCases.id, caseId)))
       .limit(1);
 
-    return record ?? null;
+    return record ? this.mapCase(record) : null;
   }
 
   async delete(guildId: string, caseId: number): Promise<boolean> {
@@ -55,25 +69,29 @@ export class ModCaseRepository {
   }
 
   async getByUser(guildId: string, userId: string, limit = 10): Promise<ModCase[]> {
-    return this.db
+    const results = await this.db
       .select()
       .from(modCases)
       .where(and(eq(modCases.guildId, guildId), eq(modCases.userId, userId)))
       .orderBy(desc(modCases.createdAt))
       .limit(limit);
+
+    return results.map(record => this.mapCase(record));
   }
 
   async getRecent(guildId: string, limit = 10): Promise<ModCase[]> {
-    return this.db
+    const results = await this.db
       .select()
       .from(modCases)
       .where(eq(modCases.guildId, guildId))
       .orderBy(desc(modCases.createdAt))
       .limit(limit);
+
+    return results.map(record => this.mapCase(record));
   }
 
   async getActiveTempBans(): Promise<ModCase[]> {
-    return this.db
+    const results = await this.db
       .select()
       .from(modCases)
       .where(
@@ -83,6 +101,8 @@ export class ModCaseRepository {
           gt(modCases.expiresAt, new Date())
         )
       );
+
+    return results.map(record => this.mapCase(record));
   }
 
   async markTempBanCompleted(caseId: number): Promise<void> {

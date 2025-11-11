@@ -103,24 +103,27 @@ function loadListDefinitions(configPath: string): ListCommandMap {
             ? data.help.description.trim()
             : undefined;
 
-        const helpCommands = Array.isArray(data.help.commands)
-          ? data.help.commands
-              .map(command => {
-                if (!isRecord(command)) return null;
+        const helpCommands: Array<{ name: string; description?: string }> = Array.isArray(
+          data.help.commands
+        )
+          ? data.help.commands.reduce<Array<{ name: string; description?: string }>>(
+              (acc, command) => {
+                if (!isRecord(command)) {
+                  return acc;
+                }
                 const name = typeof command.name === 'string' ? command.name.trim() : '';
-                if (!name) return null;
+                if (!name) {
+                  return acc;
+                }
                 const cmdDescription =
                   typeof command.description === 'string' && command.description.trim().length > 0
                     ? command.description.trim()
                     : undefined;
-                return {
-                  name,
-                  description: cmdDescription,
-                };
-              })
-              .filter(
-                (command): command is { name: string; description?: string } => command !== null
-              )
+                acc.push({ name, description: cmdDescription });
+                return acc;
+              },
+              []
+            )
           : [];
 
         commands.set(helpPrefix, {

@@ -149,15 +149,15 @@ router.post('/:guildId/moderation/warn', async (req: Request, res: Response) => 
       });
     }
 
-    const moderatorCheck = await requireModeratorPermission(
+    const warnPermission = await requireModeratorPermission(
       guild,
       moderatorId,
       PermissionFlagsBits.ModerateMembers
     );
-    if (moderatorCheck.error) {
-      return res.status(moderatorCheck.error.status).json({
+    if (warnPermission.error) {
+      return res.status(warnPermission.error.status).json({
         error: 'Forbidden',
-        message: moderatorCheck.error.message,
+        message: warnPermission.error.message,
       });
     }
 
@@ -251,15 +251,15 @@ router.post('/:guildId/moderation/ban', async (req: Request, res: Response) => {
       });
     }
 
-    const moderatorCheck = await requireModeratorPermission(
+    const banPermission = await requireModeratorPermission(
       guild,
       moderatorId,
       PermissionFlagsBits.BanMembers
     );
-    if (moderatorCheck.error) {
-      return res.status(moderatorCheck.error.status).json({
+    if (banPermission.error) {
+      return res.status(banPermission.error.status).json({
         error: 'Forbidden',
-        message: moderatorCheck.error.message,
+        message: banPermission.error.message,
       });
     }
 
@@ -370,27 +370,15 @@ router.post('/:guildId/moderation/kick', async (req: Request, res: Response) => 
       });
     }
 
-    const moderatorCheck = await requireModeratorPermission(
+    const kickPermission = await requireModeratorPermission(
       guild,
       moderatorId,
       PermissionFlagsBits.KickMembers
     );
-    if (moderatorCheck.error) {
-      return res.status(moderatorCheck.error.status).json({
+    if (kickPermission.error) {
+      return res.status(kickPermission.error.status).json({
         error: 'Forbidden',
-        message: moderatorCheck.error.message,
-      });
-    }
-
-    const moderatorCheck = await requireModeratorPermission(
-      guild,
-      moderatorId,
-      PermissionFlagsBits.ManageRoles
-    );
-    if (moderatorCheck.error) {
-      return res.status(moderatorCheck.error.status).json({
-        error: 'Forbidden',
-        message: moderatorCheck.error.message,
+        message: kickPermission.error.message,
       });
     }
 
@@ -493,6 +481,18 @@ router.post('/:guildId/moderation/mute', async (req: Request, res: Response) => 
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Bot does not have permission to manage roles',
+      });
+    }
+
+    const mutePermission = await requireModeratorPermission(
+      guild,
+      moderatorId,
+      PermissionFlagsBits.ManageRoles
+    );
+    if (mutePermission.error) {
+      return res.status(mutePermission.error.status).json({
+        error: 'Forbidden',
+        message: mutePermission.error.message,
       });
     }
 

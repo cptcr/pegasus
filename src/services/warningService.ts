@@ -12,6 +12,7 @@ import { warningRepository } from '../repositories/warningRepository';
 import { auditLogger } from '../security/audit';
 import { t } from '../i18n';
 import { ensureUserAndGuildExist } from '../utils/userUtils';
+import { logger } from '../utils/logger';
 
 export interface WarningAction {
   type: 'ban' | 'kick' | 'mute' | 'timeout' | 'role' | 'message';
