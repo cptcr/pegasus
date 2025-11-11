@@ -577,23 +577,37 @@ async function handleWarnPurge(interaction: ChatInputCommandInteraction): Promis
       return;
     }
 
+    const descriptionParams = { user: target.tag, count: result.count };
+
     const embed = new EmbedBuilder()
       .setColor(0xe74c3c)
-      .setTitle(t('commands.warn.subcommands.purge.success.title'))
+      .setTitle(
+        translateOrFallback(
+          'commands.warn.subcommands.purge.success.title',
+          () => 'Warnings Purged'
+        )
+      )
       .setDescription(
-        t('commands.warn.subcommands.purge.success.description', {
-          user: target.tag,
-          count: result.count,
-        })
+        translateOrFallback(
+          'commands.warn.subcommands.purge.success.description',
+          params => `Removed ${params?.count ?? 0} warning(s) for ${params?.user ?? 'user'}.`,
+          descriptionParams
+        )
       )
       .addFields(
         {
-          name: t('commands.warn.subcommands.purge.success.target'),
+          name: translateOrFallback(
+            'commands.warn.subcommands.purge.success.target',
+            () => 'Target'
+          ),
           value: `<@${target.id}>`,
           inline: true,
         },
         {
-          name: t('commands.warn.subcommands.purge.success.moderator'),
+          name: translateOrFallback(
+            'commands.warn.subcommands.purge.success.moderator',
+            () => 'Moderator'
+          ),
           value: interaction.user.tag,
           inline: true,
         }
@@ -792,4 +806,13 @@ function resolveNotifyChannelId(channel: CommandChannelOption): string | undefin
   }
 
   return undefined;
+}
+
+function translateOrFallback(
+  key: string,
+  fallback: (params?: Record<string, string | number>) => string,
+  params?: Record<string, string | number>
+) {
+  const value = t(key, params as never);
+  return value === key ? fallback(params) : value;
 }
